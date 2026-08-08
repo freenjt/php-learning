@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metaprogramming in PHP 8.x - Interactive Deep Dive</title>
+  
+  <!-- Typography & Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic Theme) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#ec4899',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              violet: '#8b5cf6',
+              cyan: '#06b6d4'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.82rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-pink {
+      box-shadow: 0 0 35px -5px rgba(236, 72, 153, 0.35);
+    }
+
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Flow Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#ec4899',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-pink-500 selection:text-white transition-colors duration-200">
+
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-pink">
+        <i class="fa-solid fa-brain text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Metaprogramming <span class="text-xs px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 light:text-pink-700 border border-pink-500/30">PHP 8.x Engine</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-pink-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Directory Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-pink-950/50 light:bg-pink-100 border border-pink-500/30 text-pink-300 light:text-pink-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Manual: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/language.oop5.overloading</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title Slide -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10 active" data-category="Overview" data-doc="php.net/language.oop5.overloading">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-pink-500 via-purple-600 to-cyan-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-pink-500/30 flex items-center justify-center glow-pink">
+          <i class="fa-solid fa-wand-magic-sparkles text-6xl text-pink-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Metaprogramming in PHP <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400">Programmatic Deep Dive</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        Master Reflection API, Property & Method Overloading, Custom PHP 8 Attributes, Scope Binding, Dynamic Evaluation, and Metaprogrammatic Object Hydration.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Magic Method Interception
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-eye text-indigo-400"></i> Reflection API & Attributes
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-amber-400"></i> Interactive Inspector & Simulator
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-semibold shadow-lg shadow-pink-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Explore Engine Metaprogramming</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Metaprogramming Spectrum -->
+    <div class="slide-wrapper flex-col" data-category="Foundations" data-doc="php.net/language.oop5.overloading">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">The PHP Metaprogramming Spectrum</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Metaprogramming allows code to treat other code as data, reading, generating, or modifying runtime behavior dynamically.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-pink-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-pink-500/20 flex items-center justify-center"><i class="fa-solid fa-bolt"></i></div>
+            Overloading Hooks
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Interpreting dynamic method calls and property reads/writes when members are undefined.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-pink-300">__get($name)</code> & <code class="text-pink-300">__set($k, $v)</code></li>
+            <li>• <code class="text-pink-300">__call($method, $args)</code></li>
+            <li>• Dynamic ORMs & Proxy classes</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-magnifying-glass font-bold"></i></div>
+            Reflection Engine
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Full reverse-engineering of classes, interfaces, properties, methods, and docblocks at runtime.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-sky-300">ReflectionClass</code> inspection</li>
+            <li>• Invoking private methods/properties</li>
+            <li>• Auto-wiring DI containers</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-tags"></i></div>
+            PHP 8+ Attributes
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Structured native metadata attached to classes, methods, properties, and parameters.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-emerald-300">#[Attribute]</code> declarations</li>
+            <li>• <code class="text-emerald-300">$ref->getAttributes()</code></li>
+            <li>• Declarative routing & validation</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-terminal"></i></div>
+            Dynamic Code Evaluation
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Executing variable functions, variable variables, and dynamically constructing class instances.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Variable variables <code class="text-amber-300">$$var</code></li>
+            <li>• Dynamic calls <code class="text-amber-300">$obj->$func()</code></li>
+            <li>• Factory instantiation <code class="text-amber-300">new $class()</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-violet-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center"><i class="fa-solid fa-key"></i></div>
+            Closure Scope Binding
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Rebinding a Closure's execution scope (`$this`) to inject capabilities or bypass access limits.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-violet-300">Closure::bind()</code> static factory</li>
+            <li>• Private scope inspection</li>
+            <li>• Dynamic DSL builder patterns</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-cyan-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center"><i class="fa-solid fa-boxes-packing"></i></div>
+            Serialization & Hydration
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Customizing how Zend Engine serializes and reconstructs instances from raw state payloads.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-cyan-300">__serialize()</code> / <code class="text-cyan-300">__unserialize()</code></li>
+            <li>• <code class="text-cyan-300">var_export()</code> & <code class="text-cyan-300">__set_state()</code></li>
+            <li>• Safe object state reconstruction</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Property Overloading -->
+    <div class="slide-wrapper flex-col" data-category="Overloading" data-doc="php.net/language.oop5.overloading">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Property Overloading: `__get`, `__set`, `__isset`, `__unset`</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Property overloading in PHP is triggered when accessing or mutating properties that are inaccessible or undeclared.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-pink-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Dynamic Data Container Implementation</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class DynamicBag {
+    private array $data = [];
+
+    // Triggered when writing to inaccessible/non-existing properties
+    public function __set(string $name, mixed $value): void {
+        $this->data[$name] = $value;
+    }
+
+    // Triggered when reading inaccessible/non-existing properties
+    public function __get(string $name): mixed {
+        return $this->data[$name] ?? null;
+    }
+
+    // Triggered when calling isset() or empty()
+    public function __isset(string $name): bool {
+        return isset($this->data[$name]);
+    }
+
+    // Triggered when calling unset()
+    public function __unset(string $name): void {
+        unset($this->data[$name]);
+    }
+}
+
+$bag = new DynamicBag();
+$bag->role = "Administrator"; // Triggers __set
+echo $bag->role;              // Triggers __get -> "Administrator"</code></pre>
+          </div>
+          <p class="text-[11px] text-pink-400 mt-2"><i class="fa-solid fa-circle-info"></i> Note: Overloading methods must be declared as <code class="text-white">public</code>.</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-shield-halved"></i> Guarding Against Engine Pitfalls</span>
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono space-y-3 text-slate-300">
+              <div>
+                <strong class="text-amber-400">1. Strict Mode & Typed Overloading:</strong>
+                <p class="text-[11px] text-slate-400 mt-0.5"><code class="text-purple-300">__set</code> accepts <code class="text-purple-300">mixed $value</code>. Type validation must be handled manually inside the magic body.</p>
+              </div>
+              <div class="border-t border-slate-800 pt-2">
+                <strong class="text-amber-400">2. Reference Modification Pitfall:</strong>
+                <p class="text-[11px] text-slate-400 mt-0.5"><code class="text-purple-300">$bag->arr[] = 1;</code> fails unless <code class="text-purple-300">&__get()</code> explicitly returns by reference!</p>
+              </div>
+              <div class="border-t border-slate-800 pt-2">
+                <strong class="text-amber-400">3. Inaccessible Declared Properties:</strong>
+                <p class="text-[11px] text-slate-400 mt-0.5">If a property is <code class="text-purple-300">private</code> inside the class, external access fires <code class="text-purple-300">__get</code>, but inside class scope it accesses directly.</p>
+              </div>
+            </div>
+          </div>
+          <span class="text-[10px] text-slate-500 font-mono mt-2">Source: <a href="https://www.php.net/manual/en/language.oop5.overloading.php#language.oop5.overloading.members" target="_blank" class="text-sky-400 hover:underline">php.net/language.oop5.overloading.members</a></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Method Overloading -->
+    <div class="slide-wrapper flex-col" data-category="Overloading" data-doc="php.net/language.oop5.overloading">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Method Interception: `__call`, `__callStatic`, `__invoke`</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Intercepting call attempts on undefined instance or static methods, or enabling objects to be invoked as callable functions.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- __call & __callStatic -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Intercepting Calls & Dynamic Proxies</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class DynamicQueryBuilder {
+    // Intercepts instance methods: $builder->whereName("Alice")
+    public function __call(string $name, array $arguments): mixed {
+        if (str_starts_with($name, 'where')) {
+            $field = strtolower(substr($name, 5));
+            return "WHERE {$field} = '" . $arguments[0] . "'";
+        }
+        throw new BadMethodCallException("Method {$name} does not exist.");
+    }
+
+    // Intercepts static method calls: DynamicQueryBuilder::findByName("Bob")
+    public static function __callStatic(string $name, array $arguments): mixed {
+        return "STATIC INTERCEPT: {$name} with args " . json_encode($arguments);
+    }
+}
+
+$qb = new DynamicQueryBuilder();
+echo $qb->whereEmail("user@php.net"); // WHERE email = 'user@php.net'</code></pre>
+          </div>
+        </div>
+
+        <!-- __invoke Invokable Objects -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-play"></i> Invokable Classes (`__invoke`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class MoneyCalculator {
+    public function __construct(private float $rate) {}
+
+    // Allows the object instance to be called like a function!
+    public function __invoke(float $amount): float {
+        return $amount * $this->rate;
+    }
+}
+
+$taxCalculator = new MoneyCalculator(1.20);
+
+// $taxCalculator is a valid PHP callable!
+echo is_callable($taxCalculator) ? 'YES' : 'NO'; // Outputs: YES
+echo $taxCalculator(100.0);                      // Outputs: 120</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-circle-check text-emerald-400"></i> Invokable objects can be passed directly to <code class="text-purple-300">array_map()</code> or pipeline higher-order functions.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Reflection API -->
+    <div class="slide-wrapper flex-col" data-category="Reflection" data-doc="php.net/book.reflection">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Reflection API: Reverse Engineering Runtime Structures</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP's built-in Reflection API lets you inspect, bypass accessibility restrictions, and dynamically construct components.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Reflection Basics -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-eye"></i> Class & Property Reflection</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class UserEntity {
+    private string $secretHash = "A98F72D0";
+}
+
+$refClass = new ReflectionClass(UserEntity::class);
+
+// Inspect class meta
+echo $refClass->getShortName(); // "UserEntity"
+echo $refClass->hasProperty('secretHash') ? 'Yes' : 'No';
+
+// Inspect private property
+$refProp = $refClass->getProperty('secretHash');
+
+// PHP 8.1+ getSetValue or setAccessible()
+$user = new UserEntity();
+$refProp->setAccessible(true); // Bypass private encapsulation!
+echo $refProp->getValue($user); // Outputs: "A98F72D0"</code></pre>
+          </div>
+        </div>
+
+        <!-- Reflection Instantiation & Invocation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-gears"></i> Dynamic Instantiation Without Constructor</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class HeavyService {
+    public function __construct() {
+        throw new Exception("Constructor should not run!");
+    }
+}
+
+$ref = new ReflectionClass(HeavyService::class);
+
+// Instantiate class WITHOUT calling its __construct!
+$instance = $ref->newInstanceWithoutConstructor();
+
+var_dump($instance instanceof HeavyService); // true
+
+// Dynamically invoke method with parameters
+$refMethod = $ref->hasMethod('run') ? $ref->getMethod('run') : null;
+// $refMethod?->invokeArgs($instance, [$arg1, $arg2]);</code></pre>
+          </div>
+          <p class="text-[11px] text-amber-400 mt-2"><i class="fa-solid fa-lightbulb"></i> Crucial technique used by ORMs (Doctrine) and Serializers to hydrate objects.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Interactive Visualizer 1 - Reflection Inspector -->
+    <div class="slide-wrapper flex-col" data-category="Visualizer" data-doc="php.net/book.reflection">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Reflection API Inspector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select a class target to execute live Reflection reverse-engineering and inspect generated metadata.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-pink-400 font-bold">Target Class:</span>
+            <select id="ref-target-select" onchange="runReflectionInspect(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-pink-200 focus:outline-none">
+              <option value="UserDTO">UserDTO (Class with Attributes & Private Properties)</option>
+              <option value="Repository">Repository (Class with Magic Overloading & Interfaces)</option>
+              <option value="PaymentController">PaymentController (Class with Method Parameters)</option>
+            </select>
+          </div>
+
+          <button onclick="runReflectionInspect(document.getElementById('ref-target-select').value)" class="px-3 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-white text-xs font-mono transition">
+            <i class="fa-solid fa-play mr-1"></i> Reflect Target
+          </button>
+        </div>
+
+        <!-- Dynamic Output Display -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
+          <!-- Class Meta -->
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-sky-400 font-bold block mb-2"><i class="fa-solid fa-file-code"></i> ReflectionClass Meta</span>
+              <div id="ref-class-meta" class="space-y-1 text-[11px] text-slate-300">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Properties Inspection -->
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-pink-400 font-bold block mb-2"><i class="fa-solid fa-key"></i> Properties (`ReflectionProperty`)</span>
+              <div id="ref-props-meta" class="space-y-1 text-[11px] text-slate-300">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Attributes & Methods -->
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-emerald-400 font-bold block mb-2"><i class="fa-solid fa-tags"></i> Attributes & Methods</span>
+              <div id="ref-attribs-meta" class="space-y-1 text-[11px] text-slate-300">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-400 flex items-center justify-between">
+          <span><i class="fa-solid fa-code-compare text-purple-400 mr-2"></i> Reflection Engine Output Status: <strong id="ref-status-text" class="text-emerald-400">Class Reflected Successfully</strong></span>
+          <span class="text-[10px] text-slate-500">PHP 8.2 Zend Engine Simulation</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: PHP 8 Attributes -->
+    <div class="slide-wrapper flex-col" data-category="Attributes" data-doc="php.net/language.attributes">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP 8 Attributes & Structural Metadata</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Native structured metadata syntax replaces unstructured PHPDoc comments with type-safe metadata classes.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Attribute Declaration -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-tag"></i> 1. Attribute Definition & Target Flags</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">#[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_PROPERTY)]
+readonly class Route {
+    public function __construct(
+        public string $path,
+        public string $method = 'GET'
+    ) {}
+}
+
+// Attaching metadata to class members
+class UserController {
+    #[Route(path: '/api/users', method: 'GET')]
+    public function index(): array {
+        return ['status' => 'ok'];
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-info-circle text-emerald-400"></i> Targets: <code class="text-purple-300">TARGET_CLASS</code>, <code class="text-purple-300">TARGET_METHOD</code>, <code class="text-purple-300">TARGET_PROPERTY</code>, <code class="text-purple-300">TARGET_PARAMETER</code>.</p>
+        </div>
+
+        <!-- Extracting Attributes via Reflection -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-magnifying-glass"></i> 2. Reading Attributes via Reflection</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$refMethod = new ReflectionMethod(UserController::class, 'index');
+
+// Fetch ReflectionAttribute instances
+$attributes = $refMethod->getAttributes(Route::class);
+
+foreach ($attributes as $attribute) {
+    // Instantiate attribute class dynamically!
+    /** @var Route $route */
+    $route = $attribute->newInstance();
+
+    echo $route->method . ' -> ' . $route->path;
+    // Outputs: "GET -> /api/users"
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-shield text-sky-400"></i> Attribute classes are only instantiated when calling <code class="text-purple-300">newInstance()</code>, maximizing performance.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Dynamic Code Execution -->
+    <div class="slide-wrapper flex-col" data-category="Dynamic Mechanics" data-doc="php.net/language.variables.variable">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Dynamic Mechanics & Variable Variables</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP allows dynamic variable names, dynamic method invocation, dynamic class instantiation, and `eval()` execution.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Variable Variables & Dynamic Invocation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-terminal"></i> Variable Variables & Dynamic Methods</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Variable Variables ($$var)
+$foo = 'bar';
+$$foo = 'baz'; // Creates $bar = 'baz'
+echo $bar;     // Outputs: "baz"
+
+// Dynamic Function Calls
+$fnName = 'strlen';
+echo $fnName('PHP'); // Outputs: 3
+
+// Dynamic Class Instantiation
+$class = 'DateTime';
+$now = new $class('now');
+
+// Dynamic Property & Method Access
+$prop = 'date';
+echo $now->$prop;</code></pre>
+          </div>
+        </div>
+
+        <!-- eval() Caution & Safe Alternatives -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-triangle-exclamation"></i> `eval()` vs Anonymous Functions</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// RISKY: Executing raw PHP string code at runtime
+$code = 'return 5 * 10;';
+$result = eval($code); // 50
+
+// SAFE METAPROGRAMMING ALTERNATIVE:
+// Anonymous functions and First-Class Callables
+$dynamicCalc = fn(int $a, int $b) => $a * $b;
+echo $dynamicCalc(5, 10); // 50</code></pre>
+          </div>
+          <p class="text-[11px] text-rose-400 mt-2"><i class="fa-solid fa-ban"></i> <code class="text-rose-300">eval()</code> bypasses opcache optimizations and introduces severe security risks if user input is injected.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Closure Scope Binding -->
+    <div class="slide-wrapper flex-col" data-category="Closure Binding" data-doc="php.net/closure.bind">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Closure Scope Binding & Private Hijacking</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm"><code class="text-purple-300">Closure::bind()</code> rebinds a closure's instance bound object (`$this`) and class scope, granting access to private state.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Closure::bind -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-violet-400 font-bold text-sm"><i class="fa-solid fa-key"></i> Reading Private State via `Closure::bind()`</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class Vault {
+    private string $pin = "9981";
+}
+
+$vault = new Vault();
+
+// Define closure targeting private $pin
+$readPin = function() {
+    return $this->pin;
+};
+
+// Rebind closure to $vault instance AND Vault class scope!
+$boundClosure = Closure::bind($readPin, $vault, Vault::class);
+
+echo $boundClosure(); // Outputs: "9981"</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-lock-open text-violet-400"></i> Bypasses access controls without altering target class definition.</p>
+        </div>
+
+        <!-- Closure::call (PHP 7+) -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-bolt"></i> Immediate Call Binding (`Closure::call()`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class InternalConfig {
+    private array $settings = ['debug' => true];
+}
+
+$config = new InternalConfig();
+
+// Immediately bind and execute closure in one step!
+$isDebug = (function() {
+    return $this->settings['debug'];
+})->call($config);
+
+var_dump($isDebug); // bool(true)</code></pre>
+          </div>
+          <p class="text-[11px] text-sky-400 mt-2"><i class="fa-solid fa-check"></i> Faster and more readable than creating intermediate bound closure instances.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Serialization & Object Hydration -->
+    <div class="slide-wrapper flex-col" data-category="Hydration" data-doc="php.net/language.oop5.magic">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Serialization, Hydration & Metaprogrammatic State</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Controlling object serialization payloads with <code class="text-purple-300">__serialize()</code> / <code class="text-purple-300">__unserialize()</code> and code generation with <code class="text-purple-300">__set_state()</code>.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- __serialize & __unserialize -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-cyan-400 font-bold text-sm"><i class="fa-solid fa-box"></i> Modern `__serialize()` & `__unserialize()`</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class SessionToken {
+    public function __construct(
+        private string $token,
+        private DateTime $expiresAt
+    ) {}
+
+    // Returns custom serialized array payload
+    public function __serialize(): array {
+        return [
+            'token' => $this->token,
+            'exp' => $this->expiresAt->format('Y-m-d H:i:s')
+        ];
+    }
+
+    // Reconstructs object state from array payload
+    public function __unserialize(array $data): void {
+        $this->token = $data['token'];
+        $this->expiresAt = new DateTime($data['exp']);
+    }
+}</code></pre>
+          </div>
+        </div>
+
+        <!-- var_export & __set_state -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-file-code"></i> Code Export Hydration (`__set_state`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class ValueObject {
+    public function __construct(public string $key, public int $val) {}
+
+    // Called when code generated by var_export() is evaluated!
+    public static function __set_state(array $array): self {
+        return new self($array['key'], $array['val']);
+    }
+}
+
+$obj = new ValueObject("timeout", 30);
+$exportedCode = var_export($obj, true);
+// Evaluates to: ValueObject::__set_state(array('key' => 'timeout', 'val' => 30))</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-code text-emerald-400"></i> Essential for building compiled configuration caches (e.g., Symfony Container cache).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Interactive Visualizer 2 - Magic Method Dispatch Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Visualizer" data-doc="php.net/language.oop5.overloading">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Magic Method Interceptor Flowchart</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Step through the Zend Engine method/property dispatch resolution chain when an access attempt occurs.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Control Stepper -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <div class="flex items-center gap-2">
+            <button onclick="dispatchPrevStep()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-mono transition">
+              <i class="fa-solid fa-chevron-left mr-1"></i> Prev Step
+            </button>
+            <button onclick="dispatchNextStep()" class="px-3 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-white text-xs font-mono transition">
+              Next Step <i class="fa-solid fa-chevron-right ml-1"></i>
+            </button>
+            <button onclick="dispatchReset()" class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-xs font-mono transition">
+              <i class="fa-solid fa-rotate-left"></i> Reset Flow
+            </button>
+          </div>
+
+          <div class="text-xs font-mono text-pink-300">
+            Engine Dispatch Phase: <span id="dispatch-phase-title" class="font-bold text-white">1. Access Call Initiated</span>
+          </div>
+        </div>
+
+        <!-- Mermaid Diagram -->
+        <div class="mermaid">
+          graph TD
+            A[Member Call Attempt] --> B{Member Declared & Accessible?}
+            B -- Yes --> C[Direct Engine Access]
+            B -- No --> D{Magic Hook Defined?}
+            D -- Yes --> E[Invoke Overload Hook __get / __call]
+            D -- No --> F[Fatal Error / Exception Triggered]
+        </div>
+
+        <!-- Active Step Explanation Card -->
+        <div id="dispatch-step-box" class="p-4 rounded-xl bg-slate-950 border border-pink-500/40 text-xs font-mono text-pink-200 leading-relaxed flex items-center gap-3">
+          <i class="fa-solid fa-microchip text-xl text-pink-400"></i>
+          <span id="dispatch-step-desc">Initiating member invocation `$object->findUserById(42)` on object instance...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Magic Constants & Context -->
+    <div class="slide-wrapper flex-col" data-category="Magic Constants" data-doc="php.net/language.constants.magic">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Magic Constants & Dynamic Execution Context</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Magic constants resolve dynamically based on the location where they are evaluated during compilation/execution.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Execution Scope Reflection Constants</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">namespace App\Services;
+
+class LoggerService {
+    public function logEvent(): void {
+        echo "Line: " . __LINE__ . "\n";        // Current line
+        echo "File: " . __FILE__ . "\n";        // Full file path
+        echo "Dir:  " . __DIR__  . "\n";        // Directory
+        echo "Func: " . __FUNCTION__ . "\n";    // "logEvent"
+        echo "Class:" . __CLASS__ . "\n";       // "App\Services\LoggerService"
+        echo "Method:" . __METHOD__ . "\n";     // "App\Services\LoggerService::logEvent"
+        echo "NS:   " . __NAMESPACE__ . "\n";  // "App\Services"
+    }
+}</code></pre>
+          </div>
+        </div>
+
+        <!-- Trait Reflection via __TRAIT__ -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-layer-group"></i> Trait Scope Resolution (`__TRAIT__`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">trait AuditLog {
+    public function getCallerTrait(): string {
+        // Resolves to the name of the Trait, NOT the consuming Class!
+        return __TRAIT__;
+    }
+}
+
+class UserHandler {
+    use AuditLog;
+}
+
+$handler = new UserHandler();
+echo $handler->getCallerTrait(); // Outputs: "AuditLog"</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-info-circle text-sky-400"></i> Useful when constructing diagnostic logs or framework telemetry.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Interactive Code Playground -->
+    <div class="slide-wrapper flex-col" data-category="Playground" data-doc="php.net/book.reflection">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Metaprogramming PHP Playground</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select metaprogramming templates, edit code, and simulate execution results live.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Controls Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-pink-400 font-bold">Select Template:</span>
+            <select id="sim-preset-select" onchange="loadMetaPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-pink-200 focus:outline-none">
+              <option value="property_overload">Dynamic Property Bag (__get / __set)</option>
+              <option value="reflection_private">Reflection Private Access & Invocation</option>
+              <option value="attribute_router">PHP 8 Attributes Metadata Router</option>
+              <option value="closure_hijack">Closure Scope Rebinding (Closure::bind)</option>
+            </select>
+          </div>
+
+          <button onclick="resetMetaCode()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Template
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-pink-400"></i> PHP Metaprogramming Snippet</span>
+            <textarea id="sim-editor" oninput="runMetaSimulatedCode()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-pink-200 border border-slate-800 rounded-xl focus:outline-none focus:border-pink-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Simulated Execution Console</span>
+            <div id="sim-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Self-Assessment Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net/book.reflection">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP Metaprogramming Assessment</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your comprehension of Reflection, Overloading, Attributes, and Scope Binding.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-pink-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Official Documentation Index -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net/book.reflection">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-pink-600 to-purple-600 flex items-center justify-center mx-auto mb-4 glow-pink">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Metaprogramming Manual Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every metaprogramming feature in this presentation is derived from official manual specifications at php.net.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php.net/manual/en/language.oop5.overloading.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-pink-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-pink-400">Overloading Manual (__get, __call)</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Property and method overloading specifications.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/book.reflection.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-pink-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-pink-400">Reflection API Book</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">ReflectionClass, ReflectionMethod, ReflectionProperty.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/language.attributes.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-pink-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-pink-400">PHP 8 Attributes Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Native structured metadata declaration and extraction.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/closure.bind.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-pink-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-pink-400">Closure Scope Binding</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Closure::bind and Closure::bindTo specifications.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer Controls -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-pink-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net/manual/en/language.oop5.overloading.php" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-pink-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search metaprogramming topics (e.g., reflection, __get, attribute, closure)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-pink-400"></i> Metaprogramming Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Data
+    const quizData = [
+      {
+        question: "When is the __get($name) magic method triggered in PHP?",
+        options: [
+          "Every time any property on an object is accessed.",
+          "When writing to an inaccessible or non-existing property.",
+          "When reading data from inaccessible or non-existing properties.",
+          "Only when using ReflectionProperty::getValue()."
+        ],
+        correct: 2,
+        explanation: "Official Manual (php.net/language.oop5.overloading.members): __get() is utilized for reading data from inaccessible (protected/private) or non-existing properties."
+      },
+      {
+        question: "How do PHP 8 Attributes improve upon PHPDoc annotations?",
+        options: [
+          "Attributes are parsed as native structured metadata classes with static type safety.",
+          "Attributes execute asynchronously inside Zend Engine.",
+          "Attributes allow direct modification of C source code inside extension modules.",
+          "Attributes replace standard class constructors."
+        ],
+        correct: 0,
+        explanation: "Official Manual (php.net/language.attributes): Attributes provide structured, type-safe metadata attached to class declarations without manual docblock parsing."
+      },
+      {
+        question: "Which method allows instantiating a class via Reflection without running its __construct method?",
+        options: [
+          "ReflectionClass::newInstance()",
+          "ReflectionClass::newInstanceWithoutConstructor()",
+          "ReflectionClass::hydrate()",
+          "ReflectionClass::bypassConstructor()"
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/reflectionclass.newinstancewithoutconstructor): Creates a new instance of the class without invoking its constructor."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Playground Templates
+    const metaPresets = {
+      property_overload: `<?php\nclass DynamicEntity {\n    private array $data = [];\n    public function __set($k, $v) { $this->data[$k] = $v; }\n    public function __get($k) { return $this->data[$k] ?? 'DEFAULT'; }\n}\n\n$entity = new DynamicEntity();\n$entity->title = "PHP Metaprogramming";\necho "Title: " . $entity->title . "\\n";\necho "Status: " . $entity->status;`,
+      reflection_private: `<?php\nclass SecretVault {\n    private string $key = "SECRET_ZEND_KEY";\n}\n\n$vault = new SecretVault();\n$ref = new ReflectionClass($vault);\n$prop = $ref->getProperty('key');\n$prop->setAccessible(true);\necho "Extracted Private Key: " . $prop->getValue($vault);`,
+      attribute_router: `<?php\n#[Attribute]\nclass Route {\n    public function __construct(public string $path) {}\n}\n\nclass ApiController {\n    #[Route('/api/v1/health')]\n    public function health() {}\n}\n\n$ref = new ReflectionMethod(ApiController::class, 'health');\n$attr = $ref->getAttributes(Route::class)[0]->newInstance();\necho "Routed Path: " . $attr->path;`,
+      closure_hijack: `<?php\nclass ProtectedConfig {\n    private int $maxConnections = 50;\n}\n\n$config = new ProtectedConfig();\n$getter = function() { return $this->maxConnections; };\n$bound = Closure::bind($getter, $config, ProtectedConfig::class);\necho "Max Connections: " . $bound();`
+    };
+
+    // Reflection Inspector Simulation Data
+    const reflectionTargets = {
+      UserDTO: {
+        meta: "Class: UserDTO\nNamespace: App\\DTO\nIs Final: False\nIs Abstract: False",
+        props: "$id (int, private)\n$name (string, public)\n$email (string, protected)",
+        attribs: "#[Attribute: #[ValidateEmail]]\nMethods: __construct(), toArray()"
+      },
+      Repository: {
+        meta: "Class: Repository\nNamespace: App\\Data\nInterfaces: RepositoryInterface\nIs Final: True",
+        props: "$table (string, private)\n$connection (PDO, private)",
+        attribs: "Magic Hooks: __call(), __get()\nMethods: find(), save()"
+      },
+      PaymentController: {
+        meta: "Class: PaymentController\nNamespace: App\\Http\nParent: BaseController",
+        props: "$gateway (GatewayInterface, private)",
+        attribs: "#[Attribute: #[Route('/checkout')]]\nMethods: processPayment(Request $req)"
+      }
+    };
+
+    function runReflectionInspect(key) {
+      const target = reflectionTargets[key] || reflectionTargets.UserDTO;
+      document.getElementById('ref-class-meta').innerText = target.meta;
+      document.getElementById('ref-props-meta').innerText = target.props;
+      document.getElementById('ref-attribs-meta').innerText = target.attribs;
+      document.getElementById('ref-status-text').innerText = `Reflected Target [${key}] Cleanly`;
+    }
+
+    let dispatchStepIndex = 0;
+    const dispatchSteps = [
+      { phase: "1. Member Invocation Initiated", desc: "Engine intercepting `$obj->findByName('Alice')` or `$obj->property` access request." },
+      { phase: "2. Engine Accessibility Check", desc: "Zend Engine checks class definition for existing, visible public member." },
+      { phase: "3. Overload Hook Check", desc: "If undefined/private, engine checks for `__call` or `__get` magic definitions." },
+      { phase: "4. Execution or Error", desc: "Magic method executes with arguments, or Error exception is thrown." }
+    ];
+
+    function updateDispatchView() {
+      const step = dispatchSteps[dispatchStepIndex];
+      document.getElementById('dispatch-phase-title').textContent = step.phase;
+      document.getElementById('dispatch-step-desc').textContent = step.desc;
+    }
+
+    function dispatchNextStep() {
+      if (dispatchStepIndex < dispatchSteps.length - 1) {
+        dispatchStepIndex++;
+        updateDispatchView();
+      }
+    }
+
+    function dispatchPrevStep() {
+      if (dispatchStepIndex > 0) {
+        dispatchStepIndex--;
+        updateDispatchView();
+      }
+    }
+
+    function dispatchReset() {
+      dispatchStepIndex = 0;
+      updateDispatchView();
+    }
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-pink-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    function loadMetaPreset(key) {
+      document.getElementById('sim-editor').value = metaPresets[key] || '';
+      runMetaSimulatedCode();
+    }
+
+    function resetMetaCode() {
+      const key = document.getElementById('sim-preset-select').value;
+      loadMetaPreset(key);
+    }
+
+    function runMetaSimulatedCode() {
+      const code = document.getElementById('sim-editor').value;
+      const consoleOut = document.getElementById('sim-console-output');
+
+      if (code.includes('DynamicEntity') || code.includes('__get')) {
+        consoleOut.textContent = `Title: PHP Metaprogramming\nStatus: DEFAULT`;
+      } else if (code.includes('SecretVault') || code.includes('setAccessible')) {
+        consoleOut.textContent = `Extracted Private Key: SECRET_ZEND_KEY`;
+      } else if (code.includes('Attribute') || code.includes('Route')) {
+        consoleOut.textContent = `Routed Path: /api/v1/health`;
+      } else if (code.includes('Closure::bind')) {
+        consoleOut.textContent = `Max Connections: 50`;
+      } else {
+        consoleOut.textContent = `[Simulated Execution]: Code compiled cleanly. Conforms with PHP 8.x Reflection & Metaprogramming engine specs.`;
+      }
+    }
+
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-pink-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-pink-950/60 border-pink-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-pink-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-pink-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-pink-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_meta_presentation_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_meta_presentation_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keybindings & Touch Listeners
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    // Initial startup
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_meta_presentation_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      runReflectionInspect('UserDTO');
+      updateDispatchView();
+      loadMetaPreset('property_overload');
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

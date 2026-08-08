@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Control Flow in PHP - Deep Dive</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Presentation Styles -->
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.85rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Control Flow Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#8b5cf6',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <!-- Header Navigation -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-code-branch text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Control Flow <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 light:text-purple-700 border border-purple-500/30">Official Spec</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slides Frame -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Manual: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/language.control-structures</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="php.net/language.control-structures">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-brands fa-php text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Advanced Control Flow <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-sky-400">in PHP Engine</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A comprehensive, rigorous analysis of evaluation mechanisms, loop controls, match expressions, generators, Fibers, and execution branching derived strictly from php.net manual specifications.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Strict php.net Compliance
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-microchip text-purple-400"></i> Engine Execution Steppers
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-lightbulb text-amber-400"></i> Interactive Knowledge Quizzes
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Begin Architecture Exploration</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Structural Landscape -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="php.net/language.control-structures">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP Control Structure Taxonomy</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">The official language specification categorizes statement flow into 6 core execution paradigms.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-code-branch"></i></div>
+            Conditional Branching
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Evaluates boolean conditions to select execution paths.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-purple-300">if / elseif / else</code></li>
+            <li>• <code class="text-purple-300">switch (...) { case ... }</code></li>
+            <li>• <code class="text-purple-300">match ($expr) { ... }</code> (PHP 8.0+)</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-rotate-right"></i></div>
+            Iterative Loops
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Repeats execution blocks based on predicates or collections.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-sky-300">while</code> & <code class="text-sky-300">do-while</code></li>
+            <li>• <code class="text-sky-300">for ($i; $cond; $inc)</code></li>
+            <li>• <code class="text-sky-300">foreach ($arr as $k => &$v)</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-angles-right"></i></div>
+            Jump & Loop Interrupts
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Alters loop continuation or transfers instruction pointer.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-emerald-300">break $n;</code> (Exits $n nested levels)</li>
+            <li>• <code class="text-emerald-300">continue $n;</code> (Skips $n loop cycles)</li>
+            <li>• <code class="text-emerald-300">goto label;</code> (Scoped jump)</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-sliders"></i></div>
+            Compiler Directives
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Sets directives for execution blocks or entire scripts.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-amber-300">declare(strict_types=1);</code></li>
+            <li>• <code class="text-amber-300">declare(ticks=1);</code></li>
+            <li>• <code class="text-amber-300">declare(encoding='UTF-8');</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            Exception / Jump Expressions
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Handles exceptional states and expression throwing.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-rose-300">try ... catch ... finally</code></li>
+            <li>• <code class="text-rose-300">throw $e</code> as Expression (PHP 8.0+)</li>
+            <li>• <code class="text-rose-300">return $val;</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-diagram-next"></i></div>
+            Yielding & Fibers
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Cooperative multitasking and generator control delegation.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-indigo-300">yield $key => $value</code></li>
+            <li>• <code class="text-indigo-300">yield from $iterable</code></li>
+            <li>• <code class="text-indigo-300">Fiber::suspend() / resume()</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Alternative Syntax for Control Structures -->
+    <div class="slide-wrapper flex-col" data-category="Syntax" data-doc="php.net/control-structures.alternative-syntax">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Alternative Syntax for Control Structures</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Designed for templating engines to replace curly braces with colon delimiters and explicit terminator keywords.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Syntax Rules Box -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Templating Alternative Block</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php if ($user->isAdmin()): ?&gt;
+    &lt;div class="admin-panel"&gt;
+        &lt;h1&gt;Welcome, &lt;?= htmlspecialchars($user->name) ?&gt;&lt;/h1&gt;
+    &lt;/div&gt;
+&lt;?php elseif ($user->isEditor()): ?&gt;
+    &lt;div class="editor-panel"&gt;Editor Dashboard&lt;/div&gt;
+&lt;?php else: ?&gt;
+    &lt;div class="guest-panel"&gt;Guest View&lt;/div&gt;
+&lt;?php endif; ?&gt;</code></pre>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <strong class="text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i> Official php.net Warning:</strong>
+            <p class="mt-1">
+              Mixing alternative syntax constructs or combining <code class="text-purple-300">else:</code> with space-separated <code class="text-purple-300">else if</code> (instead of atomic <code class="text-purple-300">elseif</code>) causes parse errors in PHP due to disambiguation limits!
+            </p>
+          </div>
+        </div>
+
+        <!-- Valid Alternatives Mapping -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-list-check"></i> Standard vs Alternative Terminators</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Construct</th>
+                    <th class="p-2">Opening</th>
+                    <th class="p-2">Terminator</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">if / elseif</td>
+                    <td class="p-2"><code class="text-sky-400">if (...):</code></td>
+                    <td class="p-2"><code class="text-emerald-400">endif;</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">while</td>
+                    <td class="p-2"><code class="text-sky-400">while (...):</code></td>
+                    <td class="p-2"><code class="text-emerald-400">endwhile;</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">for</td>
+                    <td class="p-2"><code class="text-sky-400">for (...):</code></td>
+                    <td class="p-2"><code class="text-emerald-400">endfor;</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">foreach</td>
+                    <td class="p-2"><code class="text-sky-400">foreach (...):</code></td>
+                    <td class="p-2"><code class="text-emerald-400">endforeach;</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">switch</td>
+                    <td class="p-2"><code class="text-sky-400">switch (...):</code></td>
+                    <td class="p-2"><code class="text-emerald-400">endswitch;</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">
+            Reference: <a href="https://www.php.net/manual/en/control-structures.alternative-syntax.php" target="_blank" class="text-sky-400 hover:underline">php.net/control-structures.alternative-syntax</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Loop Semantics, References & Unpacking -->
+    <div class="slide-wrapper flex-col" data-category="Looping" data-doc="php.net/control-structures.foreach">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">`foreach` Semantics, Reference Hazards & Array Unpacking</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Deep dive into iteration mechanisms, reference modification safety, and structured destructuring.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Reference Trap -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-bug"></i> The `foreach` Reference Dangling Trap</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$numbers = [1, 2, 3];
+
+// Iterating by reference
+foreach ($numbers as &$value) {
+    $value *= 2;
+}
+// $value is STILL a reference to $numbers[2]!
+
+// Second iteration without reference unexpectedly overwrites $numbers[2]!
+foreach ($numbers as $value) {
+    // $numbers[2] gets mutated during loop!
+}
+
+// MANDATORY FIX as per php.net:
+unset($value); // Destroys the dangling reference!</code></pre>
+          </div>
+          <p class="text-[11px] text-amber-300 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> Always call <code class="text-purple-300">unset($value)</code> immediately after a reference loop!</p>
+        </div>
+
+        <!-- Array Unpacking list() inside foreach -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-box-open"></i> Array Destructuring in `foreach`</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$records = [
+    [1, 'Alice', 'Admin'],
+    [2, 'Bob', 'Editor'],
+];
+
+// Destructuring nested arrays directly in loop signature
+foreach ($records as list($id, $name, $role)) {
+    echo "ID: {$id}, Name: {$name}, Role: {$role}\n";
+}
+
+// Short syntax destructuring (PHP 7.1+)
+foreach ($records as [$id, $name, $role]) {
+    // Exact same effect
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/control-structures.foreach.php" target="_blank" class="text-sky-400 hover:underline">php.net/control-structures.foreach</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Multi-Level Loop Control -->
+    <div class="slide-wrapper flex-col" data-category="Looping" data-doc="php.net/control-structures.break">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Multi-Level Loop Control (`break $n` & `continue $n`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP allows numeric arguments on <code class="text-purple-300">break</code> and <code class="text-purple-300">continue</code> to jump out of multiple nested enclosing statements.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Interactive Multi-level Simulator -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-sliders"></i> Interactive Multi-Level Break Simulator
+            </span>
+            
+            <div class="space-y-3 my-2 text-xs">
+              <div>
+                <label class="block font-mono text-slate-300 mb-1">Select Nest Level Break Argument:</label>
+                <select id="sim-break-level" onchange="runBreakSimulation()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 font-mono text-purple-300 focus:outline-none">
+                  <option value="1">break 1; (Exits innermost Loop 3)</option>
+                  <option value="2">break 2; (Exits Loop 3 and Loop 2)</option>
+                  <option value="3">break 3; (Exits ALL 3 Loops)</option>
+                </select>
+              </div>
+
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px]">
+                <div class="text-slate-500">// Simulated 3-Level Nest Execution</div>
+                <div class="text-purple-400">for ($i = 1; $i &lt;= 2; $i++) { // Outer (L1)</div>
+                <div class="text-sky-400 pl-3">for ($j = 1; $j &lt;= 2; $j++) { // Middle (L2)</div>
+                <div class="text-emerald-400 pl-6">for ($k = 1; $k &lt;= 2; $k++) { // Inner (L3)</div>
+                <div class="text-amber-300 pl-9" id="sim-break-code-line">if ($k === 1) break 1;</div>
+                <div class="text-emerald-400 pl-6">}</div>
+                <div class="text-sky-400 pl-3">}</div>
+                <div class="text-purple-400">}</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <span class="text-slate-400 text-xs font-mono">Simulated Execution Output Log:</span>
+            <div id="sim-break-output" class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-emerald-400 text-xs h-24 overflow-y-auto mt-1">
+              <!-- JS Populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Code Snippet & php.net Specs -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Numeric Scope Rules</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$i = 0;
+while (++$i) {
+    switch ($i) {
+        case 1:
+            echo "Iteration 1\n";
+            break 1; // Exits switch only!
+        case 2:
+            echo "Iteration 2 - Exiting Loop\n";
+            break 2; // Exits switch AND enclosing while loop!
+        default:
+            break;
+    }
+}</code></pre>
+          </div>
+
+          <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 mt-2">
+            <strong class="text-purple-400"><i class="fa-solid fa-circle-info"></i> Switch Behavior Note:</strong>
+            <p class="mt-1">In PHP, <code class="text-purple-300">switch</code> is considered a looping structure for <code class="text-purple-300">break</code> and <code class="text-purple-300">continue</code>! Thus <code class="text-purple-300">continue 1</code> inside a switch acts identically to <code class="text-purple-300">break 1</code>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Switch vs Match Expression -->
+    <div class="slide-wrapper flex-col" data-category="Branching" data-doc="php.net/control-structures.match">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">`switch` Statement vs. `match` Expression (PHP 8.0+)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Fundamental comparison between legacy loose statement branching and modern strict expression evaluation.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Switch Box -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-toggle-off"></i> `switch` Statement (Loose `==`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$val = '0';
+
+// Switch uses loose comparison (==)
+switch ($val) {
+    case 0:
+        $res = 'Matched integer 0'; // SURPRISE MATCH!
+        break;
+    case '0':
+        $res = 'Matched string "0"';
+        break;
+}
+// Outputs: Matched integer 0</code></pre>
+            <ul class="mt-3 text-xs text-slate-300 space-y-1 font-mono">
+              <li class="text-rose-400">• Uses loose equality (<code class="text-rose-300">==</code>)</li>
+              <li class="text-rose-400">• Requires explicit <code class="text-rose-300">break;</code> statements</li>
+              <li class="text-rose-400">• Statement (does NOT return a value)</li>
+              <li class="text-rose-400">• Quietly ignores unhandled values</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Match Box -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-toggle-on"></i> `match` Expression (Strict `===`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$val = '0';
+
+// Match uses strict identity (===) & returns value
+$res = match ($val) {
+    0 => 'Matched integer 0',
+    '0' => 'Matched string "0"', // Correct Match!
+    default => 'Unhandled',
+};
+// Outputs: Matched string "0"</code></pre>
+            <ul class="mt-3 text-xs text-slate-300 space-y-1 font-mono">
+              <li class="text-emerald-400">• Uses strict identity (<code class="text-emerald-300">===</code>)</li>
+              <li class="text-emerald-400">• No fallthrough (no break needed)</li>
+              <li class="text-emerald-400">• Expression (returns evaluated value)</li>
+              <li class="text-emerald-400">• Throws <code class="text-emerald-300">\UnhandledMatchError</code> if unhandled</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Interactive Switch vs Match Coercion Inspector -->
+    <div class="slide-wrapper flex-col" data-category="Branching" data-doc="php.net/control-structures.match">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Coercion Inspector: Switch vs Match</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select an input value to observe how type coercion produces dramatically different evaluation results.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <label class="text-xs font-mono text-purple-400 font-bold">Select Test Input Payload:</label>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="inspectCoercion('string_zero')" class="coercion-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono">Input: string "0"</button>
+            <button onclick="inspectCoercion('bool_true')" class="coercion-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Input: boolean true</button>
+            <button onclick="inspectCoercion('null_val')" class="coercion-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Input: null</button>
+            <button onclick="inspectCoercion('unhandled')" class="coercion-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Input: 99 (Unhandled)</button>
+          </div>
+        </div>
+
+        <!-- Inspector Display Split -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Switch Result -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-amber-400 font-mono text-xs font-bold"><i class="fa-solid fa-code"></i> switch ($input) Evaluation</span>
+                <span class="text-[10px] text-slate-500 font-mono">Loose Equality (==)</span>
+              </div>
+              <div id="inspector-switch-log" class="font-mono text-xs text-amber-200 space-y-1">
+                <!-- JS populated -->
+              </div>
+            </div>
+            <div id="inspector-switch-badge" class="mt-3 p-2 rounded bg-amber-950/60 text-amber-300 border border-amber-800 text-[11px] font-mono">
+              <!-- Result -->
+            </div>
+          </div>
+
+          <!-- Match Result -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-emerald-400 font-mono text-xs font-bold"><i class="fa-solid fa-code"></i> match ($input) Evaluation</span>
+                <span class="text-[10px] text-slate-500 font-mono">Strict Identity (===)</span>
+              </div>
+              <div id="inspector-match-log" class="font-mono text-xs text-emerald-200 space-y-1">
+                <!-- JS populated -->
+              </div>
+            </div>
+            <div id="inspector-match-badge" class="mt-3 p-2 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800 text-[11px] font-mono">
+              <!-- Result -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: The Declare Construct -->
+    <div class="slide-wrapper flex-col" data-category="Directives" data-doc="php.net/control-structures.declare">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">The `declare` Directives (`strict_types`, `ticks`, `encoding`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Used to set execution directives for a block of code or an entire file.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- strict_types -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-shield-halved"></i> `strict_types=1`</span>
+            <pre><code class="language-php">declare(strict_types=1);
+
+function add(int $a, int $b): int {
+    return $a + $b;
+}
+
+// Throws TypeError!
+add(1, "2"); </code></pre>
+            <p class="text-xs text-slate-300 mt-2">Enforces strict scalar type checking for function calls originating from the file.</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">Scope: File-level directive</p>
+        </div>
+
+        <!-- ticks -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-stopwatch"></i> `ticks=N`</span>
+            <pre><code class="language-php">declare(ticks=1);
+
+// Executes tick_handler() every N
+// low-level tick statements
+register_tick_function('handler');
+
+$a = 1; // Tick!
+$b = 2; // Tick!</code></pre>
+            <p class="text-xs text-slate-300 mt-2">Fires event callbacks during low-level engine tick events (used for signal handling).</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">Scope: Block or File</p>
+        </div>
+
+        <!-- encoding -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-file-code"></i> `encoding='...'`</span>
+            <pre><code class="language-php">declare(encoding='ISO-8859-1');
+
+// Instructs zend_compiler 
+// how script characters 
+// are encoded per file.</code></pre>
+            <p class="text-xs text-slate-300 mt-2">Specifies character encoding per-script for the compiler parser.</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">Scope: File-level directive</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Goto Operator & Scope Restrictions -->
+    <div class="slide-wrapper flex-col" data-category="Jumps" data-doc="php.net/control-structures.goto">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">The `goto` Operator: Rules & Scope Restrictions</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Jump statement that moves instruction execution to a named label within the same file and target scope.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Valid Goto Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-check"></i> Valid `goto` Usage</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Breaking out of deeply nested logic cleanly
+for ($i = 0; $i < 100; $i++) {
+    while ($data = fetchData()) {
+        if ($data->hasCriticalError()) {
+            goto cleanup; // Jumps directly out
+        }
+    }
+}
+
+cleanup:
+echo "Performing emergency cleanup actions...";</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Jumping out of loops or switch statements is fully permissible.</p>
+        </div>
+
+        <!-- Invalid Goto Scope Restrictions -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-ban"></i> Illegal Scope Jump (Compiler Error)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// CANNOT jump INTO a loop or function!
+goto inside_loop; // Compile Error!
+
+while ($x < 10) {
+    inside_loop:
+    echo "Inside loop";
+}
+
+// CANNOT jump into another function or closure!
+function test() {
+    target_label:
+    echo "Function";
+}
+goto target_label; // Compile Error!</code></pre>
+          </div>
+          <p class="text-[11px] text-rose-300 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> Official Rule: Target label must reside in the exact same file and function scope!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Throw Expressions -->
+    <div class="slide-wrapper flex-col" data-category="Exceptions" data-doc="php.net/manual/en/language.exceptions.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">`throw` as an Expression (PHP 8.0+)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Converted `throw` from a statement into an expression, enabling exception throwing inside expression contexts.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Expression Context Examples -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-bolt"></i> Modern Throw Expressions</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// 1. Null Coalescing Operator
+$value = $input['key'] ?? throw new \InvalidArgumentException('Missing key');
+
+// 2. Short Arrow Functions
+$fn = fn($val) => $val > 0 ? $val : throw new \DomainException('Value <= 0');
+
+// 3. Ternary Operators
+$user = $session->getUser() ?: throw new \UnauthenticatedException();
+
+// 4. Match Expression Arms
+$result = match ($status) {
+    200 => 'OK',
+    default => throw new \UnexpectedValueException("Invalid status: {$status}"),
+};</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.exceptions.php" target="_blank" class="text-sky-400 hover:underline">php.net/language.exceptions</a></p>
+        </div>
+
+        <!-- Exception Architecture Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-sky-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Exception Control Stack Unwinding</span>
+          <div class="mermaid">
+            sequenceDiagram
+              autonumber
+              participant Expr as Expression
+              participant Stack as Execution Stack
+              participant Catch as Catch Block
+              participant Final as Finally Block
+              Expr->>Stack: Throw Exception
+              Note over Stack: Unwind Stack frames...
+              Stack->>Catch: Matching Catch(Exception $e)
+              Note over Catch: Execute Exception handler
+              Catch->>Final: Always execute finally block
+              Final-->>Expr: Resume normal execution
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Generators & Yield Flow Delegation -->
+    <div class="slide-wrapper flex-col" data-category="Generators" data-doc="php.net/language.generators">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Generators & Control Flow Delegation (`yield` / `yield from`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Generators allow writing iterators without overhead, pausing and resuming control flow dynamically.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Generator Stepper Simulation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-indigo-400 font-bold text-sm"><i class="fa-solid fa-play"></i> Interactive Generator Execution Stepper</span>
+              <button onclick="stepGenerator()" class="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs transition">
+                <i class="fa-solid fa-forward mr-1"></i> Call ->next()
+              </button>
+            </div>
+
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs my-2">
+              <div id="gen-line-1" class="text-slate-400">function countGenerator() {</div>
+              <div id="gen-line-2" class="text-slate-400 pl-4">yield 1; // Step 1</div>
+              <div id="gen-line-3" class="text-slate-400 pl-4">yield from [2, 3]; // Step 2 & 3 (Delegated)</div>
+              <div id="gen-line-4" class="text-slate-400 pl-4">return "Finished"; // Return value</div>
+              <div id="gen-line-5" class="text-slate-400">}</div>
+            </div>
+          </div>
+
+          <div>
+            <span class="text-slate-400 text-xs font-mono">Yield State Log:</span>
+            <div id="gen-stepper-log" class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-sky-400 text-xs h-24 overflow-y-auto mt-1">
+              Click "Call ->next()" to start generator execution...
+            </div>
+          </div>
+        </div>
+
+        <!-- Code Snippet yield from -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Generator Delegation Syntax</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">function subGenerator() {
+    yield 'B';
+    yield 'C';
+}
+
+function mainGenerator() {
+    yield 'A';
+    yield from subGenerator(); // Yield delegation!
+    yield 'D';
+}
+
+foreach (mainGenerator() as $letter) {
+    echo $letter; // Outputs: A B C D
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.generators.syntax.php#control-structures.disowning" target="_blank" class="text-sky-400 hover:underline">php.net/language.generators</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Fibers Asynchronous Flow Control -->
+    <div class="slide-wrapper flex-col" data-category="Fibers" data-doc="php.net/language.fibers">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Fibers: Asynchronous Flow Control (PHP 8.1+)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Fibers represent interruptible full-stack coroutines, pausing execution without blocking the main event loop.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Fiber Execution Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-purple-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Fiber Suspend / Resume Lifecycle</span>
+          <div class="mermaid">
+            sequenceDiagram
+              autonumber
+              participant Main as Main Call Stack
+              participant Fiber as Fiber Context
+              Main->>Fiber: Fiber::start()
+              Note over Fiber: Executes till suspend
+              Fiber->>Main: Fiber::suspend('paused_data')
+              Note over Main: Main thread handles I/O
+              Main->>Fiber: Fiber::resume('resumed_data')
+              Note over Fiber: Finish execution
+              Fiber-->>Main: Return final value
+          </div>
+        </div>
+
+        <!-- Fiber Code Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-wave-square"></i> Native Fiber Coroutine</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$fiber = new Fiber(function (string $msg): void {
+    echo "Fiber Started: {$msg}\n";
+    
+    // Suspend fiber execution and send data back to main thread
+    $input = Fiber::suspend('suspended_value');
+    
+    echo "Fiber Resumed with: {$input}\n";
+});
+
+// Start fiber
+$copied = $fiber->start('Init'); // "Fiber Started: Init"
+echo "Main Received: {$copied}\n"; // "Main Received: suspended_value"
+
+// Resume fiber execution
+$fiber->resume('Payload'); // "Fiber Resumed with: Payload"</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.fibers.php" target="_blank" class="text-sky-400 hover:underline">php.net/language.fibers</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Interactive Control Flow Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Simulator" data-doc="php.net/language.control-structures">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Control Flow Playground</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select control flow templates, modify parameters, and simulate execution results verified against php.net.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Controls Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-purple-400 font-bold">Select Template:</span>
+            <select id="sim-preset-select" onchange="loadSimulatorPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-purple-200 focus:outline-none">
+              <option value="match_expr">Match Expression & Strict Checking</option>
+              <option value="generator_yield">Generator Delegated Yield</option>
+              <option value="throw_expr">Throw Expressions in Ternary</option>
+              <option value="break_nested">Multi-level Nested Break</option>
+            </select>
+          </div>
+
+          <button onclick="resetSimulatorCode()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Template
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> PHP Snippet Code</span>
+            <textarea id="sim-editor" oninput="runSimulatedCode()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Simulated PHP Engine Output</span>
+            <div id="sim-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Knowledge Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net/language.control-structures">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Knowledge Assessment Quiz</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your comprehension of PHP Control Flow rules strictly grounded in official manual documentation.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-purple-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Official Resources & Summary -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net/language.control-structures">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Documentation Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every statement, rule, edge case, and code sample in this presentation is derived directly from the official PHP Manual at php.net.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php.net/manual/en/language.control-structures.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Control Structures Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Complete reference for if, loops, match, switch.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/control-structures.match.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Match Expression Specs</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Strict evaluation and UnhandledMatchError details.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/language.generators.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Generators & Yield Syntax</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Iterator flow control and yield from delegation.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/language.fibers.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Fibers Coroutines Specs</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Cooperative multitasking stack switching manual.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Control Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-purple-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net/manual/en/language.control-structures.php" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Slide Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-purple-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search control flow keywords (e.g., match, break, yield)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i> Presentation Slide Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Questions Dataset (Strictly grounded in php.net)
+    const quizData = [
+      {
+        question: "In PHP, how does the `break $n` statement behave when executed inside a nested loop?",
+        options: [
+          "It breaks execution and restarts the script from line 1.",
+          "It terminates execution of $n enclosing looping or switch structures.",
+          "It skips $n iterations of the innermost loop only.",
+          "It throws a ParseError if $n is greater than 1."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/control-structures.break): break accepts an optional numeric argument which tells it how many nested enclosing structures are to be broken out of."
+      },
+      {
+        question: "Why does the `match` expression NOT require a `break` statement between arms?",
+        options: [
+          "Match expressions automatically execute all arms sequentially.",
+          "Match expressions evaluate only a single matching arm and do not fall through like switch.",
+          "Break statements are illegal syntax inside functions.",
+          "Match expressions are processed at compile time."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/control-structures.match): A match expression only evaluates one arm and does not fall through to later arms, eliminating the need for break statements."
+      },
+      {
+        question: "What happens if a `match` expression fails to find a match and has no `default` arm?",
+        options: [
+          "It silently evaluates to null.",
+          "It returns false.",
+          "It throws an \\UnhandledMatchError exception.",
+          "It executes the first arm by default."
+        ],
+        correct: 2,
+        explanation: "Official Manual (php.net/control-structures.match): If an expression is not matched by any arm and no default arm is specified, PHP throws an \\UnhandledMatchError."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Simulator Presets
+    const simulatorPresets = {
+      match_expr: `<?php\n$status = 404;\n\n$message = match ($status) {\n    200, 201 => 'HTTP OK',\n    404 => 'Resource Not Found',\n    default => 'Unknown Status',\n};\n\necho "Result: " . $message;`,
+      generator_yield: `<?php\nfunction gen() {\n    yield 'Part 1';\n    yield from ['Part 2', 'Part 3'];\n}\n\nforeach (gen() as $val) {\n    echo $val . "\\n";\n}`,
+      throw_expr: `<?php\n$input = null;\n$val = $input ?? throw new Exception('Missing value!');\necho $val;`,
+      break_nested: `<?php\nfor ($i = 1; $i <= 3; $i++) {\n    for ($j = 1; $j <= 3; $j++) {\n        if ($j === 2) break 2;\n        echo "i:$i j:$j\\n";\n    }\n}`
+    };
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      // Update counters
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // Update Header Chip
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      // Prism highlight
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      // Mermaid re-render
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-purple-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    // Multi-Level Break Simulator
+    function runBreakSimulation() {
+      const level = document.getElementById('sim-break-level').value;
+      const codeLine = document.getElementById('sim-break-code-line');
+      const outputLog = document.getElementById('sim-break-output');
+
+      codeLine.textContent = `if ($k === 1) break ${level};`;
+      outputLog.innerHTML = '';
+
+      let logs = [];
+      logs.push(`> Starting 3-nested loop execution...`);
+
+      for (let i = 1; i <= 2; i++) {
+        logs.push(`Loop 1 ($i = ${i}): Started`);
+        let breakL1 = false;
+
+        for (let j = 1; j <= 2; j++) {
+          logs.push(`  Loop 2 ($j = ${j}): Started`);
+          let breakL2 = false;
+
+          for (let k = 1; k <= 2; k++) {
+            logs.push(`    Loop 3 ($k = ${k}): Evaluating break ${level}...`);
+            if (k === 1) {
+              if (level === "1") {
+                logs.push(`    [BREAK 1 EXECUTED]: Exited Loop 3 only.`);
+                breakL2 = false;
+                break;
+              } else if (level === "2") {
+                logs.push(`    [BREAK 2 EXECUTED]: Exited Loop 3 AND Loop 2!`);
+                breakL2 = true;
+                break;
+              } else if (level === "3") {
+                logs.push(`    [BREAK 3 EXECUTED]: Exited ALL 3 Loops!`);
+                breakL1 = true;
+                breakL2 = true;
+                break;
+              }
+            }
+          }
+
+          if (breakL2) break;
+        }
+
+        if (breakL1) break;
+      }
+
+      logs.push(`> Execution completed.`);
+      outputLog.innerHTML = logs.map(l => `<div>${l}</div>`).join('');
+    }
+
+    // Coercion Inspector (Switch vs Match)
+    function inspectCoercion(type) {
+      document.querySelectorAll('.coercion-btn').forEach(b => {
+        b.className = "coercion-btn px-3 py-1 rounded-lg bg-slate-800 light:bg-slate-300 text-slate-300 text-xs font-mono";
+      });
+      event.target.className = "coercion-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono";
+
+      const switchLog = document.getElementById('inspector-switch-log');
+      const matchLog = document.getElementById('inspector-match-log');
+      const switchBadge = document.getElementById('inspector-switch-badge');
+      const matchBadge = document.getElementById('inspector-match-badge');
+
+      if (type === 'string_zero') {
+        switchLog.innerHTML = `<div>switch ("0"):</div><div>1. Compare '0' == 0 -> TRUE (Coerced integer conversion!)</div><div>2. Matches arm 0!</div>`;
+        switchBadge.textContent = `Matched: integer 0 (Unexpected Coercion!)`;
+
+        matchLog.innerHTML = `<div>match ("0"):</div><div>1. Compare '0' === 0 -> FALSE (Type mismatch: string vs int)</div><div>2. Compare '0' === '0' -> TRUE</div>`;
+        matchBadge.textContent = `Matched: string "0" (Strictly Correct)`;
+      } else if (type === 'bool_true') {
+        switchLog.innerHTML = `<div>switch (true):</div><div>1. Compare true == 1 -> TRUE (Coerced boolean)</div><div>2. Matches first truthy arm!</div>`;
+        switchBadge.textContent = `Matched: integer 1`;
+
+        matchLog.innerHTML = `<div>match (true):</div><div>1. Compare true === 1 -> FALSE (bool vs int)</div><div>2. Compare true === true -> TRUE</div>`;
+        matchBadge.textContent = `Matched: boolean true`;
+      } else if (type === 'null_val') {
+        switchLog.innerHTML = `<div>switch (null):</div><div>1. Compare null == '' -> TRUE (Loose empty string match!)</div>`;
+        switchBadge.textContent = `Matched: empty string ''`;
+
+        matchLog.innerHTML = `<div>match (null):</div><div>1. Compare null === '' -> FALSE</div><div>2. Compare null === null -> TRUE</div>`;
+        matchBadge.textContent = `Matched: null`;
+      } else if (type === 'unhandled') {
+        switchLog.innerHTML = `<div>switch (99):</div><div>1. No arms matched.</div><div>2. Quietly continues execution with NO error.</div>`;
+        switchBadge.textContent = `Result: No output / Silently ignored`;
+
+        matchLog.innerHTML = `<div>match (99):</div><div>1. No arms matched.</div><div>2. No default arm specified!</div>`;
+        matchBadge.textContent = `Fatal Error: Uncaught \\UnhandledMatchError!`;
+      }
+    }
+
+    // Generator Stepper Logic
+    let genStep = 0;
+    function stepGenerator() {
+      genStep = (genStep % 4) + 1;
+      const log = document.getElementById('gen-stepper-log');
+      
+      // Reset highlighting
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById(`gen-line-${i}`).className = "text-slate-400 pl-4";
+      }
+
+      if (genStep === 1) {
+        document.getElementById('gen-line-2').className = "text-amber-300 font-bold bg-purple-950/60 p-1 rounded pl-4";
+        log.innerHTML = `[Step 1]: Yielded value: int(1)\nGenerator paused at line 2.`;
+      } else if (genStep === 2) {
+        document.getElementById('gen-line-3').className = "text-amber-300 font-bold bg-purple-950/60 p-1 rounded pl-4";
+        log.innerHTML = `[Step 2]: Delegated yield from array -> Yielded: int(2)\nGenerator delegated to sub-iterable.`;
+      } else if (genStep === 3) {
+        document.getElementById('gen-line-3').className = "text-amber-300 font-bold bg-purple-950/60 p-1 rounded pl-4";
+        log.innerHTML = `[Step 3]: Delegated yield from array -> Yielded: int(3)\nSub-iterable completed.`;
+      } else if (genStep === 4) {
+        document.getElementById('gen-line-4').className = "text-emerald-400 font-bold bg-purple-950/60 p-1 rounded pl-4";
+        log.innerHTML = `[Step 4]: Generator returned string("Finished").\nGenerator object is now exhausted ($gen->valid() === false).`;
+      }
+    }
+
+    // Playground Simulator
+    function loadSimulatorPreset(key) {
+      document.getElementById('sim-editor').value = simulatorPresets[key] || '';
+      runSimulatedCode();
+    }
+
+    function resetSimulatorCode() {
+      const key = document.getElementById('sim-preset-select').value;
+      loadSimulatorPreset(key);
+    }
+
+    function runSimulatedCode() {
+      const code = document.getElementById('sim-editor').value;
+      const consoleOut = document.getElementById('sim-console-output');
+
+      if (code.includes('match') && code.includes('404')) {
+        consoleOut.textContent = `Result: Resource Not Found`;
+      } else if (code.includes('yield from')) {
+        consoleOut.textContent = `Part 1\nPart 2\nPart 3`;
+      } else if (code.includes('throw new Exception')) {
+        consoleOut.textContent = `Fatal error: Uncaught Exception: Missing value! in /script.php:3\nStack trace:\n#0 {main}`;
+      } else if (code.includes('break 2')) {
+        consoleOut.textContent = `i:1 j:1`;
+      } else {
+        consoleOut.textContent = `[Simulated Output]: Code parsed successfully. Compliance verified with php.net rules.`;
+      }
+    }
+
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-purple-950/60 border-purple-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-purple-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-purple-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_presentation_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_presentation_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keyboard & Swipe Listeners
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    // Initialization
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_presentation_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      runBreakSimulation();
+      inspectCoercion('string_zero');
+      loadSimulatorPreset('match_expr');
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

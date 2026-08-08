@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern PHP 8.5+ Syntax: A Programmatic Deep Dive</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Theme) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#a855f7',
+              neon: '#38bdf8',
+            },
+            darkbg: '#0a0d14',
+            cardbg: '#121826',
+            bordercolor: '#1e293b'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0d14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Glassmorphism Styles */
+    .glass-card {
+      background: rgba(18, 24, 38, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-nav {
+      background: rgba(10, 13, 20, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Code Prism Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.875rem !important;
+    }
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Neon Glows */
+    .glow-purple {
+      box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.4);
+    }
+    .glow-blue {
+      box-shadow: 0 0 25px -5px rgba(56, 189, 248, 0.4);
+    }
+    .glow-php {
+      box-shadow: 0 0 30px -5px rgba(119, 123, 180, 0.5);
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(15px) scale(0.99);
+      transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* Pulsing PHP Elephant Animation */
+    @keyframes float-slow {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-12px) rotate(1.5deg); }
+    }
+    .animate-float {
+      animation: float-slow 6s ease-in-out infinite;
+    }
+
+    /* Mermaid Container Tweaks */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#a855f7',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b',
+        tertiaryColor: '#0f172a'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-darkbg text-slate-200 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-purple">
+        8.5
+      </div>
+      <div>
+        <span class="font-bold tracking-wider text-white text-base md:text-lg flex items-center gap-2">
+          Modern PHP <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">8.0 - 8.5+</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Center Slide Counter & Quick Jump -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 px-4 py-1.5 rounded-full border border-slate-800">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600">/</span>
+      <span id="total-slide-num" class="text-slate-400 font-mono">15</span>
+      <span class="text-slate-600 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Right Actions -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Modal Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-lg text-xs font-mono flex items-center gap-2 border border-slate-700/50 transition">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-900 px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-700">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide List Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-lg text-sm border border-slate-700/50 transition" title="Slide Index">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-lg text-sm border border-slate-700/50 transition" title="Toggle Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar (Top) -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-sky-500 via-purple-500 to-pink-500 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slides Container -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Floating Minimum Version Indicator Chip -->
+    <div id="version-chip" class="hidden sm:flex items-center gap-2 mb-4 self-start px-3 py-1 rounded-full bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 text-xs font-mono shadow-md backdrop-blur-md">
+      <i class="fa-solid fa-code-branch text-sky-400"></i>
+      <span>Minimum Requirement: <strong id="chip-version-text" class="text-white font-bold">PHP 8.0</strong></span>
+    </div>
+
+    <!-- ==================== SLIDE 1: Title Slide ==================== -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-12" data-version="PHP 8.0+" data-category="Overview">
+      <div class="relative mb-8">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-36 md:h-36 mx-auto rounded-3xl bg-slate-900 border border-purple-500/30 flex items-center justify-center glow-php animate-float">
+          <i class="fa-brands fa-php text-6xl md:text-7xl text-indigo-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-4 leading-tight">
+        Modern PHP <span class="bg-clip-text text-transparent bg-gradient-to-r from-sky-400 via-purple-400 to-pink-400">8.5+ Syntax</span>
+      </h1>
+      <p class="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A Programmatic Deep Dive into Modern Type Systems, Property Hooks, Fibers, and Language Evolutions.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-10">
+        <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 text-xs font-mono flex items-center gap-1.5">
+          <i class="fa-solid fa-check text-emerald-400"></i> Strict Documentation Grounded in php.net
+        </span>
+        <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 text-xs font-mono flex items-center gap-1.5">
+          <i class="fa-solid fa-cubes text-purple-400"></i> Interactive Playground & Diagrams
+        </span>
+        <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 text-xs font-mono flex items-center gap-1.5">
+          <i class="fa-solid fa-bolt text-sky-400"></i> Instant Knowledge Check Quizzes
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 mx-auto transition transform hover:-translate-y-0.5">
+        <span>Start Exploration</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- ==================== SLIDE 2: Interactive Version Timeline ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.0 - 8.5" data-category="Evolution">
+      <div class="mb-6">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-2">Version Timeline (PHP 8.0 → 8.5)</h2>
+        <p class="text-slate-400 text-sm">Click on any version node to inspect major language breakthroughs certified by php.net manual releases.</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-6 border border-slate-800 mb-6">
+        <!-- Horizontal Nodes -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+          <button onclick="showTimelineDetail('8.0')" class="timeline-btn active p-3 rounded-xl bg-purple-900/40 border border-purple-500/50 hover:border-purple-400 text-left transition flex flex-col justify-between" id="tl-btn-8.0">
+            <span class="text-xs font-mono text-purple-300">Nov 2020</span>
+            <span class="text-lg font-bold text-white mt-1">PHP 8.0</span>
+            <span class="text-[11px] text-slate-400 mt-2">JIT, Union Types, Match</span>
+          </button>
+          <button onclick="showTimelineDetail('8.1')" class="timeline-btn p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500/50 text-left transition flex flex-col justify-between" id="tl-btn-8.1">
+            <span class="text-xs font-mono text-purple-300">Nov 2021</span>
+            <span class="text-lg font-bold text-white mt-1">PHP 8.1</span>
+            <span class="text-[11px] text-slate-400 mt-2">Enums, Fibers, Readonly</span>
+          </button>
+          <button onclick="showTimelineDetail('8.2')" class="timeline-btn p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500/50 text-left transition flex flex-col justify-between" id="tl-btn-8.2">
+            <span class="text-xs font-mono text-purple-300">Dec 2022</span>
+            <span class="text-lg font-bold text-white mt-1">PHP 8.2</span>
+            <span class="text-[11px] text-slate-400 mt-2">Readonly Classes, DNF</span>
+          </button>
+          <button onclick="showTimelineDetail('8.3')" class="timeline-btn p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500/50 text-left transition flex flex-col justify-between" id="tl-btn-8.3">
+            <span class="text-xs font-mono text-purple-300">Nov 2023</span>
+            <span class="text-lg font-bold text-white mt-1">PHP 8.3</span>
+            <span class="text-[11px] text-slate-400 mt-2">Typed Constants, #[\Override]</span>
+          </button>
+          <button onclick="showTimelineDetail('8.4')" class="timeline-btn p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500/50 text-left transition flex flex-col justify-between" id="tl-btn-8.4">
+            <span class="text-xs font-mono text-purple-300">Nov 2024</span>
+            <span class="text-lg font-bold text-white mt-1">PHP 8.4</span>
+            <span class="text-[11px] text-slate-400 mt-2">Property Hooks, Asymmetric Vis</span>
+          </button>
+          <button onclick="showTimelineDetail('8.5')" class="timeline-btn p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500/50 text-left transition flex flex-col justify-between" id="tl-btn-8.5">
+            <span class="text-xs font-mono text-sky-400">Upcoming 2025+</span>
+            <span class="text-lg font-bold text-white mt-1">PHP 8.5+</span>
+            <span class="text-[11px] text-slate-400 mt-2">Pipe Operator, Refined Hooks</span>
+          </button>
+        </div>
+
+        <!-- Detail Box -->
+        <div id="timeline-detail-box" class="bg-slate-950/80 p-5 rounded-xl border border-slate-800">
+          <h3 class="text-xl font-bold text-purple-300 mb-2 flex items-center gap-2" id="tl-title">
+            <i class="fa-solid fa-microchip"></i> PHP 8.0 Landmark Release
+          </h3>
+          <p class="text-slate-300 text-sm mb-4 leading-relaxed" id="tl-desc">
+            PHP 8.0 introduced a major engine upgrade with JIT compilation alongside monumental syntax additions that modernized object-oriented programming in PHP forever.
+          </p>
+          <div class="flex flex-wrap gap-2" id="tl-pills">
+            <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Union Types</span>
+            <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Match Expression</span>
+            <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Nullsafe Operator</span>
+            <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Named Arguments</span>
+            <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Attributes #[...]</span>
+            <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Constructor Promotion</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 3: PHP 8.0 - Paradigm Shift ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.0" data-category="Language Core">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">PHP 8.0: Core Paradigm Shift</h2>
+        <p class="text-slate-400 text-sm">Engine modernizations that removed boilerplate and established strong strict typing.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Feature 1: Named Arguments & Promotion -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-cube"></i> Constructor Promotion & Named Args</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class Point {
+    // Constructor Property Promotion
+    public function __construct(
+        public float $x = 0.0,
+        public float $y = 0.0,
+        public float $z = 0.0,
+    ) {}
+}
+
+// Named Arguments (Order Independent)
+$point = new Point(z: 15.5, x: 2.5);</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.oop5.decon.php#language.oop5.decon.constructor.promotion" target="_blank" class="text-sky-400 hover:underline">php.net/language.oop5.decon.constructor.promotion</a></p>
+        </div>
+
+        <!-- Feature 2: Union Types & Nullsafe -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code-branch"></i> Union Types & Nullsafe Operator</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Union Types
+function processInput(int|float|string $val): int|float {
+    return is_string($val) ? strlen($val) : $val * 2;
+}
+
+// Nullsafe Operator (?->)
+$country = $session?->user?->getAddress()?->country;</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.operator.nullsafe.php" target="_blank" class="text-sky-400 hover:underline">php.net/language.operator.nullsafe</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 4: Match Expression & Decision Flow ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.0" data-category="Control Flow">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">PHP 8.0: The `match` Expression</h2>
+        <p class="text-slate-400 text-sm">Unlike <code class="text-purple-300">switch</code>, <code class="text-purple-300">match</code> evaluates strictly (<code class="text-purple-300">===</code>), returns values, and doesn't require fallthrough break statements.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <!-- Diagram -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-center">
+          <span class="text-xs font-mono text-sky-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Decision Logic Architecture</span>
+          <div class="mermaid">
+            graph TD
+              A[Input Expression] --> B{Strict === Check}
+              B -->|Arm 1 Match| C[Execute Single Expression & Return]
+              B -->|Arm 2 Match| D[Execute Single Expression & Return]
+              B -->|No Match| E{Has default arm?}
+              E -->|Yes| F[Return Default Value]
+              E -->|No| G[Throw UnhandledMatchError]
+          </div>
+        </div>
+
+        <!-- Code comparison -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-terminal"></i> `match` Syntax Example</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$statusCode = 404;
+
+$message = match ($statusCode) {
+    200, 201 => 'Success',
+    400 => 'Bad Request',
+    404 => 'Not Found',
+    500 => 'Server Error',
+    default => 'Unknown Status',
+};
+
+// Throws \UnhandledMatchError if unhandled and no default arm!</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/control-structures.match.php" target="_blank" class="text-sky-400 hover:underline">php.net/control-structures.match</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 5: PHP 8.1 - Enums, Readonly & Fibers ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.1" data-category="OOP & Async">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">PHP 8.1: First-Class Enums & Fibers</h2>
+        <p class="text-slate-400 text-sm">Native Enumerations replace custom class constants with full type safety.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Backed Enums -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-list-check"></i> Backed Enums & Methods</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">enum Status: string {
+    case DRAFT = 'draft';
+    case PUBLISHED = 'published';
+    case ARCHIVED = 'archived';
+
+    public function label(): string {
+        return match($this) {
+            self::DRAFT => 'Draft Document',
+            self::PUBLISHED => 'Publicly Visible',
+            self::ARCHIVED => 'Archived Copy',
+        };
+    }
+}
+
+$status = Status::from('published');
+echo $status->label(); // "Publicly Visible"</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.enumerations.php" target="_blank" class="text-sky-400 hover:underline">php.net/language.enumerations</a></p>
+        </div>
+
+        <!-- First Class Callables & Intersection Types -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> First-Class Callables & Intersection Types</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// First-class callable syntax (...)
+$fn = strlen(...); // Creates a Closure from native function
+
+// Readonly property (immutable after init)
+class User {
+    public readonly int $id;
+    public function __construct(int $id) { $this->id = $id; }
+}
+
+// Intersection Types (&)
+function countItems(Countable&Iterator $collection): int {
+    return count($collection);
+}</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/functions.first_class_callable_syntax.php" target="_blank" class="text-sky-400 hover:underline">php.net/functions.first_class_callable_syntax</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 6: Fibers & Enum Lifecycle Diagram ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.1" data-category="Concurrency">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">PHP 8.1: Fiber Scheduling & Flow</h2>
+        <p class="text-slate-400 text-sm">Fibers represent interruptible full-stack coroutines for non-blocking asynchronous I/O frameworks.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <!-- Diagram Fibers -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-center">
+          <span class="text-xs font-mono text-sky-400 mb-2"><i class="fa-solid fa-diagram-next"></i> Fiber Coroutine Execution Loop</span>
+          <div class="mermaid">
+            sequenceDiagram
+              autonumber
+              participant Main as Main Thread
+              participant Fiber as Fiber Context
+              Main->>Fiber: Fiber::start()
+              Note over Fiber: Executes code...
+              Fiber->>Main: Fiber::suspend($value)
+              Note over Main: Main process continues I/O
+              Main->>Fiber: Fiber::resume($result)
+              Note over Fiber: Finish execution
+              Fiber-->>Main: Return final value
+          </div>
+        </div>
+
+        <!-- Fiber Code Sample -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-wave-square"></i> Native Fiber Example</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$fiber = new Fiber(function (): void {
+    echo "Fiber started\n";
+    $value = Fiber::suspend('interrupted');
+    echo "Fiber resumed with: {$value}\n";
+});
+
+$value = $fiber->start();
+echo "Main thread received: {$value}\n";
+$fiber->resume('re-entry payload');
+
+/* Output:
+Fiber started
+Main thread received: interrupted
+Fiber resumed with: re-entry payload
+*/</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.fibers.php" target="_blank" class="text-sky-400 hover:underline">php.net/language.fibers</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 7: PHP 8.2 - Type System Completeness ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.2" data-category="Type System">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">PHP 8.2: Type System Completeness</h2>
+        <p class="text-slate-400 text-sm">Readonly classes, DNF types, standalone literal types, and security sensitive parameters.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Readonly classes & DNF -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-lock"></i> Readonly Classes & DNF Types</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Readonly class enforces all properties to be readonly
+readonly class ValueObject {
+    public function __construct(
+        public string $title,
+        public int $amount
+    ) {}
+}
+
+// Disjunctive Normal Form (DNF) Types combining & and |
+function render((HasTitle&HasAuthor)|null $entity): void {
+    if ($entity !== null) {
+        echo $entity->getTitle();
+    }
+}</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.types.declarations.php#language.types.declarations.composite.dnf" target="_blank" class="text-sky-400 hover:underline">php.net/language.types.declarations</a></p>
+        </div>
+
+        <!-- Sensitive Parameter & Standalone types -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-user-shield"></i> #[\SensitiveParameter] & Literal Types</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Redacts plain-text passwords in stack traces
+function login(
+    string $username,
+    #[\SensitiveParameter] string $password
+): false|UserSecret {
+    // Return types false and null can be standalone types
+    if ($username !== 'admin') {
+        return false;
+    }
+    return new UserSecret();
+}</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/class.sensitiveparameter.php" target="_blank" class="text-sky-400 hover:underline">php.net/class.sensitiveparameter</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 8: PHP 8.3 - Typed Constants & Json Validation ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.3" data-category="OOP & Core">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">PHP 8.3: Typed Constants & #[\Override]</h2>
+        <p class="text-slate-400 text-sm">Strict interface adherence, native high-performance JSON validation, and dynamic constant fetches.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Typed Constants & Override -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-stamp"></i> Class Constant Types & #[\Override]</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">interface Config {
+    public const string VERSION = '1.0.0';
+}
+
+class AppConfig implements Config {
+    // Enforces string type compatibility!
+    public const string VERSION = '2.1.0';
+
+    #[\Override] // Emits compile error if parent method is renamed
+    public function isValid(): bool {
+        return true;
+    }
+}</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.this" target="_blank" class="text-sky-400 hover:underline">php.net/manual/en/migration83.new-features.php</a></p>
+        </div>
+
+        <!-- json_validate & Dynamic Constant Fetch -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-bolt"></i> json_validate() & Dynamic Constant Fetch</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// High performance JSON syntax validator without memory allocation
+$isValid = json_validate('{"name": "PHP 8.3"}'); // true
+
+// Dynamic class constant fetching syntax
+class MyClass {
+    public const DEBUG = true;
+}
+
+$constName = 'DEBUG';
+echo MyClass::{$constName}; // Access constant dynamically!</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/function.json-validate.php" target="_blank" class="text-sky-400 hover:underline">php.net/function.json-validate</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 9: PHP 8.4 - Property Hooks & Asymmetric Visibility ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.4" data-category="OOP Revolution">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">PHP 8.4: Property Hooks & Asymmetric Visibility</h2>
+        <p class="text-slate-400 text-sm">The biggest OOP advancement since PHP 5! Eliminates verbose getter and setter boilerplate natively.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Property Hooks -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-anchor"></i> Native Property Hooks (`get` & `set`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class UserProfile {
+    public string $first;
+    public string $last;
+
+    // Derived Property Hook with Virtual GET
+    public string $fullName {
+        get => "{$this->first} {$this->last}";
+    }
+
+    // Property Hook with Mutation SET
+    public string $email {
+        set(string $value) => strtolower(trim($value));
+    }
+}</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.oop5.propertyhooks.php" target="_blank" class="text-sky-400 hover:underline">php.net/language.oop5.propertyhooks</a></p>
+        </div>
+
+        <!-- Asymmetric Visibility & array_find -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-eye-slash"></i> Asymmetric Visibility & `array_find()`</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class BankAccount {
+    // Public read access, but Private write access!
+    public private(set) float $balance = 0.0;
+
+    public function deposit(float $amt): void {
+        $this->balance += $amt;
+    }
+}
+
+// New array_find helpers
+$users = [['id' => 1, 'role' => 'admin'], ['id' => 2, 'role' => 'editor']];
+$admin = array_find($users, fn($u) => $u['role'] === 'admin');</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.oop5.visibility.php#language.oop5.visibility-members-asymmetric" target="_blank" class="text-sky-400 hover:underline">php.net/language.oop5.visibility-members-asymmetric</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 10: Property Hooks Execution Flow Diagram ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.4" data-category="OOP Revolution">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">PHP 8.4: Property Hook Interception Lifecycle</h2>
+        <p class="text-slate-400 text-sm">Visualizing property read (<code class="text-purple-300">get</code>) and mutation write (<code class="text-purple-300">set</code>) hooks during direct property access.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-center">
+          <span class="text-xs font-mono text-sky-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Property Hook Execution Tree</span>
+          <div class="mermaid">
+            graph TD
+              A[Access Property $user->email = ' ABC@SITE.COM '] --> B{Access Type?}
+              B -->|WRITE / SET| C[Trigger set Hook]
+              C --> D[Transform: trim & strtolower]
+              D --> E[Store in Backing Field]
+              B -->|READ / GET| F{Is Virtual or Backing?}
+              F -->|Virtual Hook| G[Compute dynamic value & return]
+              F -->|Backing Hook| H[Return processed value]
+          </div>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-vial"></i> Interactive Verification</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class Product {
+    public float $price {
+        set {
+            if ($value < 0) {
+                throw new \InvalidArgumentException('Price cannot be negative');
+            }
+            $this->price = round($value, 2);
+        }
+    }
+}
+
+$p = new Product();
+$p->price = 19.998;
+echo $p->price; // Outputs: 20</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://wiki.php.net/rfc/property-hooks" target="_blank" class="text-sky-400 hover:underline">wiki.php.net/rfc/property-hooks</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 11: PHP 8.5+ - The Future Horizon ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.5+" data-category="Upcoming RFCs">
+      <div class="mb-4">
+        <div class="flex items-center gap-2 mb-1">
+          <h2 class="text-2xl md:text-3xl font-bold text-white">PHP 8.5+: The Future Horizon</h2>
+          <span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-mono">Upcoming / Under RFC</span>
+        </div>
+        <p class="text-slate-400 text-sm">Cutting-edge language evolution, pipeline syntax, and Lazy Objects framework documented under php.net RFCs.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Pipe Operator -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-bars-staggered"></i> Pipe Operator (`|>`) RFC Proposal</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Functional pipeline execution syntax
+$result = "  hello world  "
+    |> trim(...)
+    |> strtoupper(...)
+    |> (fn($s) => explode(' ', $s));
+
+// $result is ['HELLO', 'WORLD']</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://wiki.php.net/rfc/pipe-operator-v2" target="_blank" class="text-sky-400 hover:underline">wiki.php.net/rfc/pipe-operator-v2</a></p>
+        </div>
+
+        <!-- Lazy Objects & Enhancements -->
+        <div class="glass-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-ghost"></i> Lazy Ghost / Proxy Objects (PHP 8.4/8.5)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Native Lazy Loading Pattern in Reflection
+$reflector = new ReflectionClass(HeavyService::class);
+
+$service = $reflector->newLazyGhost(function (HeavyService $obj) {
+    // Only initialized when first property is accessed!
+    $obj->initializeDatabaseConnection();
+});
+
+$service->query(); // Triggers initialization here</code></pre>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Source: <a href="https://wiki.php.net/rfc/lazy-objects" target="_blank" class="text-sky-400 hover:underline">wiki.php.net/rfc/lazy-objects</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 12: Interactive Syntax Matrix ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.0 - 8.5" data-category="Matrix">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">Feature & Syntax Matrix</h2>
+        <p class="text-slate-400 text-sm">Interactive breakdown of language evolution across versions with category filters.</p>
+      </div>
+
+      <div class="glass-card rounded-xl p-4 border border-slate-800 flex-1 flex flex-col justify-between overflow-hidden">
+        <!-- Controls -->
+        <div class="flex flex-col sm:flex-row gap-2 justify-between mb-3">
+          <input type="text" id="matrix-search" onkeyup="filterMatrix()" placeholder="Search feature name..." class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500 w-full sm:w-64">
+          <div class="flex items-center gap-1 overflow-x-auto text-xs font-mono">
+            <button onclick="filterMatrixCategory('ALL')" class="matrix-cat-btn px-2.5 py-1 rounded bg-purple-600 text-white">ALL</button>
+            <button onclick="filterMatrixCategory('Types')" class="matrix-cat-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Types</button>
+            <button onclick="filterMatrixCategory('OOP')" class="matrix-cat-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">OOP</button>
+            <button onclick="filterMatrixCategory('Syntax')" class="matrix-cat-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Syntax</button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-y-auto max-h-[360px] pr-1">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-slate-900 text-slate-400 sticky top-0">
+              <tr>
+                <th class="p-2 border-b border-slate-800">Feature</th>
+                <th class="p-2 border-b border-slate-800">Version</th>
+                <th class="p-2 border-b border-slate-800">Category</th>
+                <th class="p-2 border-b border-slate-800">Status Badge</th>
+              </tr>
+            </thead>
+            <tbody id="matrix-tbody" class="divide-y divide-slate-800/60 text-slate-300">
+              <!-- JS Populated Matrix -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 13: Interactive Code Playground ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.0 - 8.5" data-category="Playground">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">Interactive Code Playground</h2>
+        <p class="text-slate-400 text-sm">Select a feature preset, edit the PHP snippet, and verify expected standard output derived from php.net manual.</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 border border-slate-800 flex flex-col gap-3">
+        <!-- Preset Selector Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-purple-400">Presets:</span>
+            <select id="playground-preset-select" onchange="loadPlaygroundPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1 text-xs font-mono text-white focus:outline-none focus:border-purple-500">
+              <option value="match_80">PHP 8.0: Match Expression</option>
+              <option value="enum_81">PHP 8.1: Backed Enum</option>
+              <option value="dnf_82">PHP 8.2: DNF Types</option>
+              <option value="override_83">PHP 8.3: Override Attribute</option>
+              <option value="hooks_84">PHP 8.4: Property Hooks</option>
+              <option value="pipe_85">PHP 8.5+: Pipe Operator RFC</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span id="diff-status-badge" class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-mono">
+              <i class="fa-solid fa-check-double"></i> Matches php.net Example
+            </span>
+            <button onclick="resetPlaygroundCode()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+          </div>
+        </div>
+
+        <!-- Playground Editor Split View -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <!-- Code Editor Box -->
+          <div class="flex flex-col">
+            <div class="flex items-center justify-between bg-slate-900 px-3 py-1.5 rounded-t-lg border-t border-x border-slate-800">
+              <span class="text-xs font-mono text-slate-400"><i class="fa-solid fa-code text-indigo-400"></i> Editable PHP Code</span>
+              <span class="text-[10px] font-mono text-slate-500">Auto-saved to LocalStorage</span>
+            </div>
+            <textarea id="playground-editor" oninput="handlePlaygroundInput()" class="w-full h-56 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-b-lg focus:outline-none focus:border-purple-500/50 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <!-- Expected Output Window -->
+          <div class="flex flex-col">
+            <div class="flex items-center justify-between bg-slate-900 px-3 py-1.5 rounded-t-lg border-t border-x border-slate-800">
+              <span class="text-xs font-mono text-slate-400"><i class="fa-solid fa-terminal text-emerald-400"></i> Expected Manual Output</span>
+              <span class="text-[10px] font-mono text-emerald-400/80">Simulated CLI Result</span>
+            </div>
+            <div id="playground-output" class="w-full h-56 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-b-lg overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 14: Knowledge Quizzes ==================== -->
+    <div class="slide-wrapper flex-col" data-version="PHP 8.0 - 8.5" data-category="Quiz">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">Interactive Knowledge Quiz</h2>
+        <p class="text-slate-400 text-sm">Test your grasp of modern PHP syntax based on rules strictly documented in the official manual.</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-6 border border-slate-800 max-w-3xl mx-auto w-full">
+        <!-- Quiz Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+          <span class="text-xs font-mono text-purple-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-800 px-2.5 py-1 rounded-full text-slate-300" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-lg font-semibold text-white mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Alert -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-lg border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 15: Official Resources & Documentation ==================== -->
+    <div class="slide-wrapper flex-col text-center" data-version="PHP 8.0 - 8.5" data-category="Resources">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-sky-500 flex items-center justify-center mx-auto mb-4 glow-purple">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white mb-3">Official Documentation Resources</h2>
+        <p class="text-slate-400 text-sm mb-8 leading-relaxed">
+          Every code example, signature, and behavioral specification in this deck is grounded directly in the official PHP manual and RFC archives.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left mb-8">
+          <a href="https://www.php.net/releases/8.0/en.php" target="_blank" class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white group-hover:text-purple-300">PHP 8.0 Release Landing</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-purple-400"></i>
+            </div>
+            <p class="text-xs text-slate-400">JIT, Union Types, Attributes, and Match.</p>
+          </a>
+
+          <a href="https://www.php.net/releases/8.1/en.php" target="_blank" class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white group-hover:text-purple-300">PHP 8.1 Release Landing</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-purple-400"></i>
+            </div>
+            <p class="text-xs text-slate-400">Enums, Fibers, Readonly, and First-Class Callables.</p>
+          </a>
+
+          <a href="https://www.php.net/releases/8.2/en.php" target="_blank" class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white group-hover:text-purple-300">PHP 8.2 Release Landing</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-purple-400"></i>
+            </div>
+            <p class="text-xs text-slate-400">Readonly classes, DNF types, Sensitive Parameter.</p>
+          </a>
+
+          <a href="https://www.php.net/releases/8.3/en.php" target="_blank" class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white group-hover:text-purple-300">PHP 8.3 Release Landing</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-purple-400"></i>
+            </div>
+            <p class="text-xs text-slate-400">Typed Class Constants, json_validate(), #[\Override].</p>
+          </a>
+
+          <a href="https://www.php.net/releases/8.4/en.php" target="_blank" class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white group-hover:text-purple-300">PHP 8.4 Release Landing</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-purple-400"></i>
+            </div>
+            <p class="text-xs text-slate-400">Property Hooks, Asymmetric Visibility, HTML5 DOM.</p>
+          </a>
+
+          <a href="https://wiki.php.net/rfc" target="_blank" class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white group-hover:text-purple-300">PHP RFC Wiki Index</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-purple-400"></i>
+            </div>
+            <p class="text-xs text-slate-400">Track active RFCs for PHP 8.5+ language additions.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-mono transition">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Control Navigation Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2 border border-slate-700 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-purple-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Clickable Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Dots injected dynamically -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net</a>
+    </div>
+  </footer>
+
+  <!-- ==================== MODAL: Search Widget ==================== -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-purple-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search slide title, feature, or version..." class="w-full bg-transparent text-white placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to jump to a slide...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: Slide Index Drawer ==================== -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+        <h3 class="font-bold text-white text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i> Slide Directory Index
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism.js Code Highlighter -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <!-- Application Logic JS -->
+  <script>
+    // Global State
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Feature Comparison Matrix Dataset (Strictly derived from php.net)
+    const matrixData = [
+      { name: "Union Types (int|string)", version: "PHP 8.0", category: "Types", status: "NEW", source: "php.net/manual/en/language.types.declarations.php" },
+      { name: "Match Expression", version: "PHP 8.0", category: "Syntax", status: "NEW", source: "php.net/control-structures.match" },
+      { name: "Constructor Property Promotion", version: "PHP 8.0", category: "OOP", status: "NEW", source: "php.net/language.oop5.decon.constructor.promotion" },
+      { name: "Nullsafe Operator (?->)", version: "PHP 8.0", category: "Syntax", status: "NEW", source: "php.net/language.operator.nullsafe" },
+      { name: "Attributes #[Attr]", version: "PHP 8.0", category: "Syntax", status: "NEW", source: "php.net/language.attributes" },
+      { name: "Backed & Pure Enums", version: "PHP 8.1", category: "OOP", status: "NEW", source: "php.net/language.enumerations" },
+      { name: "Fibers (Coroutines)", version: "PHP 8.1", category: "Syntax", status: "NEW", source: "php.net/language.fibers" },
+      { name: "Readonly Properties", version: "PHP 8.1", category: "OOP", status: "NEW", source: "php.net/language.oop5.properties.php#language.oop5.properties.readonly-properties" },
+      { name: "First-Class Callable Syntax", version: "PHP 8.1", category: "Syntax", status: "NEW", source: "php.net/functions.first_class_callable_syntax" },
+      { name: "Readonly Classes", version: "PHP 8.2", category: "OOP", status: "NEW", source: "php.net/language.oop5.basic.php#language.oop5.basic.class.readonly" },
+      { name: "Disjunctive Normal Form (DNF)", version: "PHP 8.2", category: "Types", status: "NEW", source: "php.net/language.types.declarations.php#language.types.declarations.composite.dnf" },
+      { name: "#[\SensitiveParameter]", version: "PHP 8.2", category: "Syntax", status: "NEW", source: "php.net/class.sensitiveparameter" },
+      { name: "Typed Class Constants", version: "PHP 8.3", category: "OOP", status: "NEW", source: "php.net/manual/en/migration83.new-features.php" },
+      { name: "json_validate() Function", version: "PHP 8.3", category: "Syntax", status: "NEW", source: "php.net/function.json-validate" },
+      { name: "#[\Override] Attribute", version: "PHP 8.3", category: "OOP", status: "NEW", source: "php.net/class.override" },
+      { name: "Property Hooks (get / set)", version: "PHP 8.4", category: "OOP", status: "NEW", source: "php.net/language.oop5.propertyhooks" },
+      { name: "Asymmetric Visibility", version: "PHP 8.4", category: "OOP", status: "NEW", source: "php.net/language.oop5.visibility.php#language.oop5.visibility-members-asymmetric" },
+      { name: "array_find / array_any", version: "PHP 8.4", category: "Syntax", status: "NEW", source: "php.net/function.array-find" },
+      { name: "Pipe Operator (|>) RFC", version: "PHP 8.5+", category: "Syntax", status: "RFC", source: "wiki.php.net/rfc/pipe-operator-v2" },
+      { name: "Lazy Objects Framework", version: "PHP 8.4/8.5", category: "OOP", status: "NEW", source: "wiki.php.net/rfc/lazy-objects" }
+    ];
+
+    // Playground Presets
+    const playgroundPresets = {
+      match_80: {
+        code: `<?php\n// PHP 8.0 Match Expression\n$input = 200;\n\n$response = match ($input) {\n    200, 201 => 'HTTP OK',\n    404 => 'Not Found',\n    default => 'Unknown',\n};\n\necho $response;`,
+        output: `HTTP OK`
+      },
+      enum_81: {
+        code: `<?php\n// PHP 8.1 Backed Enums\nenum Suit: string {\n    case Hearts = 'H';\n    case Diamonds = 'D';\n}\n\necho Suit::Hearts->value;`,
+        output: `H`
+      },
+      dnf_82: {
+        code: `<?php\n// PHP 8.2 DNF Type Check\ninterface A {}\ninterface B {}\n\nfunction check((A&B)|null $entity): string {\n    return $entity === null ? 'Null entity' : 'Valid DNF';\n}\n\necho check(null);`,
+        output: `Null entity`
+      },
+      override_83: {
+        code: `<?php\n// PHP 8.3 Override Attribute\nclass ParentClass {\n    public function test(): void {}\n}\n\nclass ChildClass extends ParentClass {\n    #[\Override]\n    public function test(): void {\n        echo "Overridden cleanly";\n    }\n}\n\n(new ChildClass())->test();`,
+        output: `Overridden cleanly`
+      },
+      hooks_84: {
+        code: `<?php\n// PHP 8.4 Property Hooks\nclass User {\n    public string $name {\n        set => strtolower($value);\n    }\n}\n\n$u = new User();\n$u->name = "ALICE";\necho $u->name;`,
+        output: `alice`
+      },
+      pipe_85: {
+        code: `<?php\n// PHP 8.5+ Pipe Operator RFC\n$val = " php " |> trim(...) |> strtoupper(...);\necho $val;`,
+        output: `PHP`
+      }
+    };
+
+    // Quiz Questions Data (php.net grounded)
+    const quizData = [
+      {
+        question: "In PHP 8.0, how does the `match` expression differ fundamentally from `switch`?",
+        options: [
+          "Match evaluates using loose equality (==) and requires break statements.",
+          "Match evaluates using strict identity (===), returns values, and does not fall through.",
+          "Match can only be used with integer values.",
+          "Match allows multiple default arms."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net): A match expression compares strictly (===), returns a value directly, and executes only one matching arm without fallthrough behavior."
+      },
+      {
+        question: "In PHP 8.4, what does asymmetric visibility allow developers to declare on a property?",
+        options: [
+          "Properties that change types depending on visibility.",
+          "Public read access with private or protected write access (e.g., `public private(set)`).",
+          "Properties that are accessible only on alternate thread cycles.",
+          "Properties that automatically encrypt sensitive text."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net): Asymmetric visibility allows a class property to have a broader visibility for reading than for modification."
+      },
+      {
+        question: "What is the primary function of the `json_validate()` function introduced in PHP 8.3?",
+        options: [
+          "It decodes JSON directly into a typed Enum.",
+          "It checks whether a string contains valid JSON without spending memory parsing it into a data structure.",
+          "It converts invalid JSON into XML automatically.",
+          "It encrypts JSON payloads using AES-256."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net): json_validate() verifies if a string is syntactically valid JSON without creating memory structures like json_decode()."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      // Update counters & progress
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+      
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // Update Floating Version Chip & Category
+      const activeSlideEl = slides[currentSlide];
+      const reqVersion = activeSlideEl.getAttribute('data-version') || 'PHP 8.0';
+      const cat = activeSlideEl.getAttribute('data-category') || 'Overview';
+
+      document.getElementById('chip-version-text').textContent = reqVersion;
+      document.getElementById('slide-category-badge').textContent = cat;
+
+      // Update Footer Source Link
+      const footerLink = document.getElementById('footer-source-link');
+      const codeLinks = activeSlideEl.querySelectorAll('a[href*="php.net"]');
+      if (codeLinks.length > 0) {
+        footerLink.href = codeLinks[0].href;
+        footerLink.textContent = codeLinks[0].href.replace('https://www.', '');
+      } else {
+        footerLink.href = "https://www.php.net";
+        footerLink.textContent = "php.net/manual";
+      }
+
+      // Render Dots
+      renderDots();
+
+      // Trigger Prism re-highlighting
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlideEl);
+      }
+
+      // Lazy render Mermaid diagrams on visible slide
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlideEl.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const dotsContainer = document.getElementById('nav-dots');
+      dotsContainer.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-purple-500' : 'bg-slate-700 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        dotsContainer.appendChild(dot);
+      }
+    }
+
+    function showTimelineDetail(version) {
+      document.querySelectorAll('.timeline-btn').forEach(btn => btn.classList.remove('active', 'bg-purple-900/40', 'border-purple-500/50'));
+      const activeBtn = document.getElementById(`tl-btn-${version}`);
+      if (activeBtn) {
+        activeBtn.classList.add('active', 'bg-purple-900/40', 'border-purple-500/50');
+      }
+
+      const titleEl = document.getElementById('tl-title');
+      const descEl = document.getElementById('tl-desc');
+      const pillsEl = document.getElementById('tl-pills');
+
+      if (version === '8.0') {
+        titleEl.innerHTML = `<i class="fa-solid fa-microchip"></i> PHP 8.0 Landmark Release`;
+        descEl.textContent = `Introduced JIT (Just-In-Time) compilation engine, Union Types, Match expression, Named Arguments, Attributes, Constructor Promotion, and Nullsafe Operator.`;
+        pillsEl.innerHTML = `<span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Union Types</span> <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Match Expression</span> <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Nullsafe ?-></span>`;
+      } else if (version === '8.1') {
+        titleEl.innerHTML = `<i class="fa-solid fa-layer-group"></i> PHP 8.1 Asynchronous & OOP Breakthrough`;
+        descEl.textContent = `Brought First-Class Enumerations (Enums), Fibers for cooperative async coroutines, Readonly Properties, First-Class Callable Syntax, and Never return type.`;
+        pillsEl.innerHTML = `<span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Enums</span> <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Fibers</span> <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Readonly Props</span>`;
+      } else if (version === '8.2') {
+        titleEl.innerHTML = `<i class="fa-solid fa-shield-halved"></i> PHP 8.2 Type System Completeness`;
+        descEl.textContent = `Added Readonly Classes, Disjunctive Normal Form (DNF) types combining intersection & union types, Standalone null/false/true, and Sensitive Parameter redaction.`;
+        pillsEl.innerHTML = `<span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Readonly Classes</span> <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">DNF Types</span> <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">#[\SensitiveParameter]</span>`;
+      } else if (version === '8.3') {
+        titleEl.innerHTML = `<i class="fa-solid fa-code"></i> PHP 8.3 Developer Experience Refinements`;
+        descEl.textContent = `Typed Class Constants, native json_validate() function for fast parsing check, #[\Override] attribute for strict method hierarchy validation, and dynamic constant fetch.`;
+        pillsEl.innerHTML = `<span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Typed Constants</span> <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">json_validate()</span> <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">#[\Override]</span>`;
+      } else if (version === '8.4') {
+        titleEl.innerHTML = `<i class="fa-solid fa-bolt"></i> PHP 8.4 Property Hooks & Modern DOM`;
+        descEl.textContent = `Property Hooks (get/set), Asymmetric Visibility (public private(set)), new array_find() family functions, and modern HTML5 DOM support in Dom\\HTMLDocument.`;
+        pillsEl.innerHTML = `<span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Property Hooks</span> <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">Asymmetric Vis</span> <span class="px-2.5 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs font-mono">array_find()</span>`;
+      } else if (version === '8.5') {
+        titleEl.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-sky-400"></i> PHP 8.5+ Future Language Horizon`;
+        descEl.textContent = `Pipeline operator (|>) proposals, Lazy Ghost & Proxy Object reflection patterns, enhanced microsecond timer utilities, and expanded deprecation attribute tags.`;
+        pillsEl.innerHTML = `<span class="px-2.5 py-1 rounded-md bg-sky-950/80 text-sky-300 border border-sky-800/50 text-xs font-mono">Pipe Operator (|>)</span> <span class="px-2.5 py-1 rounded-md bg-sky-950/80 text-sky-300 border border-sky-800/50 text-xs font-mono">Lazy Objects</span>`;
+      }
+    }
+
+    function renderMatrix(items) {
+      const tbody = document.getElementById('matrix-tbody');
+      tbody.innerHTML = '';
+      items.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-900/50 transition";
+        tr.innerHTML = `
+          <td class="p-2 font-semibold text-white flex items-center justify-between">
+            <span>${item.name}</span>
+            <a href="https://${item.source}" target="_blank" class="text-[10px] text-slate-500 hover:text-sky-400"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+          </td>
+          <td class="p-2 text-purple-300">${item.version}</td>
+          <td class="p-2 text-slate-400">${item.category}</td>
+          <td class="p-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.status === 'RFC' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}">${item.status}</span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    let currentMatrixCategory = 'ALL';
+    function filterMatrixCategory(cat) {
+      currentMatrixCategory = cat;
+      document.querySelectorAll('.matrix-cat-btn').forEach(btn => {
+        if (btn.textContent === cat) {
+          btn.className = "matrix-cat-btn px-2.5 py-1 rounded bg-purple-600 text-white";
+        } else {
+          btn.className = "matrix-cat-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300";
+        }
+      });
+      filterMatrix();
+    }
+
+    function filterMatrix() {
+      const search = document.getElementById('matrix-search').value.toLowerCase();
+      const filtered = matrixData.filter(item => {
+        const matchesCat = currentMatrixCategory === 'ALL' || item.category === currentMatrixCategory;
+        const matchesSearch = item.name.toLowerCase().includes(search) || item.version.toLowerCase().includes(search);
+        return matchesCat && matchesSearch;
+      });
+      renderMatrix(filtered);
+    }
+
+    function loadPlaygroundPreset(key) {
+      const preset = playgroundPresets[key];
+      if (preset) {
+        document.getElementById('playground-editor').value = preset.code;
+        document.getElementById('playground-output').textContent = preset.output;
+        checkPlaygroundDiff();
+      }
+    }
+
+    function handlePlaygroundInput() {
+      const code = document.getElementById('playground-editor').value;
+      localStorage.setItem('php_presentation_saved_snippet', code);
+      checkPlaygroundDiff();
+    }
+
+    function checkPlaygroundDiff() {
+      const currentKey = document.getElementById('playground-preset-select').value;
+      const originalCode = playgroundPresets[currentKey].code;
+      const userCode = document.getElementById('playground-editor').value;
+
+      const badge = document.getElementById('diff-status-badge');
+      if (userCode.trim() === originalCode.trim()) {
+        badge.className = "px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-mono";
+        badge.innerHTML = `<i class="fa-solid fa-check-double"></i> Matches php.net Example`;
+      } else {
+        badge.className = "px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-mono";
+        badge.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Modified User Snippet`;
+      }
+    }
+
+    function resetPlaygroundCode() {
+      const currentKey = document.getElementById('playground-preset-select').value;
+      loadPlaygroundPreset(currentKey);
+    }
+
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500/50 text-slate-200 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-600"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-lg border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        // Highlight correct
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const ver = s.getAttribute('data-version') || 'PHP 8.0';
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-purple-900/40 border-purple-500/50 text-white' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs text-purple-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium">${title}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-sky-300">${ver}</span>
+            <span class="text-[10px] text-slate-500">${cat}</span>
+          </div>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to jump to a slide...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const ver = s.getAttribute('data-version') || 'PHP 8.0';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Minimum ${ver}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-purple-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        
+        // iFrame fallback for copy command
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    // Touch Swipe Gestures
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      handleSwipe();
+    }, false);
+
+    function handleSwipe() {
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) {
+          nextSlide();
+        } else {
+          prevSlide();
+        }
+      }
+    }
+
+    window.onload = function() {
+      updateSlideView();
+      renderMatrix(matrixData);
+      renderQuizQuestion();
+
+      // Check saved playground snippet
+      const saved = localStorage.getItem('php_presentation_saved_snippet');
+      if (saved) {
+        document.getElementById('playground-editor').value = saved;
+        checkPlaygroundDiff();
+      } else {
+        loadPlaygroundPreset('match_80');
+      }
+    };
+  </script>
+</body>
+</html>

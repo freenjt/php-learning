@@ -1,0 +1,1709 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PHP-FIG Standards in PHP - Architectural Deep Dive</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              fig: '#483c6c'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.825rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Architecture Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#8b5cf6',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-cubes text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP-FIG Standards <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 light:text-purple-700 border border-purple-500/30">Official Specs</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">16</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-globe text-sky-400"></i>
+      <span>Grounded in Official Site: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">www.php-fig.org</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="www.php-fig.org">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-brands fa-php text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        PHP-FIG Standards <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-sky-400">Programmatic Architecture & Specs</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A rigorous, code-driven exploration of PHP Standard Recommendations (PSRs): Coding Styles, Autoloading, Loggers, HTTP Interfaces, DI Containers, Events, and Middleware.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Strict php-fig.org Compliance
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-gears text-purple-400"></i> Interactive Algorithm Simulators
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-amber-400"></i> Knowledge Assessment
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Begin Standards Exploration</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: PHP-FIG Ecosystem Taxonomy -->
+    <div class="slide-wrapper flex-col" data-category="Taxonomy" data-doc="www.php-fig.org/psr">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP-FIG Recommendation Taxonomy & Lifecycle</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">The PHP Framework Interoperability Group establishes common interface standards to enable ecosystem interoperability.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-code"></i></div>
+            Coding Standards & Style
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Dictates formatting, syntax, structure, and PHP 8+ features.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-purple-300">PSR-1</code>: Basic Coding Standard</li>
+            <li>• <code class="text-purple-300">PSR-12</code>: Extended Coding Style (supersedes PSR-2)</li>
+            <li>• <code class="text-purple-300">PER CS</code>: PHP Standard Coding Style (PHP 8.x+)</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-folder-tree"></i></div>
+            Autoloading Infrastructure
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Maps fully qualified class names directly to file system paths.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-sky-300">PSR-4</code>: Autoloader (Standard active specification)</li>
+            <li>• <code class="text-slate-500 line-through">PSR-0</code>: Legacy Autoloading (Deprecated)</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-globe"></i></div>
+            HTTP Message Architecture
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Defines immutable value objects for HTTP request/response handling.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-emerald-300">PSR-7</code>: HTTP Message Interfaces</li>
+            <li>• <code class="text-emerald-300">PSR-15</code>: HTTP Server Request Handlers</li>
+            <li>• <code class="text-emerald-300">PSR-18</code>: HTTP Client Specification</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-cubes"></i></div>
+            Container & Caching Specs
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Provides standard abstractions for dependency injection and caching.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-amber-300">PSR-11</code>: Container Interface</li>
+            <li>• <code class="text-amber-300">PSR-6</code>: Cache Item Pool Interface</li>
+            <li>• <code class="text-amber-300">PSR-16</code>: Simple Cache Interface</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-file-lines"></i></div>
+            Logging & Diagnostics
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Standardized logging severity levels and placeholder replacement.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-rose-300">PSR-3</code>: Logger Interface (8 RFC-5424 levels)</li>
+            <li>• Interpolation rule: <code class="text-rose-300">{placeholder}</code> key substitution</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-bolt"></i></div>
+            Event Dispatching & Async
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Decouples event emitting from listener handlers cleanly.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-indigo-300">PSR-14</code>: Event Dispatcher</li>
+            <li>• <code class="text-indigo-300">StoppableEventInterface</code> flow control</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: PSR-1 & PER CS Coding Standards -->
+    <div class="slide-wrapper flex-col" data-category="Coding Style" data-doc="www.php-fig.org/psr/psr-1">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PSR-1 & PER Coding Style: Core Mandates</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Fundamental rules governing file structure, side effects, naming conventions, and modern PHP syntax rules.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- PSR-1 Rules -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-shield-halved"></i> PSR-1 Mandatory Rules</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// Files MUST use only &lt;?php or &lt;?= tags.
+// Files MUST use UTF-8 without BOM.
+
+namespace Vendor\Project;
+
+// Classes MUST be in StudlyCaps
+class TransactionProcessor
+{
+    // Class constants MUST be in ALL_CAPS with underscores
+    public const MAX_RETRIES = 3;
+
+    // Method names MUST be camelCase
+    public function executePayment(): void
+    {
+        // Property names SHOULD be camelCase ($snake_case or $StudlyCaps allowed if consistent)
+    }
+}</code></pre>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <strong class="text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i> Side Effect Rule:</strong>
+            <p class="mt-1">A file SHOULD declare symbols (classes, functions, constants) OR execute side effects (echo, include, INI settings), but MUST NOT do both in the same file!</p>
+          </div>
+        </div>
+
+        <!-- PER CS Modern Rules -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-wand-magic-sparkles"></i> Modern PER CS (PHP 8+) Extensions</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+
+declare(strict_types=1); // Exactly 1 blank line after, no space before semicolon
+
+namespace App\Services;
+
+use App\Contracts\ProcessorInterface;
+
+// Constructor Property Promotion + Attributes (PER CS Standard)
+#[Attribute(Attribute::TARGET_CLASS)]
+final class OrderService implements ProcessorInterface
+{
+    public function __construct(
+        private readonly PaymentGateway $gateway,
+        private readonly LoggerInterface $logger,
+    ) {} // Trailing comma on multiline parameter list!
+}</code></pre>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">
+            Reference: <a href="https://www.php-fig.org/per/coding-style/" target="_blank" class="text-sky-400 hover:underline">php-fig.org/per/coding-style</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Interactive PER / PSR-12 Code Standard Inspector -->
+    <div class="slide-wrapper flex-col" data-category="Coding Style" data-doc="www.php-fig.org/per/coding-style">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive PER Coding Style Linter Inspector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Compare non-compliant PHP code against PSR-12 / PER CS standards to see explicit violations highlighted.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-purple-400 font-bold">Select Violation Case:</span>
+            <select id="per-case-select" onchange="inspectPerCode(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-purple-200 focus:outline-none">
+              <option value="side_effects">Side Effects & Declarations Mixed</option>
+              <option value="braces_types">Strict Types & Opening Braces</option>
+              <option value="promoted_props">Constructor Property Promotion Formatting</option>
+            </select>
+          </div>
+
+          <span class="text-xs font-mono text-emerald-400"><i class="fa-solid fa-check-double"></i> Live PER Rule Validation</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <!-- Non-Compliant -->
+          <div class="flex flex-col">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-mono text-rose-400 font-bold"><i class="fa-solid fa-xmark"></i> PSR-12 / PER Violation</span>
+            </div>
+            <pre class="h-64 overflow-y-auto"><code id="per-code-bad" class="language-php">// Bad Code</code></pre>
+            <div id="per-bad-explanation" class="mt-2 p-2 bg-rose-950/40 border border-rose-800 rounded-lg text-rose-300 text-[11px] font-mono">
+              <!-- Explanation -->
+            </div>
+          </div>
+
+          <!-- PER Compliant -->
+          <div class="flex flex-col">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-mono text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> PER CS Compliant</span>
+            </div>
+            <pre class="h-64 overflow-y-auto"><code id="per-code-good" class="language-php">// Good Code</code></pre>
+            <div id="per-good-explanation" class="mt-2 p-2 bg-emerald-950/40 border border-emerald-800 rounded-lg text-emerald-300 text-[11px] font-mono">
+              <!-- Explanation -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: PSR-4 Autoloading Specification -->
+    <div class="slide-wrapper flex-col" data-category="Autoloading" data-doc="www.php-fig.org/psr/psr-4">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PSR-4: Autoloading Standard Algorithm</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Specification for mapping fully qualified class names (FQCN) to relative file system paths.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- PSR-4 Formal Definition -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-sitemap"></i> Fully Qualified Class Name (FQCN) Structure</span>
+            
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-xs text-slate-200 mb-3">
+              \<span class="text-purple-400">&lt;VendorName&gt;</span>\<span class="text-sky-400">(&lt;SubNamespaceNames&gt;)*</span>\<span class="text-emerald-400">&lt;ClassName&gt;</span>
+            </div>
+
+            <ul class="text-xs text-slate-300 space-y-2 font-mono">
+              <li>1. FQCN MUST have a top-level namespace name ("Vendor Name").</li>
+              <li>2. FQCN MAY have one or more sub-namespaces.</li>
+              <li>3. FQCN MUST end with a terminating class name.</li>
+              <li>4. Underscores have NO special meaning in any portion (unlike legacy PSR-0).</li>
+              <li>5. Case sensitivity MUST match file system paths exactly.</li>
+            </ul>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-[11px] text-slate-400">
+            Source: <a href="https://www.php-fig.org/psr/psr-4/" target="_blank" class="text-sky-400 hover:underline">php-fig.org/psr/psr-4</a>
+          </div>
+        </div>
+
+        <!-- PSR-4 Resolution Rules -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Reference PSR-4 Autoloader Implementation</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">spl_autoload_register(function (string $class): void {
+    $prefix = 'Foo\\Bar\\';
+    $baseDir = __DIR__ . '/src/';
+
+    $len = strlen($prefix);
+    if (strncmp($prefix, $class, $len) !== 0) {
+        return; // Move to next registered autoloader
+    }
+
+    $relativeClass = substr($class, $len);
+    $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
+
+    if (file_exists($file)) {
+        require $file;
+    }
+});</code></pre>
+          </div>
+
+          <p class="text-[11px] text-emerald-400 mt-2"><i class="fa-solid fa-circle-check"></i> Autoloaders MUST NOT throw exceptions when a file is not found.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Interactive PSR-4 Path Resolution Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Autoloading" data-doc="www.php-fig.org/psr/psr-4">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive PSR-4 Autoloader Resolution Simulator</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Input vendor prefixes, base directories, and class targets to watch the PSR-4 algorithm map paths step-by-step.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Configuration Inputs -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
+          <div>
+            <label class="block text-purple-400 mb-1 font-bold">Namespace Prefix:</label>
+            <input type="text" id="psr4-prefix" value="Acme\Payment\" oninput="runPsr4Simulation()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-purple-300 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sky-400 mb-1 font-bold">Base Directory Path:</label>
+            <input type="text" id="psr4-basedir" value="/var/www/project/src/" oninput="runPsr4Simulation()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sky-300 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-emerald-400 mb-1 font-bold">Target FQCN to Load:</label>
+            <input type="text" id="psr4-target" value="Acme\Payment\Gateways\StripeProcessor" oninput="runPsr4Simulation()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-emerald-300 focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Simulation Step Tracing -->
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs">
+          <span class="text-slate-400 font-bold block mb-2"><i class="fa-solid fa-list-check text-purple-400"></i> PSR-4 Algorithm Execution Trace:</span>
+          <div id="psr4-trace-log" class="space-y-1 text-slate-300">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <!-- Result Box -->
+        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 font-mono text-xs flex items-center justify-between">
+          <div>
+            <span class="text-slate-500 block text-[10px]">RESOLVED FILE SYSTEM PATH:</span>
+            <span id="psr4-resolved-path" class="text-emerald-400 font-bold text-sm">/var/www/project/src/Gateways/StripeProcessor.php</span>
+          </div>
+          <span id="psr4-status-badge" class="px-2.5 py-1 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[11px]">Match Success</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: PSR-3 Logger Interface Specs -->
+    <div class="slide-wrapper flex-col" data-category="Logging" data-doc="www.php-fig.org/psr/psr-3">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PSR-3: Logger Interface & Message Interpolation</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Establishes common logging contract with RFC-5424 severity levels and context message placeholders.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Severity Levels -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-rose-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-layer-group"></i> 8 Standard RFC-5424 Log Severity Levels</span>
+            
+            <div class="grid grid-cols-2 gap-2 text-[11px] font-mono">
+              <div class="p-2 rounded bg-rose-950/50 border border-rose-800 text-rose-300">1. emergency</div>
+              <div class="p-2 rounded bg-rose-900/40 border border-rose-700 text-rose-200">2. alert</div>
+              <div class="p-2 rounded bg-amber-950/50 border border-amber-800 text-amber-300">3. critical</div>
+              <div class="p-2 rounded bg-amber-900/40 border border-amber-700 text-amber-200">4. error</div>
+              <div class="p-2 rounded bg-yellow-950/50 border border-yellow-800 text-yellow-300">5. warning</div>
+              <div class="p-2 rounded bg-sky-950/50 border border-sky-800 text-sky-300">6. notice</div>
+              <div class="p-2 rounded bg-indigo-950/50 border border-indigo-800 text-indigo-300">7. info</div>
+              <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-400">8. debug</div>
+            </div>
+          </div>
+
+          <div class="mt-3 p-2.5 bg-slate-900/90 rounded-xl border border-slate-800 text-[11px] text-slate-300 font-mono">
+            <strong>Exception Context Rule:</strong> If an <code class="text-purple-300">\Throwable</code> object is passed in context, it MUST be under the <code class="text-sky-300">'exception'</code> key!
+          </div>
+        </div>
+
+        <!-- Interface Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-code"></i> PSR-3 `LoggerInterface` Contract</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">namespace Psr\Log;
+
+interface LoggerInterface
+{
+    public function emergency(string|\Stringable $message, array $context = []): void;
+    public function alert(string|\Stringable $message, array $context = []): void;
+    public function critical(string|\Stringable $message, array $context = []): void;
+    public function error(string|\Stringable $message, array $context = []): void;
+    public function warning(string|\Stringable $message, array $context = []): void;
+    public function notice(string|\Stringable $message, array $context = []): void;
+    public function info(string|\Stringable $message, array $context = []): void;
+    public function debug(string|\Stringable $message, array $context = []): void;
+    public function log($level, string|\Stringable $message, array $context = []): void;
+}</code></pre>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php-fig.org/psr/psr-3/" target="_blank" class="text-sky-400 hover:underline">php-fig.org/psr/psr-3</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Interactive PSR-3 Message Interpolator -->
+    <div class="slide-wrapper flex-col" data-category="Logging" data-doc="www.php-fig.org/psr/psr-3">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive PSR-3 Message Interpolator Engine</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PSR-3 specifies that placeholders matching <code class="text-purple-300">{key}</code> must be replaced by values from the context array.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <!-- Inputs -->
+          <div class="flex flex-col gap-2">
+            <div>
+              <label class="block text-xs font-mono text-purple-400 font-bold mb-1">Log Message Template with Placeholders:</label>
+              <input type="text" id="psr3-template" value="User {username} failed login from IP {ip_address}" oninput="runPsr3Interpolation()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 font-mono text-xs text-purple-200 focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block text-xs font-mono text-sky-400 font-bold mb-1">Context Array (JSON Format):</label>
+              <textarea id="psr3-context-json" oninput="runPsr3Interpolation()" class="w-full h-28 bg-slate-950 p-2 font-mono text-xs text-sky-200 border border-slate-700 rounded-lg focus:outline-none leading-relaxed" spellcheck="false">{
+  "username": "alice_dev",
+  "ip_address": "192.168.1.100"
+}</textarea>
+            </div>
+          </div>
+
+          <!-- Interpolator Output -->
+          <div class="flex flex-col justify-between">
+            <div>
+              <label class="block text-xs font-mono text-emerald-400 font-bold mb-1"><i class="fa-solid fa-terminal"></i> Interpolated Result String:</label>
+              <div id="psr3-output" class="w-full h-32 bg-slate-950 p-3 font-mono text-xs text-emerald-300 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap">
+                <!-- Result -->
+              </div>
+            </div>
+
+            <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-400">
+              <strong class="text-amber-400"><i class="fa-solid fa-circle-info"></i> Specification Rule:</strong> Placeholder keys MUST NOT contain delimiters like <code class="text-purple-300">{}</code>. Keys must consist of <code class="text-purple-300">A-Z, a-z, 0-9, _, .</code>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: PSR-7 HTTP Message Interfaces -->
+    <div class="slide-wrapper flex-col" data-category="HTTP" data-doc="www.php-fig.org/psr/psr-7">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PSR-7: HTTP Message Interfaces & Value Objects</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Provides standard representations for HTTP requests, responses, URIs, uploaded files, and streams.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- PSR-7 Contract Features -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-layer-group"></i> Core PSR-7 Abstraction Interfaces</span>
+            
+            <div class="space-y-2 text-xs font-mono">
+              <div class="p-2.5 rounded bg-slate-950 border border-slate-800">
+                <span class="text-purple-400 font-bold">MessageInterface</span>
+                <p class="text-[11px] text-slate-400">Base protocol version, headers, stream body.</p>
+              </div>
+              <div class="p-2.5 rounded bg-slate-950 border border-slate-800">
+                <span class="text-sky-400 font-bold">RequestInterface / ServerRequestInterface</span>
+                <p class="text-[11px] text-slate-400">Target URI, HTTP method, parsed body, query params.</p>
+              </div>
+              <div class="p-2.5 rounded bg-slate-950 border border-slate-800">
+                <span class="text-emerald-400 font-bold">ResponseInterface</span>
+                <p class="text-[11px] text-slate-400">Status code, reason phrase, response headers.</p>
+              </div>
+              <div class="p-2.5 rounded bg-slate-950 border border-slate-800">
+                <span class="text-amber-400 font-bold">StreamInterface</span>
+                <p class="text-[11px] text-slate-400">Encapsulates body streams (`php://temp`, PSR-7 streams).</p>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php-fig.org/psr/psr-7/" target="_blank" class="text-sky-400 hover:underline">php-fig.org/psr/psr-7</a></p>
+        </div>
+
+        <!-- Immutability Principle -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-lock"></i> Strict Immutability Paradigm</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// HTTP messages are immutable value objects!
+$response = new Response(200);
+
+// Mutating methods MUST return a NEW instance!
+$newResponse = $response
+    ->withHeader('Content-Type', 'application/json')
+    ->withStatus(201);
+
+// $response remains UNCHANGED (200 OK, no headers)!
+// $newResponse is a distinct clone instance (201 Created)!</code></pre>
+          </div>
+
+          <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 mt-2">
+            <strong class="text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i> Architectural Advantage:</strong>
+            <p class="mt-1">Immutability prevents unexpected side effects when passing HTTP requests or responses through multiple middleware layers.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Interactive PSR-7 Immutability Inspector -->
+    <div class="slide-wrapper flex-col" data-category="HTTP" data-doc="www.php-fig.org/psr/psr-7">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive PSR-7 Immutability Inspector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Simulate applying <code class="text-purple-300">withHeader()</code> calls to observe instance identity cloning vs original object preservation.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <div class="flex items-center gap-3">
+          <button onclick="applyPsr7Mutation()" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs font-bold transition flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> Call ->withHeader('X-Custom-Header', 'Value')
+          </button>
+          <button onclick="resetPsr7Inspector()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs transition">
+            <i class="fa-solid fa-rotate-left"></i> Reset Objects
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Original Object -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sky-400 font-mono text-xs font-bold"><i class="fa-solid fa-cube"></i> Original $response Object</span>
+                <span id="psr7-orig-id" class="text-[10px] text-purple-400 font-mono bg-purple-950/80 px-2 py-0.5 rounded">ObjectID #101</span>
+              </div>
+              <div id="psr7-orig-state" class="font-mono text-xs text-slate-300 space-y-1">
+                <div>Status: 200 OK</div>
+                <div>Headers: { "Content-Type": "text/html" }</div>
+              </div>
+            </div>
+            <div class="mt-3 p-2 rounded bg-sky-950/50 text-sky-300 border border-sky-800 text-[11px] font-mono">
+              Status: Guaranteed Unchanged
+            </div>
+          </div>
+
+          <!-- New Cloned Object -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-emerald-400 font-mono text-xs font-bold"><i class="fa-solid fa-cubes"></i> Modified $newResponse Object</span>
+                <span id="psr7-new-id" class="text-[10px] text-emerald-400 font-mono bg-emerald-950/80 px-2 py-0.5 rounded">ObjectID #101 (Not mutated)</span>
+              </div>
+              <div id="psr7-new-state" class="font-mono text-xs text-slate-300 space-y-1">
+                <div>Status: 200 OK</div>
+                <div>Headers: { "Content-Type": "text/html" }</div>
+              </div>
+            </div>
+            <div id="psr7-new-badge" class="mt-3 p-2 rounded bg-slate-900 text-slate-400 border border-slate-800 text-[11px] font-mono">
+              Click button above to invoke ->withHeader()
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: PSR-11 Container Interface -->
+    <div class="slide-wrapper flex-col" data-category="Container" data-doc="www.php-fig.org/psr/psr-11">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PSR-11: Container Interface Standard</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Defines a minimal common interface for dependency injection containers and service locators.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- PSR-11 Interface Definition -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-code"></i> `ContainerInterface` Definition</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">namespace Psr\Container;
+
+interface ContainerInterface
+{
+    /**
+     * Finds an entry of the container by identifier and returns it.
+     *
+     * @throws NotFoundExceptionInterface  No entry found
+     * @throws ContainerExceptionInterface  Error while retrieving entry
+     */
+    public function get(string $id): mixed;
+
+    /**
+     * Returns true if the container can return an entry for the given identifier.
+     */
+    public function has(string $id): bool;
+}</code></pre>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php-fig.org/psr/psr-11/" target="_blank" class="text-sky-400 hover:underline">php-fig.org/psr/psr-11</a></p>
+        </div>
+
+        <!-- Exception Hierarchy -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-purple-400 mb-2"><i class="fa-solid fa-diagram-project"></i> PSR-11 Exception Hierarchy</span>
+          <div class="mermaid">
+            graph TD
+              Throwable[\Throwable/] --> ContainerEx[ContainerExceptionInterface]
+              ContainerEx --> NotFoundEx[NotFoundExceptionInterface]
+              style Throwable fill:#1e293b,stroke:#8b5cf6,color:#fff
+              style ContainerEx fill:#4F5B93,stroke:#38bdf8,color:#fff
+              style NotFoundEx fill:#0284c7,stroke:#10b981,color:#fff
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2 text-center">All container exceptions MUST implement <code class="text-purple-300">ContainerExceptionInterface</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: PSR-14 Event Dispatcher -->
+    <div class="slide-wrapper flex-col" data-category="Events" data-doc="www.php-fig.org/psr/psr-14">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PSR-14: Event Dispatcher Architecture</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Formal specification decoupling event emitters, dispatchers, listener providers, and stoppable events.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- PSR-14 Architecture Flow Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-indigo-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Event Flow Delegation Sequence</span>
+          <div class="mermaid">
+            sequenceDiagram
+              autonumber
+              participant Emitter as Event Emitter
+              participant Dispatcher as EventDispatcherInterface
+              participant Provider as ListenerProviderInterface
+              participant Listener as Event Listeners
+              Emitter->>Dispatcher: dispatch(object $event)
+              Dispatcher->>Provider: getListenersForEvent($event)
+              Provider-->>Dispatcher: iterable<< callable >>
+              loop For each Listener
+                Dispatcher->>Listener: listener($event)
+                Note over Dispatcher: Check if StoppableEventInterface && isPropagationStopped()
+              end
+              Dispatcher-->>Emitter: Return $event
+          </div>
+        </div>
+
+        <!-- Code Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Stoppable Event Implementation</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">use Psr\EventDispatcher\StoppableEventInterface;
+
+final class UserRegisteredEvent implements StoppableEventInterface
+{
+    private bool $stopped = false;
+
+    public function __construct(public readonly User $user) {}
+
+    public function stopPropagation(): void
+    {
+        $this->stopped = true;
+    }
+
+    public function isPropagationStopped(): bool
+    {
+        return $this->stopped;
+    }
+}</code></pre>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php-fig.org/psr/psr-14/" target="_blank" class="text-sky-400 hover:underline">php-fig.org/psr/psr-14</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: PSR-15 HTTP Server Request Handlers -->
+    <div class="slide-wrapper flex-col" data-category="HTTP" data-doc="www.php-fig.org/psr/psr-15">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PSR-15: HTTP Server Request Handlers & Middleware</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Defines interfaces for HTTP request handlers and middleware components using the "Onion Architecture" model.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- PSR-15 Interfaces -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> PSR-15 Interfaces</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">namespace Psr\Http\Server;
+
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+interface RequestHandlerInterface
+{
+    public function handle(ServerRequestInterface $request): ResponseInterface;
+}
+
+interface MiddlewareInterface
+{
+    public function process(
+        ServerRequestInterface $request,
+        RequestHandlerInterface $handler
+    ): ResponseInterface;
+}</code></pre>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php-fig.org/psr/psr-15/" target="_blank" class="text-sky-400 hover:underline">php-fig.org/psr/psr-15</a></p>
+        </div>
+
+        <!-- Middleware Implementation Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-shield"></i> Concrete Authentication Middleware</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">final class AuthMiddleware implements MiddlewareInterface
+{
+    public function process(
+        ServerRequestInterface $request,
+        RequestHandlerInterface $handler
+    ): ResponseInterface {
+        if (!$request->hasHeader('Authorization')) {
+            return new JsonResponse(['error' => 'Unauthorized'], 401);
+        }
+
+        // Delegate request down the pipeline to next handler
+        $response = $handler->handle($request);
+
+        // Add custom response header on outward pass
+        return $response->withHeader('X-Auth-Verified', '1');
+    }
+}</code></pre>
+          </div>
+
+          <p class="text-[11px] text-emerald-400 mt-2"><i class="fa-solid fa-circle-check"></i> Short-circuiting allows stopping requests immediately (e.g. returning 401).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Interactive PSR-15 Middleware Pipeline Flow Simulator -->
+    <div class="slide-wrapper flex-col" data-category="HTTP" data-doc="www.php-fig.org/psr/psr-15">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive PSR-15 Middleware Pipeline Flow Simulator</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Step through the onion execution model: Request passes INWARD through middleware, then Response passes OUTWARD.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div class="flex items-center gap-2">
+            <button onclick="stepPsr15Pipeline()" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs transition flex items-center gap-2">
+              <i class="fa-solid fa-forward"></i> Execute Step (<span id="psr15-step-num">0</span>/6)
+            </button>
+            <button onclick="resetPsr15Pipeline()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs transition">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+          </div>
+
+          <span id="psr15-phase-badge" class="px-2.5 py-1 rounded bg-slate-800 text-purple-300 font-mono text-xs">Phase: Idle</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono">
+          <div id="psr15-mw1" class="p-3 rounded-xl bg-slate-950 border border-slate-800 transition">
+            <span class="text-purple-400 font-bold block mb-1">1. AuthMiddleware</span>
+            <p class="text-[10px] text-slate-400">Verifies Authorization token</p>
+          </div>
+          <div id="psr15-mw2" class="p-3 rounded-xl bg-slate-950 border border-slate-800 transition">
+            <span class="text-sky-400 font-bold block mb-1">2. LoggingMiddleware</span>
+            <p class="text-[10px] text-slate-400">Measures execution latency</p>
+          </div>
+          <div id="psr15-handler" class="p-3 rounded-xl bg-slate-950 border border-slate-800 transition">
+            <span class="text-emerald-400 font-bold block mb-1">3. Core RequestHandler</span>
+            <p class="text-[10px] text-slate-400">Generates 200 OK Response</p>
+          </div>
+        </div>
+
+        <div>
+          <span class="text-slate-400 text-xs font-mono">Pipeline Execution Log:</span>
+          <div id="psr15-log" class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-sky-400 text-xs h-28 overflow-y-auto mt-1">
+            Click "Execute Step" to start onion pipeline execution...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Knowledge Quiz Assessment -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="www.php-fig.org">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP-FIG Standards Knowledge Assessment</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your comprehension of PSR rules strictly grounded in official php-fig.org documentation.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-purple-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 16: Official Resources & Summary -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="www.php-fig.org">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">PHP-FIG Official Specification Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every standard, rule, code snippet, and architectural diagram in this presentation is derived directly from the official specs at php-fig.org.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php-fig.org/psr/psr-4/" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">PSR-4 Autoloader Spec</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">FQCN to file path autoloading algorithm.</p>
+          </a>
+
+          <a href="https://www.php-fig.org/psr/psr-7/" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">PSR-7 HTTP Message Specs</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Immutable Request and Response value objects.</p>
+          </a>
+
+          <a href="https://www.php-fig.org/psr/psr-11/" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">PSR-11 Container Interface</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Dependency injection container standard interface.</p>
+          </a>
+
+          <a href="https://www.php-fig.org/psr/psr-15/" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">PSR-15 HTTP Middleware</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Server request handlers and onion pipeline middleware.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Control Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-purple-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php-fig.org" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">www.php-fig.org</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Slide Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-purple-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search PHP-FIG keywords (e.g., PSR-4, PSR-7, container)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i> Presentation Slide Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Questions Dataset (Strictly grounded in php-fig.org)
+    const quizData = [
+      {
+        question: "According to PSR-4, what requirement applies to namespace separators in class autoloading?",
+        options: [
+          "Namespace separators must be converted to underscores.",
+          "Each namespace separator is converted to a directory separator matching the file system.",
+          "Namespace separators are ignored and classes are loaded from a flat directory.",
+          "Namespace separators must be lowercase in file paths."
+        ],
+        correct: 1,
+        explanation: "Official Specification (php-fig.org/psr/psr-4): In PSR-4, contiguous sub-namespace names after the prefix correspond to sub-directories, where each namespace separator is converted to a directory separator."
+      },
+      {
+        question: "Why are PSR-7 HTTP Message objects designed to be immutable value objects?",
+        options: [
+          "To consume less memory in CLI scripts.",
+          "To allow HTTP responses to be processed at compile time.",
+          "To prevent unexpected side effects when passing requests/responses across middleware layers.",
+          "To prevent PHP from throwing TypeErrors."
+        ],
+        correct: 2,
+        explanation: "Official Specification (php-fig.org/psr/psr-7): Immutability guarantees that modifying a message creates a new instance, ensuring state changes do not cause unintended side effects across independent handlers."
+      },
+      {
+        question: "In PSR-3 logging, what key MUST be used in context when logging an exception?",
+        options: [
+          "context['error_object']",
+          "context['exception']",
+          "context['throwable']",
+          "context['stack_trace']"
+        ],
+        correct: 1,
+        explanation: "Official Specification (php-fig.org/psr/psr-3): If an Exception or Throwable object is passed in the context data, it MUST be under the 'exception' key."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // PER Code Inspection Cases
+    const perCases = {
+      side_effects: {
+        bad: `<?php\n// VIOLATION: Declarations AND Side Effects mixed!\nini_set('display_errors', '1'); // Side Effect\n\nclass UserProcessor\n{\n    public function process(): void {}\n}\n\necho "Processor loaded"; // Side Effect`,
+        badExpl: "PSR-1 Violation: File mixes symbol declarations with side-effects (ini_set, echo).",
+        good: `<?php\n// PER CS COMPLIANT: Only Symbol Declarations\n\nnamespace App\\Processors;\n\nfinal class UserProcessor\n{\n    public function process(): void {}\n}`,
+        goodExpl: "PER CS Compliant: File strictly contains symbol declarations only."
+      },
+      braces_types: {
+        bad: `<?php\ndeclare(strict_types=1);\nnamespace App;\nclass UserService {\n    function doWork(){\n    }\n}`,
+        badExpl: "PER CS Violation: Missing blank line after declare(), method missing visibility modifier, opening brace on same line for class.",
+        good: `<?php\n\ndeclare(strict_types=1);\n\nnamespace App;\n\nfinal class UserService\n{\n    public function doWork(): void\n    {\n    }\n}`,
+        goodExpl: "PER CS Compliant: Proper spacing, explicit visibility, opening brace on new line."
+      },
+      promoted_props: {
+        bad: `<?php\nclass Order {\npublic function __construct(private string $id, private float $amount) {}\n}`,
+        badExpl: "PER CS Violation: Constructor promoted properties on single line when multi-line parameters are required.",
+        good: `<?php\n\nfinal class Order\n{\n    public function __construct(\n        private readonly string $id,\n        private readonly float $amount,\n    ) {}\n}`,
+        goodExpl: "PER CS Compliant: Multiline parameter list with trailing comma and proper indentation."
+      }
+    };
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      // Update counters
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // Update Header Chip
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'www.php-fig.org';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      // Prism highlight
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      // Mermaid re-render
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-purple-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    // PSR-4 Simulator Engine
+    function runPsr4Simulation() {
+      const prefix = document.getElementById('psr4-prefix').value;
+      const baseDir = document.getElementById('psr4-basedir').value;
+      const target = document.getElementById('psr4-target').value;
+
+      const traceLog = document.getElementById('psr4-trace-log');
+      const resolvedPath = document.getElementById('psr4-resolved-path');
+      const statusBadge = document.getElementById('psr4-status-badge');
+
+      let logs = [];
+      logs.push(`1. Evaluating FQCN: "${target}"`);
+
+      if (target.startsWith(prefix)) {
+        const relativeClass = target.substring(prefix.length);
+        logs.push(`2. Prefix match found: "${prefix}"`);
+        logs.push(`3. Extracted relative class name: "${relativeClass}"`);
+        
+        const pathConverted = relativeClass.replace(/\\/g, '/') + '.php';
+        logs.push(`4. Replaced namespace separators with directory separators: "${pathConverted}"`);
+
+        const cleanBase = baseDir.endsWith('/') ? baseDir : baseDir + '/';
+        const finalPath = cleanBase + pathConverted;
+        logs.push(`5. Combined base directory + relative path = "${finalPath}"`);
+
+        traceLog.innerHTML = logs.map(l => `<div>${l}</div>`).join('');
+        resolvedPath.textContent = finalPath;
+        statusBadge.className = "px-2.5 py-1 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[11px]";
+        statusBadge.textContent = "Match Success";
+      } else {
+        logs.push(`2. Prefix check failed: Target "${target}" does not start with prefix "${prefix}"`);
+        logs.push(`3. PSR-4 Autoloader yields execution to next registered autoloader.`);
+
+        traceLog.innerHTML = logs.map(l => `<div>${l}</div>`).join('');
+        resolvedPath.textContent = "N/A (Prefix Mismatch)";
+        statusBadge.className = "px-2.5 py-1 rounded bg-rose-950/80 border border-rose-500/40 text-rose-300 text-[11px]";
+        statusBadge.textContent = "Prefix Mismatch";
+      }
+    }
+
+    // PSR-3 Interpolator
+    function runPsr3Interpolation() {
+      const template = document.getElementById('psr3-template').value;
+      const jsonText = document.getElementById('psr3-context-json').value;
+      const output = document.getElementById('psr3-output');
+
+      try {
+        const context = JSON.parse(jsonText);
+        let result = template;
+
+        for (const key in context) {
+          if (Object.prototype.hasOwnProperty.call(context, key)) {
+            const val = context[key];
+            const placeholder = `{${key}}`;
+            result = result.replaceAll(placeholder, String(val));
+          }
+        }
+
+        output.textContent = result;
+        output.className = "w-full h-32 bg-slate-950 p-3 font-mono text-xs text-emerald-300 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap";
+      } catch (err) {
+        output.textContent = `[JSON Parse Error]: ${err.message}`;
+        output.className = "w-full h-32 bg-slate-950 p-3 font-mono text-xs text-rose-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap";
+      }
+    }
+
+    // PER CS Inspector
+    function inspectPerCode(key) {
+      const item = perCases[key] || perCases.side_effects;
+      
+      const badCode = document.getElementById('per-code-bad');
+      const goodCode = document.getElementById('per-code-good');
+
+      badCode.textContent = item.bad;
+      goodCode.textContent = item.good;
+
+      document.getElementById('per-bad-explanation').textContent = item.badExpl;
+      document.getElementById('per-good-explanation').textContent = item.goodExpl;
+
+      if (window.Prism) {
+        Prism.highlightElement(badCode);
+        Prism.highlightElement(goodCode);
+      }
+    }
+
+    // PSR-7 Immutability Simulator
+    let psr7HeaderCount = 0;
+    function applyPsr7Mutation() {
+      psr7HeaderCount++;
+      const newId = document.getElementById('psr7-new-id');
+      const newState = document.getElementById('psr7-new-state');
+      const newBadge = document.getElementById('psr7-new-badge');
+
+      newId.textContent = `ObjectID #${101 + psr7HeaderCount} (New Instance!)`;
+      newState.innerHTML = `
+        <div>Status: 200 OK</div>
+        <div>Headers: {</div>
+        <div class="pl-3">"Content-Type": "text/html",</div>
+        <div class="pl-3 text-emerald-400 font-bold">"X-Custom-Header-${psr7HeaderCount}": "Value_${psr7HeaderCount}"</div>
+        <div>}</div>
+      `;
+
+      newBadge.className = "mt-3 p-2 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800 text-[11px] font-mono";
+      newBadge.textContent = `Created New Clone Instance (ObjectID #${101 + psr7HeaderCount})`;
+    }
+
+    function resetPsr7Inspector() {
+      psr7HeaderCount = 0;
+      document.getElementById('psr7-new-id').textContent = `ObjectID #101 (Not mutated)`;
+      document.getElementById('psr7-new-state').innerHTML = `<div>Status: 200 OK</div><div>Headers: { "Content-Type": "text/html" }</div>`;
+      document.getElementById('psr7-new-badge').className = "mt-3 p-2 rounded bg-slate-900 text-slate-400 border border-slate-800 text-[11px] font-mono";
+      document.getElementById('psr7-new-badge').textContent = `Click button above to invoke ->withHeader()`;
+    }
+
+    // PSR-15 Middleware Pipeline Stepper
+    let psr15Step = 0;
+    function stepPsr15Pipeline() {
+      psr15Step = (psr15Step % 6) + 1;
+      document.getElementById('psr15-step-num').textContent = psr15Step;
+
+      const mw1 = document.getElementById('psr15-mw1');
+      const mw2 = document.getElementById('psr15-mw2');
+      const handler = document.getElementById('psr15-handler');
+      const log = document.getElementById('psr15-log');
+      const badge = document.getElementById('psr15-phase-badge');
+
+      mw1.className = "p-3 rounded-xl bg-slate-950 border border-slate-800 transition";
+      mw2.className = "p-3 rounded-xl bg-slate-950 border border-slate-800 transition";
+      handler.className = "p-3 rounded-xl bg-slate-950 border border-slate-800 transition";
+
+      if (psr15Step === 1) {
+        mw1.className = "p-3 rounded-xl bg-purple-950/80 border border-purple-500 font-bold text-white transition";
+        badge.textContent = "Phase: Inward Request Pass (1/3)";
+        log.innerHTML = `[Step 1]: Request enters AuthMiddleware.\nAuth token verified successfully. Delegating to $handler->handle($request)...`;
+      } else if (psr15Step === 2) {
+        mw2.className = "p-3 rounded-xl bg-sky-950/80 border border-sky-500 font-bold text-white transition";
+        badge.textContent = "Phase: Inward Request Pass (2/3)";
+        log.innerHTML = `[Step 2]: Request enters LoggingMiddleware.\nTimer started. Delegating to $handler->handle($request)...`;
+      } else if (psr15Step === 3) {
+        handler.className = "p-3 rounded-xl bg-emerald-950/80 border border-emerald-500 font-bold text-white transition";
+        badge.textContent = "Phase: Core Request Processing";
+        log.innerHTML = `[Step 3]: Request reaches RequestHandler.\nGenerating 200 OK Response object... Returning $response upward!`;
+      } else if (psr15Step === 4) {
+        mw2.className = "p-3 rounded-xl bg-sky-950/80 border border-sky-500 font-bold text-white transition";
+        badge.textContent = "Phase: Outward Response Pass (2/3)";
+        log.innerHTML = `[Step 4]: Response passes back through LoggingMiddleware.\nLatency recorded (12ms). Returning $response upward...`;
+      } else if (psr15Step === 5) {
+        mw1.className = "p-3 rounded-xl bg-purple-950/80 border border-purple-500 font-bold text-white transition";
+        badge.textContent = "Phase: Outward Response Pass (3/3)";
+        log.innerHTML = `[Step 5]: Response passes back through AuthMiddleware.\nHeader added: X-Auth-Verified: 1. Returning final $response to client.`;
+      } else if (psr15Step === 6) {
+        badge.textContent = "Phase: Pipeline Complete";
+        log.innerHTML = `[Step 6]: HTTP Response emitted to browser. PSR-15 Middleware lifecycle finished!`;
+      }
+    }
+
+    function resetPsr15Pipeline() {
+      psr15Step = 0;
+      document.getElementById('psr15-step-num').textContent = "0";
+      document.getElementById('psr15-phase-badge').textContent = "Phase: Idle";
+      document.getElementById('psr15-log').textContent = `Click "Execute Step" to start onion pipeline execution...`;
+      document.getElementById('psr15-mw1').className = "p-3 rounded-xl bg-slate-950 border border-slate-800 transition";
+      document.getElementById('psr15-mw2').className = "p-3 rounded-xl bg-slate-950 border border-slate-800 transition";
+      document.getElementById('psr15-handler').className = "p-3 rounded-xl bg-slate-950 border border-slate-800 transition";
+    }
+
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-purple-950/60 border-purple-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-purple-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-purple-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_presentation_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_presentation_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keyboard & Touch Swipe Listeners
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    // Initialization
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_presentation_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      runPsr4Simulation();
+      runPsr3Interpolation();
+      inspectPerCode('side_effects');
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

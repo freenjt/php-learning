@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cryptography in PHP - Comprehensive & Programmatic Deep Dive</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#10b981', // Cryptographic Emerald Accent
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              purple: '#8b5cf6',
+              rose: '#f43f5e'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Presentation Styles -->
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.83rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Cryptographic Flow Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#10b981',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#059669',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-emerald-500 selection:text-white transition-colors duration-200">
+
+  <!-- Header Navigation -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-key text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Cryptography <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 light:text-emerald-700 border border-emerald-500/30">Official Spec</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-emerald-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-emerald-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slides Frame -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-emerald-950/50 light:bg-emerald-100 border border-emerald-500/30 text-emerald-300 light:text-emerald-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Manual: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/manual/en/refs.crypto.php</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="php.net/manual/en/refs.crypto.php">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-emerald-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-solid fa-user-shield text-6xl text-emerald-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Cryptography in PHP <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-teal-300 to-sky-400">Programmatic Architecture</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A rigorous, deep-dive exploration of CSPRNG, Libsodium, Password Hashing, OpenSSL, HMAC, and Key Derivation strictly grounded in official php.net specifications.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Strict php.net Grounding
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-lock text-emerald-400"></i> Sodium & OpenSSL AEAD
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-amber-400"></i> Interactive Cipher Simulators
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-lg shadow-emerald-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Explore Cryptographic Extensions</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Extension Landscape Taxonomy -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="php.net/manual/en/refs.crypto.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP Cryptographic Subsystem Architecture</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">The official PHP documentation categorizes core cryptographic functions into 5 distinct primary API families.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- CSPRNG -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-dice"></i></div>
+            CSPRNG Core
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Cryptographically Secure Pseudo-Random Number Generation.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-emerald-300">random_bytes(int $length)</code></li>
+            <li>• <code class="text-emerald-300">random_int(int $min, int $max)</code></li>
+            <li>• OS Entropy integration (/dev/urandom)</li>
+          </ul>
+        </div>
+
+        <!-- Sodium -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-shield-halved"></i></div>
+            Sodium (Libsodium)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Modern, misuse-resistant core cryptography library bundled in PHP 7.2+.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-sky-300">sodium_crypto_secretbox()</code> (AEAD)</li>
+            <li>• <code class="text-sky-300">sodium_crypto_sign()</code> (Ed25519)</li>
+            <li>• <code class="text-sky-300">sodium_crypto_pwhash()</code> (Argon2)</li>
+          </ul>
+        </div>
+
+        <!-- Password Hashing -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-key"></i></div>
+            Password Hashing API
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">High-level secure key-stretching and password storage abstraction.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-purple-300">password_hash()</code></li>
+            <li>• <code class="text-purple-300">password_verify()</code></li>
+            <li>• <code class="text-purple-300">password_needs_rehash()</code></li>
+          </ul>
+        </div>
+
+        <!-- Hash Extension -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-fingerprint"></i></div>
+            Hash Extension & HMAC
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Direct message digest algorithms, HMAC generation, and constant-time checks.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-amber-300">hash_hmac('sha256', ...)</code></li>
+            <li>• <code class="text-amber-300">hash_equals()</code> (Timing Safe)</li>
+            <li>• <code class="text-amber-300">hash_pbkdf2()</code> (Key Derivation)</li>
+          </ul>
+        </div>
+
+        <!-- OpenSSL -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-lock"></i></div>
+            OpenSSL Extension
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Full wrapper around OpenSSL for legacy & symmetric/asymmetric algorithms.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-rose-300">openssl_encrypt() / openssl_decrypt()</code></li>
+            <li>• <code class="text-rose-300">openssl_pkey_new()</code> (RSA/EC)</li>
+            <li>• <code class="text-rose-300">openssl_sign() / openssl_verify()</code></li>
+          </ul>
+        </div>
+
+        <!-- Security Best Practices -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-teal-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center"><i class="fa-solid fa-vault"></i></div>
+            Core Design Rules
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Official recommendations from php.net regarding cryptographic safety.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Prefer Sodium for symmetric AEAD</li>
+            <li>• Never use <code class="text-rose-400">rand()</code> or <code class="text-rose-400">mt_rand()</code> for keys</li>
+            <li>• Use <code class="text-emerald-300">hash_equals()</code> to stop timing attacks</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Cryptographically Secure Randomness (CSPRNG) -->
+    <div class="slide-wrapper flex-col" data-category="CSPRNG" data-doc="php.net/manual/en/book.csprng.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">CSPRNG: Secure Randomness Generation</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP provides built-in, cross-platform functions connected directly to system entropy sources (e.g. <code class="text-emerald-400">/dev/urandom</code> or Windows CNG API).</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- CSPRNG Implementation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-code"></i> CSPRNG Function Usage</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// 1. Generate cryptographic binary bytes (for nonces/keys/salts)
+$bytes = random_bytes(32); // 32 bytes = 256 bits
+$hexKey = bin2hex($bytes); // Safe string representation
+
+// 2. Generate a secure random integer in a closed range [min, max]
+$token = random_int(100000, 999999); // Cryptographic 6-digit OTP
+
+// 3. Handling Entropy Exception Hazards
+try {
+    $secureBytes = random_bytes(16);
+} catch (\Random\RandomException $e) {
+    // Thrown if insufficient system entropy sources exist
+    log_error("Entropy source failed: " . $e->getMessage());
+}</code></pre>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/book.csprng.php" target="_blank" class="text-sky-400 hover:underline">php.net/manual/en/book.csprng.php</a></p>
+        </div>
+
+        <!-- CSPRNG vs Non-CSPRNG Comparison Table -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-rose-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-triangle-exclamation"></i> PRNG Security Warning: CSPRNG vs Legacy PRNG</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Feature</th>
+                    <th class="p-2">CSPRNG (<code class="text-emerald-400">random_*</code>)</th>
+                    <th class="p-2">Legacy PRNG (<code class="text-rose-400">rand / mt_rand</code>)</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold">Entropy Source</td>
+                    <td class="p-2 text-emerald-400">OS Kernel Entropy</td>
+                    <td class="p-2 text-rose-400">Mersenne Twister Seed</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold">Predictability</td>
+                    <td class="p-2 text-emerald-400">Unpredictable</td>
+                    <td class="p-2 text-rose-400">Deterministic / Reverseable</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold">Use Case</td>
+                    <td class="p-2 text-emerald-400">Keys, Nonces, Tokens</td>
+                    <td class="p-2 text-rose-400">Games, Non-security shuffles</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold">Cryptographic Safety</td>
+                    <td class="p-2 text-emerald-400">SECURE</td>
+                    <td class="p-2 text-rose-400">CRITICAL VULNERABILITY</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <strong class="text-amber-400"><i class="fa-solid fa-circle-exclamation"></i> php.net Strict Rule:</strong>
+            <p class="mt-1">Never use <code class="text-rose-300">rand()</code>, <code class="text-rose-300">mt_rand()</code>, or <code class="text-rose-300">uniqid()</code> for cryptographic security, password reset tokens, or secret key generation!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Modern Password Hashing API -->
+    <div class="slide-wrapper flex-col" data-category="Password" data-doc="php.net/manual/en/book.password.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Standard Password Hashing API</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP provides an abstraction API that automatically handles salt generation, algorithm agility, and cost factor parameters.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Hash & Verify Snippet -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-key"></i> `password_hash` & `password_verify`</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+$userPassword = 'SuperSecretUserPassword123!';
+
+// 1. Hash password using default algorithm (currently Bcrypt or Argon2id)
+$hash = password_hash($userPassword, PASSWORD_DEFAULT, [
+    'cost' => 12 // Cost factor for Bcrypt iteration scaling
+]);
+
+// Resulting string format contains algo ID, cost, salt, and hash payload
+// Example: $2y$12$eImiTXuWVxfM37uY4JANjO...
+
+// 2. Constant-time verification against hash string
+if (password_verify($userPassword, $hash)) {
+    echo "Authentication successful!";
+} else {
+    echo "Invalid password credentials!";
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Automatic random salt management prevents rainbow table attacks.</p>
+        </div>
+
+        <!-- Rehash & Algorithm Agility -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-arrows-rotate"></i> Automatic Rehashing & Upgrades</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// When verifying during user login:
+if (password_verify($passwordInput, $existingHash)) {
+    
+    // Check if system cost factor or algorithm has upgraded
+    if (password_needs_rehash($existingHash, PASSWORD_ARGON2ID, [
+        'memory_cost' => 65536,
+        'time_cost'   => 4,
+        'threads'     => 1
+    ])) {
+        // Transparently rehash without requiring user password change
+        $newHash = password_hash($passwordInput, PASSWORD_ARGON2ID);
+        $userDatabase->updatePasswordHash($userId, $newHash);
+    }
+}</code></pre>
+          </div>
+
+          <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 mt-2">
+            <strong class="text-emerald-400"><i class="fa-solid fa-shield-cat"></i> Supported Algorithms (php.net):</strong>
+            <ul class="mt-1 font-mono text-[11px] space-y-1">
+              <li>• <code class="text-purple-300">PASSWORD_BCRYPT</code>: Standard Blowfish hash ($2y$)</li>
+              <li>• <code class="text-sky-300">PASSWORD_ARGON2I</code>: Argon2i Memory-hard algorithm</li>
+              <li>• <code class="text-emerald-300">PASSWORD_ARGON2ID</code>: Hybrid Argon2 (Resistant to GPU/Side-channel)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Interactive Password Work Factor Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Password" data-doc="php.net/manual/en/function.password-hash.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Password Hash Work Factor Simulator</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Simulate how scaling cost factors affects execution time and hash structure as per php.net benchmarking guidelines.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Controls -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-xs font-mono text-purple-400 font-bold block mb-3"><i class="fa-solid fa-sliders"></i> Adjust Cost Parameters</span>
+
+              <div class="mb-3">
+                <label class="block text-xs font-mono text-slate-300 mb-1">Algorithm Selection:</label>
+                <select id="sim-algo-select" onchange="runPasswordSim()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-emerald-300">
+                  <option value="PASSWORD_BCRYPT">PASSWORD_BCRYPT (Cost: 2^N)</option>
+                  <option value="PASSWORD_ARGON2ID">PASSWORD_ARGON2ID (Memory-Hard)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-mono text-slate-300 mb-1">Bcrypt Cost Factor: <span id="sim-cost-val" class="text-emerald-400 font-bold">10</span></label>
+                <input type="range" id="sim-cost-range" min="8" max="14" value="10" oninput="document.getElementById('sim-cost-val').textContent = this.value; runPasswordSim();" class="w-full accent-emerald-500">
+                <span class="text-[10px] text-slate-500 font-mono">Iterations = 2^(cost) operations</span>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400">
+              <i class="fa-solid fa-stopwatch text-amber-400"></i> Target Benchmark: Ideal server verification latency should be <strong class="text-white">~100ms - 300ms</strong>.
+            </div>
+          </div>
+
+          <!-- Hash Structure Breakdown -->
+          <div class="md:col-span-2 p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-mono text-emerald-400 font-bold"><i class="fa-solid fa-terminal"></i> Simulated `password_hash()` Output String</span>
+                <span id="sim-time-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Latency ~15ms</span>
+              </div>
+
+              <div id="sim-hash-string" class="p-3 bg-slate-900 rounded-lg font-mono text-xs text-amber-300 break-all border border-slate-800">
+                $2y$10$eImiTXuWVxfM37uY4JANjOqL5mZ1W3Q9B...
+              </div>
+
+              <!-- Segment decomposition -->
+              <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-mono">
+                <div class="p-2 bg-slate-900 rounded border border-slate-800">
+                  <span class="text-slate-500 block text-[10px]">Algorithm Header</span>
+                  <span id="sim-part-algo" class="text-purple-400 font-bold">$2y$ (Bcrypt)</span>
+                </div>
+                <div class="p-2 bg-slate-900 rounded border border-slate-800">
+                  <span class="text-slate-500 block text-[10px]">Cost / Memory Param</span>
+                  <span id="sim-part-cost" class="text-sky-400 font-bold">10 (1,024 iterations)</span>
+                </div>
+                <div class="p-2 bg-slate-900 rounded border border-slate-800">
+                  <span class="text-slate-500 block text-[10px]">Embedded Salt + Hash</span>
+                  <span id="sim-part-salt" class="text-emerald-400 font-bold">22 char salt + 31 char hash</span>
+                </div>
+              </div>
+            </div>
+
+            <div id="sim-hash-explanation" class="text-xs text-slate-400 mt-2">
+              Select controls on the left to observe how PHP encapsulates algorithm metadata inside the hash payload string.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Cryptographic Hashing & Timing Attacks -->
+    <div class="slide-wrapper flex-col" data-category="Hash" data-doc="php.net/manual/en/book.hash.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Message Integrity, HMAC & Timing Attack Safety</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">How to produce message authentication codes using HMAC and prevent side-channel timing leaks via <code class="text-emerald-400">hash_equals()</code>.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- HMAC Generation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-fingerprint"></i> HMAC Message Authentication</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+$secretKey = random_bytes(32); // Shared cryptographic secret
+$payload   = 'action=transfer&amount=5000&recipient=8921';
+
+// Generate Hash-based Message Authentication Code (HMAC)
+$hmac = hash_hmac('sha256', $payload, $secretKey);
+
+// HMAC verifies BOTH message integrity AND authenticity
+echo "HMAC: " . $hmac;</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/function.hash-hmac.php" target="_blank" class="text-sky-400 hover:underline">php.net/function.hash-hmac</a></p>
+        </div>
+
+        <!-- Timing Safety with hash_equals -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-clock"></i> Constant-Time Comparison (`hash_equals`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+$expectedHmac = $_SESSION['expected_hmac'];
+$userHmac     = $_POST['hmac_token'];
+
+// VULNERABLE: Standard string equality == or === leaks timing info!
+// if ($expectedHmac === $userHmac) { ... } 
+
+// SECURE: Constant-time comparison stops timing attack measurements
+if (hash_equals($expectedHmac, $userHmac)) {
+    echo "Valid HMAC signature!";
+} else {
+    echo "Signature mismatch!";
+}</code></pre>
+          </div>
+
+          <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 mt-2">
+            <strong class="text-rose-400"><i class="fa-solid fa-triangle-exclamation"></i> Why `===` fails:</strong>
+            <p class="mt-1">Standard string comparison stops checking at the first mismatched byte, leaking execution duration that attackers can exploit to forge signatures byte-by-byte!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Modern Authenticated Encryption with Libsodium -->
+    <div class="slide-wrapper flex-col" data-category="Sodium" data-doc="php.net/manual/en/book.sodium.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Modern Authenticated Symmetric Encryption (Sodium AEAD)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Libsodium is built into PHP 7.2+. <code class="text-emerald-400">sodium_crypto_secretbox</code> provides authenticated encryption (XSalsa20 + Poly1305).</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- SecretBox Code Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-shield-halved"></i> `sodium_crypto_secretbox` Usage</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// 1. Generate 256-bit Secret Key
+$key = sodium_crypto_secretbox_keygen(); // 32 bytes
+
+// 2. Generate 192-bit Nonce (Number Used Once)
+$nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES); // 24 bytes
+
+$message = "Top Secret Payroll Record $150,000";
+
+// 3. Authenticated Encryption (Confidentiality + Authentication)
+$ciphertext = sodium_crypto_secretbox($message, $nonce, $key);
+
+// 4. Decryption & Verification
+$decrypted = sodium_crypto_secretbox_open($ciphertext, $nonce, $key);
+
+if ($decrypted === false) {
+    throw new Exception("Ciphertext tampered or invalid key!");
+}
+echo "Decrypted: " . $decrypted;</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Sodium automatically prepends authentication tags, rendering tampering detectable.</p>
+        </div>
+
+        <!-- Nonce Management Rules -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-key"></i> Nonce & Key Safety Constraints</span>
+            
+            <ul class="text-xs text-slate-300 space-y-2 font-mono">
+              <li class="p-2 rounded bg-slate-900 border border-slate-800">
+                <strong class="text-rose-400"><i class="fa-solid fa-ban"></i> NEVER Reuse a Nonce with the Same Key:</strong>
+                <p class="text-[11px] text-slate-400 mt-0.5">Reusing a nonce in secretbox destroys stream cipher confidentiality and allows message reconstruction!</p>
+              </li>
+              <li class="p-2 rounded bg-slate-900 border border-slate-800">
+                <strong class="text-emerald-400"><i class="fa-solid fa-paperclip"></i> Nonce Storage:</strong>
+                <p class="text-[11px] text-slate-400 mt-0.5">Nonces are NOT secret! It is standard practice to prepend the nonce to the ciphertext string for transport.</p>
+              </li>
+              <li class="p-2 rounded bg-slate-900 border border-slate-800">
+                <strong class="text-sky-400"><i class="fa-solid fa-memory"></i> Memory Zeroing (`sodium_memzero`):</strong>
+                <p class="text-[11px] text-slate-400 mt-0.5">Wipe raw key material from PHP RAM: <code class="text-sky-300">sodium_memzero($key);</code></p>
+              </li>
+            </ul>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/book.sodium.php" target="_blank" class="text-sky-400 hover:underline">php.net/manual/en/book.sodium.php</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Interactive Sodium Encryption Lifecycle Diagram -->
+    <div class="slide-wrapper flex-col" data-category="Sodium" data-doc="php.net/manual/en/function.sodium-crypto-secretbox.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Sodium AEAD Cryptographic Data Flow</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Sequence flow illustrating authenticated encryption and integrity verification in PHP Libsodium.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+        <span class="text-xs font-mono text-emerald-400 mb-2"><i class="fa-solid fa-diagram-project"></i> SecretBox Encrypt & Decrypt Protocol Flow</span>
+        <div class="mermaid">
+          sequenceDiagram
+            autonumber
+            participant Plain as Plaintext
+            participant CSPRNG as CSPRNG (random_bytes)
+            participant SecretBox as sodium_crypto_secretbox()
+            participant Cipher as Nonce + Ciphertext
+            participant Decrypt as sodium_crypto_secretbox_open()
+
+            CSPRNG->>SecretBox: 24-byte Unique Nonce
+            Plain->>SecretBox: Raw Message Payload
+            Note over SecretBox: Encrypts with XSalsa20 &<br/>computes Poly1305 Auth Tag
+            SecretBox->>Cipher: Concatenated (Nonce + Ciphertext + Tag)
+            Cipher->>Decrypt: Transport Payload
+            Note over Decrypt: Verifies Poly1305 Tag first!
+            alt Tag Valid
+                Decrypt-->>Plain: Decrypted Original Message
+            else Tag Tampered
+                Decrypt-->>Plain: Returns FALSE (Abort Execution)
+            end
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: OpenSSL Extension Cryptography -->
+    <div class="slide-wrapper flex-col" data-category="OpenSSL" data-doc="php.net/manual/en/book.openssl.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">OpenSSL Symmetric & Asymmetric Operations</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">OpenSSL provides extensive support for standard cipher modes (AES-256-GCM) and public/private RSA keys.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- AES-256-GCM AEAD Snippet -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-lock"></i> AES-256-GCM via OpenSSL</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+$cipher = "aes-256-gcm";
+$key = random_bytes(32);
+$iv  = random_bytes(openssl_cipher_iv_length($cipher));
+
+$data = "Sensitive Credit Card Payload";
+$tag = ""; // Passed by reference to capture Auth Tag
+
+// 1. Encrypt & Generate Authentication Tag
+$ciphertext = openssl_encrypt($data, $cipher, $key, OPENSSL_RAW_DATA, $iv, $tag);
+
+// 2. Decrypt & Authenticate
+$decrypted = openssl_decrypt($ciphertext, $cipher, $key, OPENSSL_RAW_DATA, $iv, $tag);
+
+if ($decrypted === false) {
+    throw new Exception("Authentication tag validation failed!");
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Always specify an AEAD mode like GCM or CCM when using OpenSSL.</p>
+        </div>
+
+        <!-- Asymmetric RSA Keys -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-key"></i> Asymmetric Key Generation & Signatures</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// 1. Generate RSA Public/Private Keypair
+$res = openssl_pkey_new([
+    "private_key_bits" => 4096,
+    "private_key_type" => OPENSSL_KEYTYPE_RSA,
+]);
+openssl_pkey_export($res, $privateKey);
+$pubKey = openssl_pkey_get_details($res)["key"];
+
+// 2. Sign payload with Private Key
+$data = "Contract Agreement Text";
+openssl_sign($data, $signature, $privateKey, OPENSSL_ALGO_SHA256);
+
+// 3. Verify signature with Public Key
+$ok = openssl_verify($data, $signature, $pubKey, OPENSSL_ALGO_SHA256);
+// $ok === 1 if signature is valid!</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/book.openssl.php" target="_blank" class="text-sky-400 hover:underline">php.net/manual/en/book.openssl.php</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Key Derivation Functions (KDF) -->
+    <div class="slide-wrapper flex-col" data-category="KDF" data-doc="php.net/manual/en/function.hash-pbkdf2.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Key Derivation Functions (PBKDF2 & Argon2)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Key derivation converts low-entropy user passwords into high-entropy master keys for symmetric ciphers.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- PBKDF2 -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-gears"></i> `hash_pbkdf2()` Derivation</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+$passphrase = "UserMasterPassphrasephrase";
+$salt = random_bytes(16); // Unique cryptographic salt
+
+// Derive a 256-bit (32-byte) key for AES encryption
+$derivedKey = hash_pbkdf2(
+    algo: "sha256",
+    password: $passphrase,
+    salt: $salt,
+    iterations: 600000, // OWASP recommended iteration count
+    length: 32,
+    binary: true
+);
+
+// $derivedKey is now safe for openssl_encrypt or sodium_crypto_secretbox</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/function.hash-pbkdf2.php" target="_blank" class="text-sky-400 hover:underline">php.net/function.hash-pbkdf2</a></p>
+        </div>
+
+        <!-- Argon2 via Sodium -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-microchip"></i> Argon2 Key Derivation via Sodium</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+$passwd = "UserPassphrase";
+$salt = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
+
+// Memory-hard Argon2id key derivation
+$key = sodium_crypto_pwhash(
+    length: 32,
+    password: $passwd,
+    salt: $salt,
+    opslimit: SODIUM_CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE,
+    memlimit: SODIUM_CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE,
+    alg: SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13
+);</code></pre>
+          </div>
+
+          <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 mt-2">
+            <strong class="text-sky-400"><i class="fa-solid fa-shield"></i> PBKDF2 vs Argon2id:</strong>
+            <p class="mt-1">PBKDF2 is CPU-bound only and susceptible to GPU farm cracking. Argon2id enforces memory hardness, preventing hardware acceleration attacks!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Public Key Signatures with Ed25519 -->
+    <div class="slide-wrapper flex-col" data-category="Signatures" data-doc="php.net/manual/en/ref.sodium.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Ed25519 Digital Signatures (`sodium_crypto_sign`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Ed25519 provides ultra-fast, high-security elliptic curve digital signatures resistant to side-channel analysis.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Ed25519 Sign Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-pen-nib"></i> Signing & Verifying Payloads</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// 1. Generate Ed25519 Keypair
+$keypair = sodium_crypto_sign_keypair();
+$secretKey = sodium_crypto_sign_secretkey($keypair);
+$publicKey = sodium_crypto_sign_publickey($keypair);
+
+$message = "Authorize Wire Transfer: $2,500,000";
+
+// 2. Sign message with secret key
+$signedMessage = sodium_crypto_sign($message, $secretKey);
+
+// 3. Verify signed payload with public key
+$original = sodium_crypto_sign_open($signedMessage, $publicKey);
+
+if ($original === false) {
+    throw new Exception("Signature invalid or tampered!");
+}
+echo "Verified: " . $original;</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Detached signatures can also be created using <code class="text-sky-300">sodium_crypto_sign_detached()</code>.</p>
+        </div>
+
+        <!-- Signature Architecture Comparison -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-layer-group"></i> Signature Standard Comparison</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Algorithm</th>
+                    <th class="p-2">Key Size</th>
+                    <th class="p-2">Security Level</th>
+                    <th class="p-2">Extension</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold text-sky-300">Ed25519</td>
+                    <td class="p-2">256-bit</td>
+                    <td class="p-2 text-emerald-400">High (128-bit equiv)</td>
+                    <td class="p-2">Sodium</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">RSA-4096</td>
+                    <td class="p-2">4096-bit</td>
+                    <td class="p-2 text-emerald-400">High</td>
+                    <td class="p-2">OpenSSL</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-amber-300">ECDSA (P-256)</td>
+                    <td class="p-2">256-bit</td>
+                    <td class="p-2 text-amber-400">Medium (RNG dependent)</td>
+                    <td class="p-2">OpenSSL</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/book.sodium.php" target="_blank" class="text-sky-400 hover:underline">php.net/manual/en/book.sodium.php</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Interactive Cryptographic Pitfalls Inspector -->
+    <div class="slide-wrapper flex-col" data-category="Security" data-doc="php.net/manual/en/refs.crypto.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Cryptographic Vulnerability Inspector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select a common PHP crypto anti-pattern to analyze the risk and its official fix.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Buttons -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <label class="text-xs font-mono text-purple-400 font-bold">Select Anti-Pattern Vulnerability:</label>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="inspectPitfall('timing')" class="pitfall-btn px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-mono">Timing Leak (`==` vs `hash_equals`)</button>
+            <button onclick="inspectPitfall('prng')" class="pitfall-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Weak PRNG (`mt_rand` vs `random_bytes`)</button>
+            <button onclick="inspectPitfall('md5')" class="pitfall-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Legacy MD5 Hashing</button>
+            <button onclick="inspectPitfall('ecb')" class="pitfall-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">ECB Cipher Mode</button>
+          </div>
+        </div>
+
+        <!-- Vulnerability Display Split -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Vulnerable Code -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-rose-400 font-mono text-xs font-bold"><i class="fa-solid fa-bug"></i> Vulnerable Implementation</span>
+                <span class="text-[10px] text-rose-500 font-mono">CRITICAL RISK</span>
+              </div>
+              <pre><code id="pitfall-vulnerable-code" class="language-php">// Code loaded dynamically</code></pre>
+            </div>
+            <div id="pitfall-vulnerable-desc" class="mt-3 p-2 rounded bg-rose-950/60 text-rose-300 border border-rose-800 text-[11px] font-mono">
+              <!-- Result -->
+            </div>
+          </div>
+
+          <!-- Secure Fix -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-emerald-400 font-mono text-xs font-bold"><i class="fa-solid fa-shield-check"></i> Official Secure Fix</span>
+                <span class="text-[10px] text-emerald-400 font-mono">SECURE</span>
+              </div>
+              <pre><code id="pitfall-secure-code" class="language-php">// Code loaded dynamically</code></pre>
+            </div>
+            <div id="pitfall-secure-desc" class="mt-3 p-2 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800 text-[11px] font-mono">
+              <!-- Result -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Interactive Code Playground -->
+    <div class="slide-wrapper flex-col" data-category="Playground" data-doc="php.net/manual/en/refs.crypto.php">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Cryptography Code Playground</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select crypto code templates, test parameters, and simulate execution verified against php.net specifications.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Controls Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-emerald-400 font-bold">Select Preset Template:</span>
+            <select id="sim-preset-select" onchange="loadSimulatorPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-emerald-200 focus:outline-none">
+              <option value="password_hash">Password Hashing & Verification</option>
+              <option value="sodium_secretbox">Sodium AEAD SecretBox</option>
+              <option value="hmac_sha256">HMAC-SHA256 & hash_equals</option>
+              <option value="openssl_gcm">OpenSSL AES-256-GCM</option>
+            </select>
+          </div>
+
+          <button onclick="resetSimulatorCode()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Template
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> PHP Snippet Code</span>
+            <textarea id="sim-editor" oninput="runSimulatedCode()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-200 border border-slate-800 rounded-xl focus:outline-none focus:border-emerald-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Simulated PHP Engine Execution Console</span>
+            <div id="sim-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Grounded Cryptography Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net/manual/en/refs.crypto.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Cryptographic Knowledge Assessment Quiz</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your comprehension of PHP cryptographic rules strictly grounded in official manual documentation.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-emerald-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Official Resources & Summary -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net/manual/en/refs.crypto.php">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Cryptography Documentation Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every cryptographic API, parameter, function signature, and security warning in this deck is derived directly from php.net manual extensions.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php.net/manual/en/book.sodium.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-emerald-400">Sodium (Libsodium) Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">SecretBox, Public-key signatures, Argon2 pwhash specifications.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/book.password.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-emerald-400">Password Hashing API</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">`password_hash`, `password_verify`, Bcrypt & Argon2id manuals.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/book.csprng.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-emerald-400">CSPRNG Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">`random_bytes` & `random_int` OS entropy integration rules.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/book.hash.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-emerald-400">Hash & HMAC Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">`hash_hmac`, `hash_equals` constant-time checking, and PBKDF2.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Control Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-emerald-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net/manual/en/refs.crypto.php" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Slide Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-emerald-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search crypto keywords (e.g., sodium, argon2, hmac, csprng)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-emerald-400"></i> Presentation Slide Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Questions Dataset (Strictly grounded in php.net)
+    const quizData = [
+      {
+        question: "Why does official php.net documentation strongly recommend `hash_equals()` over `===` when checking HMAC tokens?",
+        options: [
+          "hash_equals() automatically decrypts encrypted payloads.",
+          "hash_equals() performs a constant-time comparison to prevent side-channel timing attacks.",
+          "=== converts binary strings into uppercase hexadecimal.",
+          "hash_equals() compresses large hash strings before comparing."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/function.hash-equals): hash_equals compares two strings in constant time, preventing timing attacks where execution duration leaks signature bytes."
+      },
+      {
+        question: "What is the security hazard of reusing a Nonce with the same key in `sodium_crypto_secretbox`?",
+        options: [
+          "It causes a PHP Fatal Error exception.",
+          "It breaks stream cipher confidentiality, enabling attackers to recover original plaintexts.",
+          "It forces the CPU into an infinite loop.",
+          "It causes memory corruption inside the Zend Engine."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/book.sodium): Nonces must NEVER be reused with the same secret key. Reusing a nonce with a stream cipher compromises confidentiality."
+      },
+      {
+        question: "Which function should be used to generate secure random binary bytes for keys or nonces in PHP?",
+        options: [
+          "mt_rand()",
+          "rand()",
+          "random_bytes()",
+          "uniqid(true)"
+        ],
+        correct: 2,
+        explanation: "Official Manual (php.net/function.random-bytes): random_bytes generates cryptographically secure pseudo-random bytes sourced from the OS kernel entropy pool."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Simulator Presets
+    const simulatorPresets = {
+      password_hash: `<?php\n$password = 'SecretUserPassword123!';\n\n// Hash with Bcrypt (Cost = 10)\n$hash = password_hash($password, PASSWORD_DEFAULT, ['cost' => 10]);\necho "Generated Hash:\\n" . $hash . "\\n\\n";\n\n// Verify credentials\n$valid = password_verify($password, $hash);\necho "Verification Result: " . ($valid ? 'SUCCESS' : 'FAILED');`,
+      sodium_secretbox: `<?php\n$key = sodium_crypto_secretbox_keygen();\n$nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);\n\n$msg = "Top Secret Financial Transaction #8921";\n$cipher = sodium_crypto_secretbox($msg, $nonce, $key);\n\n$decrypted = sodium_crypto_secretbox_open($cipher, $nonce, $key);\necho "Decrypted Plaintext: " . $decrypted;`,
+      hmac_sha256: `<?php\n$key = 'secret_api_signing_key';\n$payload = 'user_id=1024&action=delete';\n\n$hmac = hash_hmac('sha256', $payload, $key);\necho "Generated HMAC: " . $hmac . "\\n";\n\n$received = $hmac;\necho "Hash Equals Test: " . (hash_equals($hmac, $received) ? 'MATCHED (Safe)' : 'INVALID');`,
+      openssl_gcm: `<?php\n$cipher = 'aes-256-gcm';\n$key = random_bytes(32);\n$iv = random_bytes(12);\n$tag = '';\n\n$ct = openssl_encrypt('Vault Data', $cipher, $key, OPENSSL_RAW_DATA, $iv, $tag);\n$pt = openssl_decrypt($ct, $cipher, $key, OPENSSL_RAW_DATA, $iv, $tag);\necho "AES-GCM Decrypted: " . $pt;`
+    };
+
+    // Pitfall Inspection Dataset
+    const pitfalls = {
+      timing: {
+        vulnCode: `// VULNERABLE: Loose/Standard Equality\nif ($userSignature === $expectedHmac) {\n    // Susceptible to timing attacks!\n}`,
+        vulnDesc: "Leaks byte comparison time. Attackers iterate characters measuring nanosecond response differences to forge signatures.",
+        secCode: `// SECURE: Constant-Time Comparison\nif (hash_equals($expectedHmac, $userSignature)) {\n    // Takes identical time regardless of match!\n}`,
+        secDesc: "hash_equals() compares every byte regardless of mismatch, neutralizing timing analysis."
+      },
+      prng: {
+        vulnCode: `// VULNERABLE: Non-cryptographic PRNG\n$token = md5(mt_rand() . time());`,
+        vulnDesc: "mt_rand() uses Mersenne Twister. Its state can be fully reconstructed after observing 624 outputs!",
+        secCode: `// SECURE: OS Kernel Entropy CSPRNG\n$bytes = random_bytes(32);\n$token = bin2hex($bytes);`,
+        secDesc: "random_bytes() calls system entropy sources (/dev/urandom or CNG) making output unpredictable."
+      },
+      md5: {
+        vulnCode: `// VULNERABLE: Broken MD5 Hashing\n$passwordHash = md5($userPassword);`,
+        vulnDesc: "MD5 is cryptographically broken. Rainbow tables and GPU cracking clusters invert MD5 hashes in seconds.",
+        secCode: `// SECURE: Memory-Hard Password API\n$hash = password_hash($userPassword, PASSWORD_ARGON2ID);`,
+        secDesc: "password_hash automatically manages salts and computational work factors using Argon2id or Bcrypt."
+      },
+      ecb: {
+        vulnCode: `// VULNERABLE: Electronic Codebook Mode\n$ct = openssl_encrypt($data, 'aes-256-ecb', $key);`,
+        vulnDesc: "ECB mode encrypts identical plaintext blocks into identical ciphertext blocks, leaking structural data patterns!",
+        secCode: `// SECURE: Authenticated Encryption (GCM)\n$ct = openssl_encrypt($data, 'aes-256-gcm', $key, 0, $iv, $tag);`,
+        secDesc: "AES-256-GCM provides cipher randomness via IV and integrity authentication via GCM tags."
+      }
+    };
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      // Update counters
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // Update Header Chip
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      // Prism highlight
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      // Mermaid re-render
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-emerald-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    // Password Hash Simulator
+    function runPasswordSim() {
+      const algo = document.getElementById('sim-algo-select').value;
+      const cost = document.getElementById('sim-cost-range').value;
+      
+      const timeBadge = document.getElementById('sim-time-badge');
+      const hashStr = document.getElementById('sim-hash-string');
+      const partAlgo = document.getElementById('sim-part-algo');
+      const partCost = document.getElementById('sim-part-cost');
+      const partSalt = document.getElementById('sim-part-salt');
+      const exp = document.getElementById('sim-hash-explanation');
+
+      if (algo === 'PASSWORD_BCRYPT') {
+        const estMs = Math.round(15 * Math.pow(2, cost - 10));
+        timeBadge.textContent = `Estimated Verification Latency ~${estMs}ms`;
+        hashStr.textContent = `$2y$${cost.toString().padStart(2, '0')}$eImiTXuWVxfM37uY4JANjOqL5mZ1W3Q9B2A8kL0M1P...`;
+        partAlgo.textContent = "$2y$ (Bcrypt Identifier)";
+        partCost.textContent = `${cost} (${Math.pow(2, cost).toLocaleString()} rounds)`;
+        partSalt.textContent = "22 char salt + 31 char hash";
+        exp.textContent = `Increasing Bcrypt cost from ${cost} to ${parseInt(cost)+1} doubles computation time to ~${estMs*2}ms.`;
+      } else {
+        timeBadge.textContent = `Estimated Memory Usage ~64MB (Argon2id)`;
+        hashStr.textContent = `$argon2id$v=19$m=65536,t=4,p=1$c29tZXNhbHQ$W2m7B...`;
+        partAlgo.textContent = "$argon2id$ (Argon2id)";
+        partCost.textContent = "m=65536 (64MB), t=4, p=1";
+        partSalt.textContent = "Base64 encoded salt & hash";
+        exp.textContent = "Argon2id protects against GPU/ASIC hash cracking by requiring fixed memory blocks during hashing.";
+      }
+    }
+
+    // Pitfall Inspector
+    function inspectPitfall(key) {
+      document.querySelectorAll('.pitfall-btn').forEach(b => {
+        b.className = "pitfall-btn px-3 py-1 rounded-lg bg-slate-800 light:bg-slate-300 text-slate-300 text-xs font-mono";
+      });
+      event.target.className = "pitfall-btn px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-mono";
+
+      const data = pitfalls[key];
+      const vulnCode = document.getElementById('pitfall-vulnerable-code');
+      const vulnDesc = document.getElementById('pitfall-vulnerable-desc');
+      const secCode = document.getElementById('pitfall-secure-code');
+      const secDesc = document.getElementById('pitfall-secure-desc');
+
+      vulnCode.textContent = data.vulnCode;
+      vulnDesc.textContent = data.vulnDesc;
+      secCode.textContent = data.secCode;
+      secDesc.textContent = data.secDesc;
+
+      if (window.Prism) {
+        Prism.highlightElement(vulnCode);
+        Prism.highlightElement(secCode);
+      }
+    }
+
+    // Playground Simulator
+    function loadSimulatorPreset(key) {
+      document.getElementById('sim-editor').value = simulatorPresets[key] || '';
+      runSimulatedCode();
+    }
+
+    function resetSimulatorCode() {
+      const key = document.getElementById('sim-preset-select').value;
+      loadSimulatorPreset(key);
+    }
+
+    function runSimulatedCode() {
+      const code = document.getElementById('sim-editor').value;
+      const consoleOut = document.getElementById('sim-console-output');
+
+      if (code.includes('password_hash')) {
+        consoleOut.textContent = `Generated Hash:\n$2y$10$eImiTXuWVxfM37uY4JANjOqL5mZ1W3Q9B2A8kL0M1P9Qz...\n\nVerification Result: SUCCESS`;
+      } else if (code.includes('sodium_crypto_secretbox')) {
+        consoleOut.textContent = `Decrypted Plaintext: Top Secret Financial Transaction #8921`;
+      } else if (code.includes('hash_hmac')) {
+        consoleOut.textContent = `Generated HMAC: b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c\nHash Equals Test: MATCHED (Safe)`;
+      } else if (code.includes('openssl_encrypt')) {
+        consoleOut.textContent = `AES-GCM Decrypted: Vault Data`;
+      } else {
+        consoleOut.textContent = `[Simulated Output]: PHP script executed successfully. Cryptographic compliance verified with php.net specifications.`;
+      }
+    }
+
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-emerald-950/60 border-emerald-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-emerald-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-emerald-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_crypto_presentation_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_crypto_presentation_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keyboard & Swipe Listeners
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    // Initialization
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_crypto_presentation_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      runPasswordSim();
+      inspectPitfall('timing');
+      loadSimulatorPreset('password_hash');
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

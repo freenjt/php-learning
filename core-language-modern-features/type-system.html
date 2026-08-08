@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PHP Type System Specification & Interactive Visual Guide</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- D3.js for Interactive Type Hierarchy Tree -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+
+  <!-- Mermaid.js for Flowcharts -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              rose: '#f43f5e',
+              indigo: '#6366f1'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.92);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Prism Styling Overrides */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.83rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Slide Transition Animations */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 35px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+
+    /* D3 Tree node styling */
+    .node circle {
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .node text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+    .link {
+      fill: none;
+      stroke-width: 1.5px;
+      transition: all 0.3s ease;
+    }
+  </style>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#8b5cf6',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 via-purple-600 to-sky-500 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-brands fa-php text-lg"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Type System <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 light:text-indigo-700 border border-indigo-500/30 font-mono">Engine Manual 8.0 - 8.4+</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-indigo-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">14</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Directory Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-indigo-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Manual Grounding Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-indigo-950/50 light:bg-indigo-100 border border-indigo-500/30 text-indigo-300 light:text-indigo-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Official php.net Spec: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/manual/en/language.types.php</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Overview -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="php.net/manual/en/language.types.php">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-indigo-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-brands fa-php text-6xl text-indigo-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        PHP's Deep Type System <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-sky-400">Engine Mechanics & Visual Specification</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-3xl mx-auto mb-8 font-light leading-relaxed">
+        An exhaustive, interactive exploration of PHP 8.0+ typing rules. Sourced exclusively from the official php.net manual, covering type declarations, strict vs. coercive mode, union/intersection/DNF types, subtyping variance, type juggling rules, and `TypeError` handling.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Grounded in php.net Manual
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-microchip text-indigo-400"></i> Live Interactive Type Simulator
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-diagram-project text-sky-400"></i> D3.js Type Hierarchy Tree
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold shadow-lg shadow-indigo-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Explore Type System Engine</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Interactive Type Hierarchy Tree -->
+    <div class="slide-wrapper flex-col" data-category="Hierarchy" data-doc="php.net/manual/en/language.types.type-system.php">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP Type Hierarchy & Subtyping System</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Interactive D3.js tree: <code class="text-indigo-300">mixed</code> acts as the Top type (accepts all values). Click nodes to inspect specifications from php.net.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- Interactive D3 Canvas -->
+        <div class="lg:col-span-2 glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between h-[450px]">
+          <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-2 mb-2">
+            <span class="text-xs font-mono text-indigo-400 font-bold"><i class="fa-solid fa-sitemap mr-1"></i> Interactive Type Tree (D3.js)</span>
+            <span class="text-[10px] font-mono text-slate-400">Click nodes to inspect metadata</span>
+          </div>
+          <div id="d3-type-tree" class="w-full h-full overflow-hidden flex items-center justify-center"></div>
+        </div>
+
+        <!-- Node Metadata Inspector Panel -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between h-[450px]">
+          <div>
+            <div class="flex items-center space-x-2 border-b border-slate-800 light:border-slate-200 pb-2 mb-3">
+              <i class="fa-solid fa-circle-info text-sky-400 text-sm"></i>
+              <span id="type-node-title" class="font-bold text-white light:text-slate-900 text-base font-mono">Select a Type Node</span>
+            </div>
+            <div id="type-node-body" class="text-xs text-slate-300 light:text-slate-700 leading-relaxed space-y-3">
+              <p>PHP has a gradual, dynamic type system with native type declarations since PHP 7.0+ and full subtyping capabilities in PHP 8.0+.</p>
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px] text-indigo-300">
+                Top Type: mixed (Value of any type)<br>
+                Bottom Type: never (No value returned)
+              </div>
+            </div>
+          </div>
+
+          <div id="type-node-doc" class="text-[11px] font-mono text-slate-500 border-t border-slate-800 pt-2">
+            Reference: <a href="https://www.php.net/manual/en/language.types.type-system.php" target="_blank" class="text-sky-400 hover:underline">php.net/language.types.type-system</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Type Declarations & Subtyping Variance -->
+    <div class="slide-wrapper flex-col" data-category="Declarations" data-doc="php.net/manual/en/language.types.declarations.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Type Declarations & Variance Rules</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Type declarations apply to parameters, return values, class properties, and class constants (PHP 8.3+). Covariance and Contravariance govern inheritance rules.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Declarations Code Examples -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-indigo-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Type Declaration Locations</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+
+class UserStore {
+    // 1. Class Constant Type Declaration (PHP 8.3+)
+    public const string DRIVER = 'pdo_mysql';
+
+    // 2. Property Type Declaration
+    private readonly int $id;
+
+    // 3. Parameter and Return Type Declarations
+    public function findUser(int $id, ?string $tenant): ?User {
+        return null;
+    }
+}</code></pre>
+          </div>
+        </div>
+
+        <!-- Variance Rules Card -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-arrows-split-up-and-left"></i> Subtyping Variance Specifications</span>
+            
+            <div class="space-y-3 text-xs">
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <div class="font-bold text-emerald-400 font-mono mb-1">Return Types are Covariant (Narrower)</div>
+                <p class="text-slate-300 text-[11px] leading-relaxed">A child class method may return a MORE SPECIFIC type than its parent method (e.g. parent returns <code class="text-purple-300">Animal</code>, child returns <code class="text-purple-300">Dog</code>).</p>
+              </div>
+
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <div class="font-bold text-sky-400 font-mono mb-1">Parameter Types are Contravariant (Wider)</div>
+                <p class="text-slate-300 text-[11px] leading-relaxed">A child class method parameter may accept a MORE GENERAL type than its parent (e.g. parent accepts <code class="text-purple-300">Dog</code>, child accepts <code class="text-purple-300">Animal</code>).</p>
+              </div>
+
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <div class="font-bold text-amber-400 font-mono mb-1">Property Types are Invariant</div>
+                <p class="text-slate-300 text-[11px] leading-relaxed">Class property types MUST match exactly upon inheritance to preserve read/write type consistency.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Coercive vs. Strict Typing -->
+    <div class="slide-wrapper flex-col" data-category="Type Modes" data-doc="php.net/manual/en/language.types.declarations.php#language.types.declarations.strict">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Coercive Typing vs. Strict Typing</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">By default, PHP operates in Coercive Typing Mode. Adding <code class="text-indigo-300">declare(strict_types=1);</code> forces strict scalar type checking for function callers.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Comparative Table -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-indigo-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-table"></i> Engine Behavior Comparison</span>
+            
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                <tr>
+                  <th class="p-2">Input -> Target</th>
+                  <th class="p-2">Coercive Mode</th>
+                  <th class="p-2">Strict Mode (`strict_types=1`)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                <tr>
+                  <td class="p-2 text-purple-300">`"42"` -> `int`</td>
+                  <td class="p-2 text-emerald-400">Coerces to `42`</td>
+                  <td class="p-2 text-rose-400">Throws `TypeError`</td>
+                </tr>
+                <tr>
+                  <td class="p-2 text-purple-300">`1` -> `float`</td>
+                  <td class="p-2 text-emerald-400">Coerces to `1.0`</td>
+                  <td class="p-2 text-emerald-400">Accepted (`int` -> `float` allowed)</td>
+                </tr>
+                <tr>
+                  <td class="p-2 text-purple-300">`1.5` -> `int`</td>
+                  <td class="p-2 text-amber-400">Coerces to `1` (Deprecated warning)</td>
+                  <td class="p-2 text-rose-400">Throws `TypeError`</td>
+                </tr>
+                <tr>
+                  <td class="p-2 text-purple-300">`"hello"` -> `int`</td>
+                  <td class="p-2 text-rose-400">Throws `TypeError`</td>
+                  <td class="p-2 text-rose-400">Throws `TypeError`</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-400">
+            <strong class="text-amber-400"><i class="fa-solid fa-lightbulb"></i> Scope Rule:</strong>
+            Strict typing applies to function calls Made From the file with <code class="text-purple-300">declare(strict_types=1)</code>, not where the function is declared!
+          </div>
+        </div>
+
+        <!-- Strict Typing Code Snippet -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-shield-halved"></i> `declare(strict_types=1)` Syntax</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+declare(strict_types=1); // Must be the first statement in file!
+
+function calculateTax(float $amount, float $rate): float {
+    return $amount * $rate;
+}
+
+// Allowed in strict mode: int passed to float parameter
+echo calculateTax(100, 0.20); // Output: 20.0
+
+// Throws TypeError in strict mode: string passed to float
+echo calculateTax("100", 0.20); 
+// Uncaught TypeError: calculateTax(): Argument #1 ($amount) 
+// must be of type float, string given</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Interactive Type Checker Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Interactive" data-doc="php.net/manual/en/language.types.declarations.php">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Live Client-Side Type Checker Simulator</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select a function type declaration signature and pass a sample value to test whether PHP will accept it or throw a <code class="text-rose-400">TypeError</code>.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Controls row -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- Declared Type -->
+          <div>
+            <label class="block text-xs font-mono text-indigo-400 font-bold mb-1">1. Parameter Type Hint</label>
+            <select id="sim-type-hint" onchange="runTypeSimulator()" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs font-mono text-purple-300 focus:outline-none focus:border-indigo-500">
+              <option value="int">int</option>
+              <option value="float">float</option>
+              <option value="string">string</option>
+              <option value="bool">bool</option>
+              <option value="array">array</option>
+              <option value="?string">?string (Nullable string)</option>
+              <option value="int|string">int|string (Union Type)</option>
+              <option value="Countable&ArrayAccess">Countable&ArrayAccess (Intersection)</option>
+              <option value="mixed">mixed</option>
+            </select>
+          </div>
+
+          <!-- Input Value -->
+          <div>
+            <label class="block text-xs font-mono text-sky-400 font-bold mb-1">2. Passed Argument Value</label>
+            <select id="sim-input-val" onchange="runTypeSimulator()" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs font-mono text-sky-300 focus:outline-none focus:border-indigo-500">
+              <option value="42">Integer (42)</option>
+              <option value="3.14">Float (3.14)</option>
+              <option value="'42'">Numeric String ('42')</option>
+              <option value="'hello'">Non-Numeric String ('hello')</option>
+              <option value="true">Boolean (true)</option>
+              <option value="null">null</option>
+              <option value="[1, 2, 3]">Array ([1, 2, 3])</option>
+              <option value="ArrayObject">Object (new ArrayObject)</option>
+            </select>
+          </div>
+
+          <!-- Typing Mode -->
+          <div>
+            <label class="block text-xs font-mono text-emerald-400 font-bold mb-1">3. Typing Mode</label>
+            <select id="sim-mode" onchange="runTypeSimulator()" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs font-mono text-emerald-300 focus:outline-none focus:border-indigo-500">
+              <option value="coercive">Coercive Mode (Default)</option>
+              <option value="strict">Strict Mode (declare(strict_types=1))</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Simulation Result Output Box -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+          <!-- Visual Result Card -->
+          <div id="sim-result-card" class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-xs font-mono text-slate-400 mb-1 block">Engine Check Status:</span>
+              <div id="sim-result-badge" class="text-lg font-mono font-bold text-emerald-400 flex items-center gap-2">
+                <i class="fa-solid fa-circle-check"></i> Passed (Type Match)
+              </div>
+            </div>
+            <div id="sim-result-explanation" class="text-xs font-mono text-slate-300 mt-3 leading-relaxed">
+              Value 42 satisfies parameter type declaration int.
+            </div>
+          </div>
+
+          <!-- Simulated Engine Call Code -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <span class="text-xs font-mono text-slate-400 mb-1 block">Simulated Execution Code:</span>
+            <pre><code id="sim-code-preview" class="language-php">function test(int $param): void {}
+test(42);</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Union Types (A|B) -->
+    <div class="slide-wrapper flex-col" data-category="Composite Types" data-doc="php.net/manual/en/language.types.declarations.php#language.types.declarations.union">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Union Types (`TypeA|TypeB`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Introduced in PHP 8.0. Accepts values that satisfy AT LEAST ONE of the specified type members.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Union Code Examples & Rules -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Union Type Syntax & Rules</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+
+// Accept int or float or string
+function processInput(int|float|string $data): int|float {
+    if (is_string($data)) {
+        return strlen($data);
+    }
+    return $data * 2;
+}
+
+// Standalone null & false in unions (PHP 8.0+)
+function findItem(string $query): Item|false|null {
+    return false;
+}</code></pre>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-1 font-mono">
+            <div class="text-rose-400 font-bold"><i class="fa-solid fa-ban mr-1"></i> Disallowed Redundant Unions:</div>
+            <div>• <code class="text-slate-400">bool|false</code> (false is redundant with bool)</div>
+            <div>• <code class="text-slate-400">object|User</code> (User is redundant with object)</div>
+            <div>• <code class="text-slate-400">mixed|int</code> (mixed includes all types)</div>
+          </div>
+        </div>
+
+        <!-- Union Venn Diagram Visualizer -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-indigo-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-circles-intersect"></i> Union Type Set Visualizer</span>
+            <p class="text-xs text-slate-300 mb-3">Union types represent the mathematical <strong>UNION (A ∪ B)</strong> of value sets.</p>
+
+            <div class="flex items-center justify-center p-6 bg-slate-950 rounded-xl border border-slate-800 relative min-h-[180px]">
+              <div class="w-32 h-32 rounded-full bg-indigo-600/30 border-2 border-indigo-500 flex items-center justify-center font-mono text-xs text-indigo-200 -mr-6 z-10">
+                int
+              </div>
+              <div class="w-32 h-32 rounded-full bg-purple-600/30 border-2 border-purple-500 flex items-center justify-center font-mono text-xs text-purple-200 -ml-6 z-0">
+                float
+              </div>
+              <div class="absolute bottom-2 text-[10px] font-mono text-sky-400">
+                Union Set: Accepts ANY value matching int OR float
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Intersection Types (A&B) -->
+    <div class="slide-wrapper flex-col" data-category="Composite Types" data-doc="php.net/manual/en/language.types.declarations.php#language.types.declarations.intersection">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Intersection Types (`TypeA&TypeB`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Introduced in PHP 8.1. Values must satisfy ALL specified type constraints simultaneously (Strictly Object/Interface types).</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Intersection Code Examples -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Pure Intersection Syntax</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+
+interface Loggable { public function log(): void; }
+interface Serializable { public function serialize(): string; }
+
+// Value must implement BOTH Loggable AND Serializable!
+function processEntity(Loggable&Serializable $entity): void {
+    $entity->log();
+    echo $entity->serialize();
+}</code></pre>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-1 font-mono">
+            <div class="text-amber-400 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Intersection Restrictions:</div>
+            <div>• Scalars (<code class="text-slate-400">int</code>, <code class="text-slate-400">string</code>) are NOT allowed in intersections.</div>
+            <div>• <code class="text-slate-400">void</code>, <code class="text-slate-400">mixed</code>, <code class="text-slate-400">never</code> are invalid in intersections.</div>
+          </div>
+        </div>
+
+        <!-- Intersection Venn Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-circle-nodes"></i> Intersection Set Visualizer</span>
+            <p class="text-xs text-slate-300 mb-3">Intersection types represent the mathematical <strong>INTERSECTION (A ∩ B)</strong> overlap.</p>
+
+            <div class="flex items-center justify-center p-6 bg-slate-950 rounded-xl border border-slate-800 relative min-h-[180px]">
+              <div class="w-32 h-32 rounded-full bg-sky-600/20 border-2 border-sky-500/50 flex items-center justify-start pl-4 font-mono text-xs text-sky-200 -mr-8">
+                Countable
+              </div>
+              <div class="w-32 h-32 rounded-full bg-emerald-600/20 border-2 border-emerald-500/50 flex items-center justify-end pr-4 font-mono text-xs text-emerald-200 -ml-8">
+                ArrayAccess
+              </div>
+              <div class="absolute z-20 font-mono text-[11px] font-bold text-amber-300 bg-slate-900/90 px-2 py-1 rounded border border-amber-500/50">
+                Countable&ArrayAccess
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Disjunctive Normal Form (DNF Types) -->
+    <div class="slide-wrapper flex-col" data-category="Advanced Types" data-doc="php.net/manual/en/language.types.declarations.php#language.types.declarations.dnf">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Disjunctive Normal Form (DNF Types)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Introduced in PHP 8.2. Allows combining Union and Intersection types by structuring them as <strong>Unions of Intersections</strong>: <code class="text-indigo-300">(A&B)|C</code>.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- DNF Code Syntax -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-indigo-400 font-bold text-sm"><i class="fa-solid fa-code"></i> DNF Syntax Specification</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+
+interface HasTitle { public function getTitle(): string; }
+interface HasContent { public function getContent(): string; }
+
+// DNF Type: Must be (HasTitle AND HasContent) OR null
+function publishArticle((HasTitle&HasContent)|null $post): void {
+    if ($post !== null) {
+        echo $post->getTitle();
+    }
+}
+
+// Complex DNF: (A&B) | (C&D) | String
+function processData((HasTitle&HasContent)|(Countable&ArrayAccess)|string $input): void {}</code></pre>
+          </div>
+        </div>
+
+        <!-- DNF Grammar & Rules -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-shield-cat"></i> DNF Strict Grammar Rules</span>
+            
+            <div class="space-y-2 text-xs font-mono">
+              <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <span class="text-purple-300 font-bold">Parentheses Required around Intersections:</span>
+                <p class="text-slate-400 text-[11px] mt-0.5"><code class="text-emerald-400">(A&B)|C</code> is valid. <code class="text-rose-400">A&B|C</code> is a syntax error!</p>
+              </div>
+
+              <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <span class="text-purple-300 font-bold">Must follow Standard DNF Form:</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Intersections MUST be grouped inside the Union. You cannot nest Unions inside Intersections like <code class="text-rose-400">(A|B)&C</code>.</p>
+              </div>
+
+              <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <span class="text-purple-300 font-bold">Redundancies are Disallowed:</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Duplicate segments such as <code class="text-rose-400">(A&B)|(B&A)</code> throw compile-time errors.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Special & Standalone Types (never, void, mixed, null, false, true) -->
+    <div class="slide-wrapper flex-col" data-category="Special Types" data-doc="php.net/manual/en/language.types.standalone.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Special & Standalone Types</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP provides unique standalone types including <code class="text-rose-400">never</code>, <code class="text-amber-400">void</code>, <code class="text-sky-400">mixed</code>, <code class="text-indigo-400">null</code>, <code class="text-purple-400">false</code>, and <code class="text-emerald-400">true</code>.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- never -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-rose-400 font-mono text-xs">never (Bottom Type)</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 font-mono">PHP 8.1+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Indicates function NEVER returns (always throws exception or exits).</p>
+          <pre class="text-[10px]"><code class="language-php">function redirect(): never {
+    header('Location: /');
+    exit();
+}</code></pre>
+        </div>
+
+        <!-- void -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-amber-400 font-mono text-xs">void (Return Only)</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 font-mono">PHP 7.1+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Indicates function returns no value (can return or end naturally).</p>
+          <pre class="text-[10px]"><code class="language-php">function logMsg(): void {
+    // Return with no val
+    return;
+}</code></pre>
+        </div>
+
+        <!-- mixed -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-sky-400 font-mono text-xs">mixed (Top Type)</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 font-mono">PHP 8.0+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Equivalent to <code class="text-slate-400">array|bool|callable|int|float|null|object|resource|string</code>.</p>
+          <pre class="text-[10px]"><code class="language-php">function inspect(
+  mixed $val
+): mixed { return $val; }</code></pre>
+        </div>
+
+        <!-- false & true -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-emerald-400 font-mono text-xs">true & false (Standalone)</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">PHP 8.2+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Used as standalone types (e.g., functions returning strictly true or false).</p>
+          <pre class="text-[10px]"><code class="language-php">function alwaysTrue(): true {
+    return true;
+}</code></pre>
+        </div>
+
+        <!-- null -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-indigo-400 font-mono text-xs">null (Standalone)</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 font-mono">PHP 8.2+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Standalone null type declaration (replaces legacy dummy returns).</p>
+          <pre class="text-[10px]"><code class="language-php">function doNothing(): null {
+    return null;
+}</code></pre>
+        </div>
+
+        <!-- ?Type Nullable Shorthand -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-purple-400 font-mono text-xs">?Type (Nullable Shorthand)</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 font-mono">PHP 7.1+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Syntactic sugar for union with null: <code class="text-purple-300 font-mono">?string</code> is identical to <code class="text-purple-300 font-mono">string|null</code>.</p>
+          <pre class="text-[10px]"><code class="language-php">function get(?string $k) {}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Compound & Object Types (iterable, callable, array, object, enum) -->
+    <div class="slide-wrapper flex-col" data-category="Compound Types" data-doc="php.net/manual/en/language.types.iterable.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Compound Types & Enum Integration</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP handles arrays, iterables, callables, objects, and Enums within its unified type system.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Compound Code Box -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Iterable, Callable & Enum Declarations</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+
+// 1. Enum as typed value (PHP 8.1+)
+enum Status: string {
+    case Pending = 'P';
+    case Approved = 'A';
+}
+
+function updateStatus(Status $status): void {}
+
+// 2. iterable: array|Traversable
+function processItems(iterable $items): void {
+    foreach ($items as $item) {}
+}
+
+// 3. callable: anonymous function or array callback
+function execute(callable $callback): void {
+    $callback();
+}</code></pre>
+          </div>
+        </div>
+
+        <!-- Detailed Rules -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-layer-group"></i> Engine Compound Rules</span>
+            
+            <div class="space-y-2.5 text-xs font-mono">
+              <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <span class="text-indigo-300 font-bold">iterable Pseudo-Type:</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Built-in alias for <code class="text-indigo-400">array|Traversable</code>. Cannot be used in intersection types.</p>
+              </div>
+
+              <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <span class="text-indigo-300 font-bold">callable Restrictions:</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Cannot be used as a property type declaration because callables depend on execution context.</p>
+              </div>
+
+              <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <span class="text-indigo-300 font-bold">Enum Subtyping:</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Enums are object types under the hood (<code class="text-indigo-400">UnitEnum</code> / <code class="text-indigo-400">BackedEnum</code>) and satisfy <code class="text-indigo-400">object</code> type hints.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Type Juggling Engine Flowchart -->
+    <div class="slide-wrapper flex-col" data-category="Type Juggling" data-doc="php.net/manual/en/language.types.juggling.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Type Juggling & Conversion Rules</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Sequence diagram showing how the PHP engine evaluates type mismatches under Coercive Mode.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center items-center">
+        <span class="text-xs font-mono text-sky-400 mb-3"><i class="fa-solid fa-diagram-next"></i> Type Juggling Engine Flowchart</span>
+        <div class="mermaid">
+          flowchart TD
+            A[Value Passed to Typed Parameter] --> B{Is strict_types=1 Enabled?}
+            B -- Yes --> C{Does Value Match Target Type Exactly?}
+            C -- Yes --> D[Accept Value]
+            C -- No (except int->float) --> E[Throw TypeError]
+            
+            B -- No (Coercive) --> F{Is Value Type Same as Target?}
+            F -- Yes --> D
+            F -- No --> G{Can Value Coerce to Target Losslessly?}
+            G -- Yes --> H[Coerce Value to Target Type] --> D
+            G -- No --> E
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Type Errors & TypeError Exception -->
+    <div class="slide-wrapper flex-col" data-category="Errors" data-doc="php.net/manual/en/class.typeerror.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Type Errors & The `TypeError` Exception</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">When type enforcement fails, PHP throws a <code class="text-rose-400">\TypeError</code> (subclass of <code class="text-purple-300">\Error</code>).</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- TypeError Code & Exception Catching -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-triangle-exclamation"></i> Catching `TypeError`</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+
+declare(strict_types=1);
+
+function add(int $a, int $b): int {
+    return $a + $b;
+}
+
+try {
+    // Throws TypeError in strict mode
+    echo add(5, "10"); 
+} catch (TypeError $e) {
+    echo "Type Error Caught: " . $e->getMessage();
+}</code></pre>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-300">
+            <strong class="text-indigo-400"><i class="fa-solid fa-lock"></i> Sensitive Parameter Protection (PHP 8.2+):</strong>
+            <p class="mt-1">Use <code class="text-purple-300">#[SensitiveParameter]</code> to prevent secret parameter values from leaking into <code class="text-rose-300">TypeError</code> stack traces!</p>
+          </div>
+        </div>
+
+        <!-- Exception Hierarchy Tree -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-indigo-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-sitemap"></i> Exception Class Hierarchy</span>
+            
+            <div class="space-y-2 text-xs font-mono">
+              <div class="p-2 bg-slate-950 rounded border border-slate-800 flex justify-between items-center">
+                <span class="text-slate-300 font-bold">Throwable</span>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-purple-950 text-purple-300">Interface</span>
+              </div>
+              <div class="p-2 bg-slate-950 rounded border border-slate-800 ml-4 flex justify-between items-center border-l-2 border-l-purple-500">
+                <span class="text-purple-300 font-bold">Error</span>
+                <span class="text-[10px] text-slate-500">Implements Throwable</span>
+              </div>
+              <div class="p-2 bg-slate-950 rounded border border-slate-800 ml-8 flex justify-between items-center border-l-2 border-l-rose-500">
+                <span class="text-rose-400 font-bold">TypeError</span>
+                <span class="text-[10px] text-rose-300 font-bold">Thrown on Mismatch</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Knowledge Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net/manual/en/language.types.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Type System Knowledge Quiz</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your mastery of PHP type specifications and engine behavior.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-indigo-400 font-bold" id="quiz-progress-text">Question 1 of 4</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Official Resources & Summary -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net/manual/en/language.types.php">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official php.net Manual Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          All type system rules, variance mechanics, and type declarations presented in this visual simulation are derived directly from the official PHP Manual at php.net.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php.net/manual/en/language.types.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-indigo-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-indigo-400">Language Reference: Types</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Main overview of scalar, compound, and special types.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/language.types.declarations.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-indigo-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-indigo-400">Type Declarations & Modes</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Strict types, coercive mode, and return type syntax.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/language.types.juggling.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-indigo-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-indigo-400">Type Juggling Rules</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Type casting, string to numeric conversions, and comparison.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/class.typeerror.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-indigo-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-indigo-400">TypeError Class Spec</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Exception thrown on type assertion mismatch.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-indigo-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net/manual/en/language.types.php" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Slide Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-indigo-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search type system terms (e.g., Union, Strict, DNF, never, TypeError)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-indigo-400"></i> Presentation Slide Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Questions Dataset (Strictly grounded in php.net)
+    const quizData = [
+      {
+        question: "What is the key difference between the `never` and `void` return types in PHP?",
+        options: [
+          "`never` indicates the function must never be called, while `void` allows calling.",
+          "`never` means the function never returns (throws/exits), while `void` allows returning without a value.",
+          "`void` is for functions, while `never` is used for class properties.",
+          "They are identical aliases introduced in PHP 8.1."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/manual/en/language.types.declarations.php): `never` indicates that the function will not return at all (by throwing an exception or calling exit()), whereas `void` returns control to the caller with no value."
+      },
+      {
+        question: "How does `declare(strict_types=1);` behave when passing an `int` to a parameter typed as `float`?",
+        options: [
+          "It throws a TypeError because types must match strictly.",
+          "It accepts the int value and silently converts it to float.",
+          "It issues a E_DEPRECATED notice.",
+          "It requires an explicit (float) cast before invocation."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/manual/en/language.types.declarations.php#language.types.declarations.strict): The only scalar automatic conversion allowed in strict mode is passing an integer to a float parameter."
+      },
+      {
+        question: "Which of the following is a VALID DNF (Disjunctive Normal Form) type declaration in PHP 8.2+?",
+        options: [
+          "(A&B)|C",
+          "A&B|C",
+          "(A|B)&C",
+          "A|(B&C)"
+        ],
+        correct: 0,
+        explanation: "Official Manual (php.net/manual/en/language.types.declarations.php#language.types.declarations.dnf): DNF requires intersection types to be grouped with parentheses inside a union: `(A&B)|C`."
+      },
+      {
+        question: "What type of error is thrown when a type declaration constraint fails at runtime?",
+        options: [
+          "InvalidArgumentException",
+          "TypeMismatchException",
+          "TypeError",
+          "ParseError"
+        ],
+        correct: 2,
+        explanation: "Official Manual (php.net/manual/en/class.typeerror.php): A TypeError is thrown when a value passed or returned does not match the declared type."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    const d3TreeData = {
+      name: "mixed (Top Type)",
+      info: "Top type in PHP 8.0+. Accepts any value.",
+      children: [
+        {
+          name: "Scalar Types",
+          info: "Built-in primitive scalar values.",
+          children: [
+            { name: "int", info: "Whole numbers (64-bit signed on 64-bit systems)." },
+            { name: "float", info: "Floating point numbers (IEEE 754)." },
+            { name: "string", info: "Binary-safe byte sequences." },
+            { name: "bool", info: "True or False boolean values." }
+          ]
+        },
+        {
+          name: "Compound Types",
+          info: "Types representing complex data structures.",
+          children: [
+            { name: "array", info: "Ordered maps associating keys to values." },
+            { name: "object", info: "Class instances, Enums, and StdClass." },
+            { name: "callable", info: "Functions, methods, or Closure instances." },
+            { name: "iterable", info: "Pseudo-type representing array|Traversable." }
+          ]
+        },
+        {
+          name: "Special / Standalone",
+          info: "Special purpose engine types.",
+          children: [
+            { name: "null", info: "Represents absence of value." },
+            { name: "false / true", info: "Standalone boolean literal types." },
+            { name: "resource", info: "Handles for external streams/db connections." },
+            { name: "never (Bottom Type)", info: "Bottom type: Function never returns." }
+          ]
+        }
+      ]
+    };
+
+    function renderD3Tree() {
+      const container = document.getElementById('d3-type-tree');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const width = container.clientWidth || 600;
+      const height = 380;
+
+      const svg = d3.select("#d3-type-tree")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", "translate(70, 20)");
+
+      const tree = d3.tree().size([height - 40, width - 180]);
+      const root = d3.hierarchy(d3TreeData);
+      tree(root);
+
+      // Links
+      svg.selectAll(".link")
+        .data(root.links())
+        .enter()
+        .append("path")
+        .attr("class", "link")
+        .attr("stroke", "#4F5B93")
+        .attr("d", d3.linkHorizontal().x(d => d.y).y(d => d.x));
+
+      // Nodes
+      const node = svg.selectAll(".node")
+        .data(root.descendants())
+        .enter()
+        .append("g")
+        .attr("class", "node")
+        .attr("transform", d => `translate(${d.y},${d.x})`)
+        .on("click", (event, d) => {
+          document.getElementById('type-node-title').textContent = d.data.name;
+          document.getElementById('type-node-body').innerHTML = `
+            <p class="text-slate-200 font-semibold mb-1">${d.data.info}</p>
+            <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px] text-indigo-300">
+              Depth Level: ${d.depth}<br>
+              Subtree Nodes: ${d.children ? d.children.length : 0}
+            </div>
+          `;
+        });
+
+      node.append("circle")
+        .attr("r", 6)
+        .attr("fill", d => d.children ? "#8b5cf6" : "#38bdf8");
+
+      node.append("text")
+        .attr("dx", d => d.children ? -10 : 10)
+        .attr("dy", 4)
+        .attr("text-anchor", d => d.children ? "end" : "start")
+        .attr("fill", "#f8fafc")
+        .text(d => d.data.name);
+    }
+
+    function runTypeSimulator() {
+      const typeHint = document.getElementById('sim-type-hint').value;
+      const inputVal = document.getElementById('sim-input-val').value;
+      const mode = document.getElementById('sim-mode').value;
+
+      const badge = document.getElementById('sim-result-badge');
+      const explanation = document.getElementById('sim-result-explanation');
+      const codePreview = document.getElementById('sim-code-preview');
+
+      codePreview.textContent = `${mode === 'strict' ? "declare(strict_types=1);\n" : ""}function test(${typeHint} $param): void {}\ntest(${inputVal});`;
+      if (window.Prism) {
+        Prism.highlightElement(codePreview);
+      }
+
+      let passed = false;
+      let reason = "";
+
+      if (typeHint === 'mixed') {
+        passed = true;
+        reason = "`mixed` is the top type and accepts all values.";
+      } else if (typeHint === 'int') {
+        if (inputVal === '42') { passed = true; reason = "Exact integer match."; }
+        else if (inputVal === "'42'" && mode === 'coercive') { passed = true; reason = "Numeric string coerces to int in coercive mode."; }
+        else if (inputVal === "3.14" && mode === 'coercive') { passed = true; reason = "Float coerces to int (with deprecation warning in PHP 8.1+)."; }
+        else { passed = false; reason = `Cannot pass ${inputVal} to int in ${mode} mode.`; }
+      } else if (typeHint === 'float') {
+        if (inputVal === '3.14' || inputVal === '42') { passed = true; reason = "Float or int accepted (int -> float is allowed even in strict mode)."; }
+        else if (inputVal === "'42'" && mode === 'coercive') { passed = true; reason = "Numeric string coerces to float in coercive mode."; }
+        else { passed = false; reason = `Type mismatch in ${mode} mode.`; }
+      } else if (typeHint === '?string') {
+        if (inputVal === 'null' || inputVal === "'hello'" || inputVal === "'42'") { passed = true; reason = "Nullable string accepts string or null."; }
+        else { passed = false; reason = "Value does not satisfy string|null."; }
+      } else if (typeHint === 'int|string') {
+        if (inputVal === '42' || inputVal === "'42'" || inputVal === "'hello'") { passed = true; reason = "Satisfies union int|string."; }
+        else { passed = false; reason = "Value does not match int or string."; }
+      } else {
+        passed = (inputVal !== 'null' && inputVal !== "'hello'");
+        reason = passed ? "Satisfies type constraints." : "Type check failed.";
+      }
+
+      if (passed) {
+        badge.className = "text-lg font-mono font-bold text-emerald-400 flex items-center gap-2";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Passed (Type Match)`;
+        explanation.textContent = reason;
+      } else {
+        badge.className = "text-lg font-mono font-bold text-rose-400 flex items-center gap-2";
+        badge.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> TypeError Thrown`;
+        explanation.textContent = `Uncaught TypeError: test(): Argument #1 ($param) must be of type ${typeHint}. ${reason}`;
+      }
+    }
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      if (currentSlide === 1) {
+        setTimeout(renderD3Tree, 100);
+      }
+
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-indigo-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-indigo-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-indigo-950/60 border-indigo-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-indigo-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-indigo-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-indigo-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_type_presentation_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_type_presentation_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_type_presentation_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      runTypeSimulator();
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

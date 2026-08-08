@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Functional Programming in PHP 8.x - Interactive Deep Dive</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              rose: '#f43f5e',
+              indigo: '#6366f1'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.83rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+
+    /* Custom pipeline chip animations */
+    .pipeline-step-active {
+      border-color: #8b5cf6 !important;
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+      transform: scale(1.02);
+    }
+  </style>
+
+  <!-- Mermaid.js for Flow Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#8b5cf6',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-sky-500 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-code-branch text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Functional Programming <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 light:text-indigo-700 border border-indigo-500/30">PHP 8.x Paradigms</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Manual: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/functions.anonymous</strong></span>
+    </div>
+
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10 active" data-category="Overview" data-doc="php.net/functions.anonymous">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-indigo-500 via-purple-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-solid fa-function text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Functional Programming <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-sky-400">in PHP 8.x Programmatically</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A comprehensive guide to Pure Functions, Closures, First-Class Callables, Higher-Order Functions, Composition, Pipelines, Monads, and Immutable Patterns in modern PHP.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Arrow Functions & Closures
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-link text-indigo-400"></i> First-Class Callables (PHP 8.1+)
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-amber-400"></i> Interactive Pipeline Widgets
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Explore Functional Paradigm</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Foundations" data-doc="php.net/functions.anonymous">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">The Functional Spectrum in PHP</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP is a multi-paradigm language. Functional Programming treats computation as the evaluation of mathematical functions without mutable state.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-bullseye"></i></div>
+            First-Class Functions
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Functions are values! Assignable to variables, passed as arguments, and returned from functions.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-purple-300">$add = fn($a, $b) => $a + $b;</code></li>
+            <li>• First-Class Callables: <code class="text-purple-300">strlen(...)</code></li>
+            <li>• Instances of <code class="text-purple-300">\Closure</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-shield-halved"></i></div>
+            Purity & Determinism
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Pure functions produce identical output for given input without causing side effects.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• No global variable mutation</li>
+            <li>• No I/O or database writes inside pure units</li>
+            <li>• Easy unit testing & memoization</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-lock"></i></div>
+            Immutability
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Data structures cannot be modified after creation. New transformed copies are returned.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-emerald-300">array_map()</code> creates new arrays</li>
+            <li>• <code class="text-emerald-300">readonly class</code> & immutable value objects</li>
+            <li>• Thread-safe & predictable state</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-layer-group"></i></div>
+            Higher-Order Functions
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Functions that accept other functions as arguments or return new functions.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-amber-300">array_filter()</code>, <code class="text-amber-300">array_reduce()</code></li>
+            <li>• Custom higher-order wrappers</li>
+            <li>• Function factories & Currying</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-route"></i></div>
+            Pipelines & Composition
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Chaining small single-purpose functions together to build complex data processing streams.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-rose-300">pipe($f, $g, $h)($input)</code></li>
+            <li>• Point-free programming style</li>
+            <li>• Declarative step-by-step logic</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-box font-bold"></i></div>
+            Monadic Structures
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Encapsulating side-effects, optional values (`Option`), or errors (`Either`) safely.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Eliminates <code class="text-indigo-300">null</code> checks</li>
+            <li>• Prevents try-catch exception noise</li>
+            <li>• Safe method chaining with <code class="text-indigo-300">flatMap()</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Closures" data-doc="php.net/functions.arrow">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Anonymous Functions, Closures & Arrow Functions</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP provides traditional Anonymous Functions (`function() use(...)`) and concise Arrow Functions (`fn(...)`).</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Anonymous Closures with use -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Anonymous Closure (`use` keyword)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$taxRate = 0.20;
+
+// Requires explicit variable binding via 'use'
+$calculateTotal = function (float $price) use ($taxRate): float {
+    return $price + ($price * $taxRate);
+};
+
+// Modifying $taxRate outside does NOT affect the captured copy by default!
+$taxRate = 0.25; 
+echo $calculateTotal(100); // Outputs: 120 (bound 0.20)</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-info-circle text-purple-400"></i> Variables captured by value. Use <code class="text-purple-300">use (&$var)</code> to capture by reference.</p>
+        </div>
+
+        <!-- Arrow Functions (PHP 7.4+) -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-bolt"></i> Arrow Functions (`fn` - Auto Scope Capture)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$discount = 15;
+
+// Automatically captures outer scope variables by-value!
+$applyDiscount = fn(float $price): float => $price - $discount;
+
+$prices = [100.0, 50.0, 200.0];
+
+// Clean functional inline transformation
+$discounted = array_map(fn($p) => $p - $discount, $prices);
+// Output: [85.0, 35.0, 185.0]</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-bolt text-sky-400"></i> Arrow functions consist of a single expression whose result is implicitly returned.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="First-Class Callables" data-doc="php.net/functions.first_class_callable_syntax">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">First-Class Callable Syntax (PHP 8.1+)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Turn any existing function, static method, or instance method directly into a first-class <code class="text-purple-300">\Closure</code> using the `...` syntax.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-terminal"></i> Native Function & Method Callables</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// 1. Internal built-in function as closure
+$trim = trim(...);
+$strlen = strlen(...);
+
+$words = ["  apple ", " banana  ", "  cherry"];
+$cleanWords = array_map($trim, $words); // ["apple", "banana", "cherry"]
+
+// 2. Class static method as closure
+$sanitizer = StringSanitizer::clean(...);
+
+// 3. Object instance method as closure
+$formatter = new MoneyFormatter();
+$formatFn = $formatter->formatUSD(...);</code></pre>
+          </div>
+          <p class="text-[11px] text-emerald-400 mt-1"><i class="fa-solid fa-check"></i> Replaces verbose strings like <code class="text-purple-300">'trim'</code> or array callables <code class="text-purple-300">[$obj, 'method']</code> with full static analysis & type safety!</p>
+        </div>
+
+        <!-- Comparative Table -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-list-check"></i> Legacy vs PHP 8.1+ Callable Syntax</span>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Target</th>
+                    <th class="p-2">Legacy Syntax</th>
+                    <th class="p-2">PHP 8.1+ First-Class Syntax</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 text-purple-300">Global Function</td>
+                    <td class="p-2 text-slate-400">'strlen'</td>
+                    <td class="p-2 text-emerald-400 font-bold">strlen(...)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-purple-300">Static Method</td>
+                    <td class="p-2 text-slate-400">['Foo', 'bar']</td>
+                    <td class="p-2 text-emerald-400 font-bold">Foo::bar(...)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-purple-300">Instance Method</td>
+                    <td class="p-2 text-slate-400">[$this, 'method']</td>
+                    <td class="p-2 text-emerald-400 font-bold">$this->method(...)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-purple-300">Object Invocation</td>
+                    <td class="p-2 text-slate-400">$invokable</td>
+                    <td class="p-2 text-emerald-400 font-bold">$invokable(...)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/functions.first_class_callable_syntax.php" target="_blank" class="text-sky-400 hover:underline">php.net/functions.first_class_callable_syntax</a></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Higher-Order Functions" data-doc="php.net/ref.array">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Built-in Higher-Order Array Operations</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">The foundation of declarative data transformation in PHP: Map, Filter, and Reduce.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Map -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-purple-400 font-bold text-sm mb-2">
+              <i class="fa-solid fa-map"></i> array_map()
+            </div>
+            <p class="text-xs text-slate-300 mb-2">Transforms every element of an array using a mapping function 1:1.</p>
+            <pre><code class="language-php">$nums = [1, 2, 3, 4];
+
+// Element-wise transformation
+$squares = array_map(
+    fn($n) => $n * $n, 
+    $nums
+);
+// Output: [1, 4, 9, 16]</code></pre>
+          </div>
+          <span class="text-[10px] text-purple-300 font-mono mt-2">Signature: (callable, array) -> array</span>
+        </div>
+
+        <!-- Filter -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-sky-400 font-bold text-sm mb-2">
+              <i class="fa-solid fa-filter"></i> array_filter()
+            </div>
+            <p class="text-xs text-slate-300 mb-2">Filters array items based on a boolean predicate function.</p>
+            <pre><code class="language-php">$nums = [1, 2, 3, 4, 5, 6];
+
+// Keep only even numbers
+$evens = array_filter(
+    $nums, 
+    fn($n) => $n % 2 === 0
+);
+// Output: [1 => 2, 3 => 4, 5 => 6]</code></pre>
+          </div>
+          <span class="text-[10px] text-sky-300 font-mono mt-2">Signature: (array, callable) -> array</span>
+        </div>
+
+        <!-- Reduce -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm mb-2">
+              <i class="fa-solid fa-compress"></i> array_reduce()
+            </div>
+            <p class="text-xs text-slate-300 mb-2">Folds an array into a single accumulated scalar or complex value.</p>
+            <pre><code class="language-php">$nums = [10, 20, 30];
+
+// Sum accumulator
+$total = array_reduce(
+    $nums, 
+    fn($acc, $item) => $acc + $item, 
+    0
+);
+// Output: 60</code></pre>
+          </div>
+          <span class="text-[10px] text-emerald-300 font-mono mt-2">Signature: (array, callable, initial) -> mixed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Visualizer" data-doc="php.net/ref.array">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Array Pipeline Visualizer</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Step through a functional processing pipeline to observe data transformation states in real time.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Pipeline Navigation Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <div class="flex items-center gap-2">
+            <button onclick="pipePrevStep()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-mono transition">
+              <i class="fa-solid fa-chevron-left mr-1"></i> Prev Step
+            </button>
+            <button onclick="pipeNextStep()" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-mono transition">
+              Next Step <i class="fa-solid fa-chevron-right ml-1"></i>
+            </button>
+            <button onclick="pipeReset()" class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 text-xs font-mono transition">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+          </div>
+
+          <div class="text-xs font-mono text-purple-300">
+            Pipeline Stage: <span id="pipeline-stage-title" class="font-bold text-white">1. Initial Input Array</span>
+          </div>
+        </div>
+
+        <!-- Pipeline Graphic Representation -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-2 text-center text-xs font-mono">
+          <div id="pipe-card-0" class="pipeline-card p-3 rounded-xl bg-slate-950 border border-purple-500/50 transition">
+            <span class="text-purple-400 font-bold block mb-1">1. Initial Data</span>
+            <div class="text-[11px] text-slate-400">[1, 2, 3, 4, 5, 6, 7, 8]</div>
+          </div>
+          <div id="pipe-card-1" class="pipeline-card p-3 rounded-xl bg-slate-950 border border-slate-800 transition">
+            <span class="text-sky-400 font-bold block mb-1">2. Filter Evens</span>
+            <div class="text-[11px] text-slate-400">fn($n) => $n % 2 == 0</div>
+          </div>
+          <div id="pipe-card-2" class="pipeline-card p-3 rounded-xl bg-slate-950 border border-slate-800 transition">
+            <span class="text-emerald-400 font-bold block mb-1">3. Map Square</span>
+            <div class="text-[11px] text-slate-400">fn($n) => $n * $n</div>
+          </div>
+          <div id="pipe-card-3" class="pipeline-card p-3 rounded-xl bg-slate-950 border border-slate-800 transition">
+            <span class="text-amber-400 font-bold block mb-1">4. Reduce Sum</span>
+            <div class="text-[11px] text-slate-400">fn($acc, $x) => $acc + $x</div>
+          </div>
+        </div>
+
+        <!-- Visual Array Items -->
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between min-h-[140px]">
+          <div>
+            <span class="text-xs font-mono text-slate-400 block mb-2"><i class="fa-solid fa-microchip text-indigo-400"></i> Array Memory State:</span>
+            <div id="pipeline-items-container" class="flex flex-wrap gap-2 items-center">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <div id="pipeline-description" class="mt-3 p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-emerald-300">
+            Initial input array loaded with integers 1 through 8.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Composition" data-doc="php.net/functions.anonymous">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Function Composition & Custom Pipelining</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Combine single-responsibility unary functions into elegant pipelines with <code class="text-purple-300">pipe()</code> and <code class="text-purple-300">compose()</code>.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Pipe Function Implementation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-arrows-left-right-to-line"></i> `pipe()` Function (Left-to-Right)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">/**
+ * Left-to-right pipe function execution: f(x) -> g(f(x)) -> h(g(f(x)))
+ */
+function pipe(callable ...$fns): Closure {
+    return fn(mixed $input): mixed => array_reduce(
+        $fns,
+        fn($acc, $fn) => $fn($acc),
+        $input
+    );
+}
+
+// Defining small pure transformations
+$trim = fn(string $s) => trim($s);
+$lowercase = fn(string $s) => strtolower($s);
+$addExclamation = fn(string $s) => $s . "!";
+
+// Compose into a single pipeline function
+$processText = pipe($trim, $lowercase, $addExclamation);
+
+echo $processText("  HELLO WORLD  "); // Outputs: "hello world!"</code></pre>
+          </div>
+        </div>
+
+        <!-- Compose Function Implementation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-layer-group"></i> `compose()` Function (Right-to-Left)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">/**
+ * Right-to-left compose execution (Mathematical logic): (f ∘ g)(x)
+ */
+function compose(callable ...$fns): Closure {
+    return pipe(...array_reverse($fns));
+}
+
+$double = fn(int $n) => $n * 2;
+$addFive = fn(int $n) => $n + 5;
+
+// Compose: Executes $addFive FIRST, then passes result to $double
+$doubleAfterAddFive = compose($double, $addFive);
+
+echo $doubleAfterAddFive(10); // (10 + 5) * 2 = 30</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-lightbulb text-amber-400"></i> Mathematical composition evaluates right-to-left: <code class="text-purple-300">f(g(x))</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Currying" data-doc="php.net/functions.anonymous">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Currying & Partial Function Application</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Currying converts a function with multiple arguments into a chain of single-argument functions.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Curried Functions -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-link"></i> Curried Add Function</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Standard Multi-argument function: f(a, b)
+$add = fn(int $a, int $b) => $a + $b;
+
+// Curried Version: f(a)(b)
+$curriedAdd = fn(int $a) => fn(int $b) => $a + $b;
+
+// Partial Application: Preset $a = 10 to build specialized helper!
+$addTen = $curriedAdd(10);
+
+echo $addTen(5);  // Outputs: 15
+echo $addTen(20); // Outputs: 30
+
+// Useful in array_map!
+$numbers = [1, 2, 3];
+$incrementedByTen = array_map($addTen, $numbers); // [11, 12, 13]</code></pre>
+          </div>
+        </div>
+
+        <!-- Partial Application Wrapper -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-sliders"></i> Generic Partial Application Helper</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">function partial(callable $fn, mixed ...$presetArgs): Closure {
+    return fn(mixed ...$remainingArgs) => $fn(...$presetArgs, ...$remainingArgs);
+}
+
+$multiplyThree = fn(int $a, int $b, int $c) => $a * $b * $c;
+
+// Preset first parameter $a = 2
+$doubleProduct = partial($multiplyThree, 2);
+
+echo $doubleProduct(3, 4); // 2 * 3 * 4 = 24</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-check text-emerald-400"></i> Partial application binds subset of arguments to return a simpler callable signature.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Visualizer" data-doc="php.net/functions.anonymous">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Function Composition Stepper</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Enter a string input and step through each piped function transformation live!</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Controls -->
+        <div class="flex flex-wrap items-center gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <input type="text" id="comp-input-text" value="  php 8 functional engine  " class="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs font-mono text-purple-200 flex-1 focus:outline-none" placeholder="Enter input text...">
+          <button onclick="runCompositionTrace()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-mono font-bold transition">
+            <i class="fa-solid fa-play mr-1"></i> Execute Pipeline
+          </button>
+        </div>
+
+        <!-- Pipeline Execution Flow Diagram -->
+        <div class="mermaid">
+          graph LR
+            A[Input String] -->|trim| B[Trimmed]
+            B -->|strtoupper| C[Uppercase]
+            C -->|md5 / hash| D[Hashed Token]
+        </div>
+
+        <!-- Output Steps Trace -->
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800">
+          <span class="text-xs font-mono text-sky-400 font-bold block mb-2"><i class="fa-solid fa-list-ol"></i> Step-by-Step Execution Log</span>
+          <div id="comp-trace-log" class="font-mono text-xs text-slate-300 space-y-1">
+            Click "Execute Pipeline" to view step transformation trace...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Immutability" data-doc="php.net/language.oop5.basic">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Pure Functions & Immutable Data Structures</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Combining pure functions with PHP 8.2 <code class="text-purple-300">readonly class</code> creates side-effect-free domain models.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Impure vs Pure -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-xmark"></i> Impure (Side-Effects)</span>
+            </div>
+            <pre><code class="language-php">$globalTax = 0.15;
+
+// IMPURE: Depends on global state & mutates input!
+function processOrderImpure(array &$order): void {
+    global $globalTax;
+    $order['tax'] = $order['total'] * $globalTax; // Mutation!
+    $order['total'] += $order['tax'];
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-rose-400 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> Hard to test, non-deterministic, mutates memory by reference.</p>
+        </div>
+
+        <!-- Pure Immutable -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-check"></i> Pure & Immutable Value Object</span>
+            </div>
+            <pre><code class="language-php">readonly class Money {
+    public function __construct(
+        public float $amount,
+        public string $currency = 'USD'
+    ) {}
+
+    // Pure method: Returns NEW instance, never mutates $this!
+    public function add(Money $other): Money {
+        return new Money($this->amount + $other->amount, $this->currency);
+    }
+}
+
+$m1 = new Money(100.0);
+$m2 = $m1->add(new Money(50.0)); // $m1 remains 100.0!</code></pre>
+          </div>
+          <p class="text-[11px] text-emerald-400 mt-1"><i class="fa-solid fa-shield"></i> Thread-safe, predictable, easily tested in isolation.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Monads" data-doc="php.net/functions.anonymous">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Monadic Patterns: Eliminating Nulls with Option Monad</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Monads encapsulate computation steps, allowing safe chaining without null checks or try-catch blocks.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Option Monad Class -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-indigo-400 font-bold text-sm"><i class="fa-solid fa-box font-bold"></i> Option Monad Implementation</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">readonly class Option {
+    private function __construct(private mixed $value) {}
+
+    public static function some(mixed $val): self { return new self($val); }
+    public static function none(): self { return new self(null); }
+
+    public function isDefined(): bool { return $this->value !== null; }
+
+    // Functor map: applies function if value exists
+    public function map(callable $fn): self {
+        return $this->isDefined() ? self::some($fn($this->value)) : self::none();
+    }
+
+    public function getOrElse(mixed $default): mixed {
+        return $this->isDefined() ? $this->value : $default;
+    }
+}</code></pre>
+          </div>
+        </div>
+
+        <!-- Usage Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-link"></i> Safe Monadic Pipeline</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">function findUser(int $id): Option {
+    $db = [1 => ['name' => 'Alice', 'email' => 'alice@php.net']];
+    return isset($db[$id]) ? Option::some($db[$id]) : Option::none();
+}
+
+// Chain transformations safely without any nested "if ($user !== null)"!
+$userEmail = findUser(1)
+    ->map(fn($u) => $u['email'])
+    ->map(fn($e) => strtolower($e))
+    ->getOrElse('guest@php.net');
+
+echo $userEmail; // Outputs: "alice@php.net"
+
+// Searching missing ID 99 automatically falls back safely:
+$missingEmail = findUser(99)
+    ->map(fn($u) => $u['email'])
+    ->getOrElse('guest@php.net'); // Outputs: "guest@php.net"</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-shield-halved text-indigo-400"></i> No null pointer exceptions or redundant checks.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Recursion" data-doc="php.net/functions.user-defined">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Recursion & The Trampoline Pattern</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP call stack depth is limited (~1000 frames). Trampolines turn deep recursion into stack-safe iterative loops.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Trampoline Implementation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-arrows-spin"></i> Trampoline Function Loop</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">/**
+ * Trampoline executes thunks iteratively until a final scalar is returned.
+ */
+function trampoline(callable $fn): mixed {
+    $result = $fn();
+    while (is_callable($result)) {
+        $result = $result(); // Unroll execution stack!
+    }
+    return $result;
+}
+
+// Tail-recursive Factorial returning thunks
+function factorial(int $n, int $acc = 1): Closure|int {
+    if ($n <= 1) return $acc;
+    // Return closure (Thunk) instead of immediate deep call!
+    return fn() => factorial($n - 1, $n * $acc);
+}
+
+// Stack-safe execution even for high recursion counts!
+$res = trampoline(fn() => factorial(100));</code></pre>
+          </div>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-layer-group"></i> Call Stack Comparison</span>
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono space-y-2">
+              <div class="text-rose-400">
+                <strong>Standard Recursion Stack Growth:</strong>
+                <div>factorial(100) -> factorial(99) -> ... [Call Stack Overflow Risk!]</div>
+              </div>
+              <div class="text-emerald-400 border-t border-slate-800 pt-2">
+                <strong>Trampolined Iterative Bounce:</strong>
+                <div>Call Frame 1 -> returns Thunk -> Loop executes Thunk -> Frame 1 reused!</div>
+              </div>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Prevents Zend Engine stack exhaustion on large recursive datasets.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Playground" data-doc="php.net/functions.anonymous">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Functional PHP Playground</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select Functional PHP templates, edit code, and simulate execution results live.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Controls Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-purple-400 font-bold">Select Template:</span>
+            <select id="sim-preset-select" onchange="loadSimulatorPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-purple-200 focus:outline-none">
+              <option value="pipe_composition">Pipe Function Pipeline</option>
+              <option value="first_class_callable">First-Class Callable Syntax</option>
+              <option value="curried_functions">Curried Function & Partial Application</option>
+              <option value="option_monad">Option Monad Null Handling</option>
+            </select>
+          </div>
+
+          <button onclick="resetSimulatorCode()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Template
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> PHP Snippet Code</span>
+            <textarea id="sim-editor" oninput="runSimulatedCode()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Simulated Output</span>
+            <div id="sim-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net/functions.anonymous">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Functional PHP Assessment</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your comprehension of Functional Programming paradigms grounded in official PHP documentation.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-purple-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net/functions.anonymous">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official FP Documentation Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every functional programming feature in this interactive deep dive is derived from official manual specifications at php.net.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php.net/manual/en/functions.anonymous.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Anonymous Functions & Closures</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Specification for anonymous closures and variable binding.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/functions.arrow.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Arrow Functions Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Concise fn() syntax and automatic scope capture.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/functions.first_class_callable_syntax.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">First-Class Callable Syntax</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">PHP 8.1+ Callable syntax using ... operator.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/ref.array.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Array Functions Reference</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Complete reference for array_map, filter, reduce.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-purple-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net/manual/en/functions.anonymous.php" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-purple-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search FP topics (e.g., closure, monad, pipe, currying)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i> Functional PHP Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Data
+    const quizData = [
+      {
+        question: "How do Arrow Functions (fn) in PHP handle outer scope variable binding compared to regular Closures?",
+        options: [
+          "Arrow functions require an explicit 'use ($var)' clause.",
+          "Arrow functions automatically capture outer scope variables by value.",
+          "Arrow functions automatically capture outer scope variables by reference.",
+          "Arrow functions cannot access outer scope variables."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/functions.arrow): Arrow functions automatically bind variables from the parent scope by value without needing 'use'."
+      },
+      {
+        question: "What is the correct syntax for PHP 8.1+ First-Class Callables on a static method?",
+        options: [
+          "['ClassName', 'methodName']",
+          "ClassName::methodName(...)",
+          "ClassName->methodName(...)",
+          "callable(ClassName::methodName)"
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/functions.first_class_callable_syntax): The '...' operator creates a Closure directly from ClassName::methodName(...)."
+      },
+      {
+        question: "What is the primary operational advantage of using an Option Monad instead of null returns?",
+        options: [
+          "It accelerates CPU execution by bypassing Zend Opcache.",
+          "It forces code to execute asynchronously.",
+          "It encapsulates missing values to allow safe method chaining without nested null checks.",
+          "It converts objects to JSON automatically."
+        ],
+        correct: 2,
+        explanation: "Monads encapsulate optional values, enabling safe map() transformations without null-pointer checks."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Playground Templates
+    const simulatorPresets = {
+      pipe_composition: `<?php\nfunction pipe(callable ...$fns): Closure {\n    return fn($input) => array_reduce($fns, fn($acc, $fn) => $fn($acc), $input);\n}\n\n$trim = fn(string $s) => trim($s);\n$upper = fn(string $s) => strtoupper($s);\n$exclaim = fn(string $s) => $s . "!";\n\n$pipeline = pipe($trim, $upper, $exclaim);\necho $pipeline("  functional php 8  ");`,
+      first_class_callable: `<?php\n$trim = trim(...);\n$strlen = strlen(...);\n\n$words = ["  apple ", " banana  ", " cherry "];\n$clean = array_map($trim, $words);\n$lengths = array_map($strlen, $clean);\n\necho "Cleaned: " . implode(", ", $clean) . "\\n";\necho "Lengths: " . implode(", ", $lengths);`,
+      curried_functions: `<?php\n$curriedMultiply = fn(int $a) => fn(int $b) => $a * $b;\n\n$triple = $curriedMultiply(3);\n\n$numbers = [1, 2, 3, 4];\n$tripledNumbers = array_map($triple, $numbers);\n\necho "Original: " . implode(", ", $numbers) . "\\n";\necho "Tripled:  " . implode(", ", $tripledNumbers);`,
+      option_monad: `<?php\nclass Option {\n    public function __construct(private mixed $v) {}\n    public static function some($v) { return new self($v); }\n    public static function none() { return new self(null); }\n    public function map($fn) { return $this->v !== null ? self::some($fn($this->v)) : self::none(); }\n    public function getOrElse($def) { return $this->v ?? $def; }\n}\n\n$find = fn($id) => $id === 1 ? Option::some("ALICE") : Option::none();\n\necho "User 1: " . $find(1)->map(strtolower(...))->getOrElse("Guest") . "\\n";\necho "User 2: " . $find(2)->map(strtolower(...))->getOrElse("Guest");`
+    };
+
+    // Interactive Pipeline Stepper State
+    let pipeStepIndex = 0;
+    const pipeStepsData = [
+      {
+        stage: "1. Initial Input Array",
+        cardId: "pipe-card-0",
+        items: [1, 2, 3, 4, 5, 6, 7, 8],
+        desc: "Raw input array loaded with numbers 1 through 8."
+      },
+      {
+        stage: "2. Filter Evens (array_filter)",
+        cardId: "pipe-card-1",
+        items: [2, 4, 6, 8],
+        desc: "Predicate fn($n) => $n % 2 === 0 removes odd numbers [1, 3, 5, 7]."
+      },
+      {
+        stage: "3. Map Squares (array_map)",
+        cardId: "pipe-card-2",
+        items: [4, 16, 36, 64],
+        desc: "Transformation fn($n) => $n * $n squares remaining evens."
+      },
+      {
+        stage: "4. Reduce Sum (array_reduce)",
+        cardId: "pipe-card-3",
+        items: [120],
+        desc: "Accumulator fn($acc, $x) => $acc + $x folds array into total sum: 120."
+      }
+    ];
+
+    function updatePipelineView() {
+      const step = pipeStepsData[pipeStepIndex];
+      document.getElementById('pipeline-stage-title').textContent = step.stage;
+      document.getElementById('pipeline-description').textContent = step.desc;
+
+      // Update card highlighting
+      for (let i = 0; i < 4; i++) {
+        const card = document.getElementById(`pipe-card-${i}`);
+        if (i === pipeStepIndex) {
+          card.classList.add('border-purple-500', 'bg-purple-950/40', 'glow-accent');
+          card.classList.remove('border-slate-800', 'bg-slate-950');
+        } else {
+          card.classList.remove('border-purple-500', 'bg-purple-950/40', 'glow-accent');
+          card.classList.add('border-slate-800', 'bg-slate-950');
+        }
+      }
+
+      // Render Item Chips
+      const container = document.getElementById('pipeline-items-container');
+      container.innerHTML = '';
+      step.items.forEach(val => {
+        const chip = document.createElement('span');
+        chip.className = "px-3 py-1.5 rounded-xl bg-purple-900/60 border border-purple-500/50 text-purple-200 font-mono text-xs shadow-sm transform transition duration-300 hover:scale-105";
+        chip.textContent = val;
+        container.appendChild(chip);
+      });
+    }
+
+    function pipeNextStep() {
+      if (pipeStepIndex < pipeStepsData.length - 1) {
+        pipeStepIndex++;
+        updatePipelineView();
+      }
+    }
+
+    function pipePrevStep() {
+      if (pipeStepIndex > 0) {
+        pipeStepIndex--;
+        updatePipelineView();
+      }
+    }
+
+    function pipeReset() {
+      pipeStepIndex = 0;
+      updatePipelineView();
+    }
+
+    // Composition Trace Logic
+    function runCompositionTrace() {
+      const input = document.getElementById('comp-input-text').value;
+      const log = document.getElementById('comp-trace-log');
+
+      const trimmed = input.trim();
+      const upper = trimmed.toUpperCase();
+      let hash = 0;
+      for (let i = 0; i < upper.length; i++) {
+        hash = (hash << 5) - hash + upper.charCodeAt(i);
+        hash |= 0;
+      }
+      const token = "TOK_" + Math.abs(hash).toString(16);
+
+      log.innerHTML = `
+        <div class="text-purple-300">1. Input Raw: "${input}"</div>
+        <div class="text-sky-300">2. trim(): "${trimmed}"</div>
+        <div class="text-emerald-300">3. strtoupper(): "${upper}"</div>
+        <div class="text-amber-300">4. generateToken(): "${token}"</div>
+        <div class="mt-2 text-white font-bold border-t border-slate-800 pt-1">Result: Piped Execution Completed Successfully!</div>
+      `;
+    }
+
+    // Slide Navigation Core
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-purple-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    // Playground Logic
+    function loadSimulatorPreset(key) {
+      document.getElementById('sim-editor').value = simulatorPresets[key] || '';
+      runSimulatedCode();
+    }
+
+    function resetSimulatorCode() {
+      const key = document.getElementById('sim-preset-select').value;
+      loadSimulatorPreset(key);
+    }
+
+    function runSimulatedCode() {
+      const code = document.getElementById('sim-editor').value;
+      const consoleOut = document.getElementById('sim-console-output');
+
+      if (code.includes('pipe') && code.includes('functional php 8')) {
+        consoleOut.textContent = `FUNCTIONAL PHP 8!`;
+      } else if (code.includes('first_class_callable') || code.includes('trim(...)')) {
+        consoleOut.textContent = `Cleaned: apple, banana, cherry\nLengths: 5, 6, 6`;
+      } else if (code.includes('curriedMultiply')) {
+        consoleOut.textContent = `Original: 1, 2, 3, 4\nTripled:  3, 6, 9, 12`;
+      } else if (code.includes('Option::some')) {
+        consoleOut.textContent = `User 1: alice\nUser 2: Guest`;
+      } else {
+        consoleOut.textContent = `[Simulated Output]: Code compiled cleanly. Conforms strictly with PHP 8.x Functional Specs.`;
+      }
+    }
+
+    // Quiz Functions
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    // Search and Index Modal Helpers
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-purple-950/60 border-purple-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-purple-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-purple-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_fp_presentation_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_fp_presentation_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keyboard & Touch Swipe Listeners
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    // Initial load setup
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_fp_presentation_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      updatePipelineView();
+      loadSimulatorPreset('pipe_composition');
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

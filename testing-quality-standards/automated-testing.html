@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automated Testing in PHP - Official Specification Deep Dive</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#10b981',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              purple: '#8b5cf6'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Presentation Styles -->
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.85rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Architecture & Flow Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#10b981',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#059669',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-emerald-500 selection:text-white transition-colors duration-200">
+
+  <!-- Header Navigation -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-vial-circle-check text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Automated Testing <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 light:text-emerald-700 border border-emerald-500/30">Official Spec</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-emerald-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-emerald-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slides Frame -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-emerald-950/50 light:bg-emerald-100 border border-emerald-500/30 text-emerald-300 light:text-emerald-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Manual: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/qa.surveys</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="php.net/manual/en/qa.surveys.php">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-emerald-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-brands fa-php text-6xl text-emerald-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Programmatic Automated Testing <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400">in PHP Core Engine</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A rigorous, end-to-end examination of PHPT test suites, native assertions, zend.assertions INI directives, Reflection meta-testing, stubbing, and PHPDBG coverage mechanisms strictly derived from php.net.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Strict php.net Compliance
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-flask text-teal-400"></i> PHPT & run-tests.php Architecture
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-terminal text-amber-400"></i> Interactive Test Engine Simulators
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-lg shadow-emerald-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Begin Architecture Exploration</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Structural Landscape -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="php.net/manual/en/qa.surveys.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP Automated Testing Taxonomy</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">The official PHP documentation establishes 6 primary pillars for programmatic test execution and engine verification.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-file-code"></i></div>
+            PHPT Specification
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">The official core test file structure used by PHP QA and extensions.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Section markers (<code class="text-emerald-300">--TEST--</code>, <code class="text-emerald-300">--FILE--</code>)</li>
+            <li>• Expected outputs (<code class="text-emerald-300">--EXPECT--</code>, <code class="text-emerald-300">--EXPECTF--</code>)</li>
+            <li>• Environment isolation (<code class="text-emerald-300">--INI--</code>, <code class="text-emerald-300">--SKIPIF--</code>)</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-gears"></i></div>
+            run-tests.php Engine
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Automated CLI harness for parsing, executing, and reporting PHPT results.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Parallel CLI worker evaluation</li>
+            <li>• Diff file generation (<code class="text-sky-300">.diff</code>, <code class="text-sky-300">.out</code>, <code class="text-sky-300">.exp</code>)</li>
+            <li>• Automated QA result submission</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-teal-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center"><i class="fa-solid fa-shield-halved"></i></div>
+            Native Assertions
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Language construct for invariant checking and runtime verification.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-teal-300">assert($expr, $message)</code></li>
+            <li>• INI mode <code class="text-teal-300">zend.assertions</code> (1, 0, -1)</li>
+            <li>• Exception throwing via <code class="text-teal-300">AssertionError</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+            Reflection Inspection
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Programmatic meta-testing of classes, methods, and properties.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Non-public property access (<code class="text-amber-300">setAccessible</code>)</li>
+            <li>• Signature verification (<code class="text-amber-300">ReflectionMethod</code>)</li>
+            <li>• Attribute metadata extraction (<code class="text-amber-300">#[Attribute]</code>)</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-masks-theater"></i></div>
+            Mocks & Dynamic Stubs
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Programmatic isolation through runtime polymorphism and binding.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Anonymous Classes (<code class="text-rose-300">new class implements ...</code>)</li>
+            <li>• Closure scope re-binding (<code class="text-rose-300">Closure::bind</code>)</li>
+            <li>• Magic method interceptors (<code class="text-rose-300">__call</code>)</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-chart-line"></i></div>
+            Bundled Coverage Engine
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Built-in PHP SAPI module for line coverage and opcode profiling.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• PHPDBG Executable SAPI</li>
+            <li>• <code class="text-purple-300">phpdbg_start_oplog()</code></li>
+            <li>• <code class="text-purple-300">phpdbg_get_executable_lines()</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: The PHPT Format -->
+    <div class="slide-wrapper flex-col" data-category="PHPT Engine" data-doc="php.net/manual/en/qa.surveys.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">The Official PHPT File Architecture</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHPT is PHP's core declarative test structure for engine regression testing, extension verification, and core bug fixes.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Sample PHPT File -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-file-code"></i> Standard `.phpt` Anatomy</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-markup">--TEST--
+Core string transformation and formatting test
+--SKIPIF--
+&lt;?php if (!extension_loaded('mbstring')) die('skip mbstring extension unavailable'); ?&gt;
+--INI--
+zend.assertions=1
+assert.exception=1
+--FILE--
+&lt;?php
+$input = "php automated testing";
+$formatted = ucwords($input);
+var_dump($formatted);
+assert(is_string($formatted));
+?&gt;
+--EXPECTF--
+string(21) "Php Automated Testing"</code></pre>
+          </div>
+
+          <div class="mt-2 p-2.5 bg-slate-900/90 rounded-xl border border-slate-800 text-[11px] text-slate-300">
+            <strong class="text-amber-400"><i class="fa-solid fa-circle-info"></i> Mandatory Rule:</strong>
+            <p class="mt-0.5">Every `.phpt` file MUST contain at least <code class="text-emerald-300">--TEST--</code>, <code class="text-emerald-300">--FILE--</code>, and one expectation section (<code class="text-emerald-300">--EXPECT--</code>, <code class="text-emerald-300">--EXPECTF--</code>, or <code class="text-emerald-300">--EXPECTREGEX--</code>).</p>
+          </div>
+        </div>
+
+        <!-- Section Definitions Table -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-list-check"></i> Core PHPT Section Directives</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Section Tag</th>
+                    <th class="p-2">Purpose</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold text-emerald-400">--TEST--</td>
+                    <td class="p-2">One-line title description of the test case.</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-emerald-400">--SKIPIF--</td>
+                    <td class="p-2">PHP code that calls <code class="text-amber-300">die("skip...")</code> to bypass running.</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-emerald-400">--INI--</td>
+                    <td class="p-2">Custom <code class="text-sky-300">php.ini</code> directives required for execution.</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-emerald-400">--FILE--</td>
+                    <td class="p-2">The main executable PHP code payload.</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-emerald-400">--EXPECTF--</td>
+                    <td class="p-2">Expected output with format wildcards (<code class="text-sky-300">%s</code>, <code class="text-sky-300">%d</code>, <code class="text-sky-300">%f</code>).</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-emerald-400">--CLEAN--</td>
+                    <td class="p-2">Cleanup script executed after test completion (removes temp files).</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">
+            Reference: <a href="https://qa.php.net/write-test.php" target="_blank" class="text-sky-400 hover:underline">qa.php.net/write-test.php</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: run-tests.php Lifecycle -->
+    <div class="slide-wrapper flex-col" data-category="PHPT Engine" data-doc="php.net/manual/en/qa.surveys.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Execution Pipeline of `run-tests.php`</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">The native PHP CLI test runner manages process isolation, CLI argument passing, output diffing, and environment cleanup.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-emerald-400 mb-2"><i class="fa-solid fa-diagram-project"></i> PHPT Processing Pipeline</span>
+          <div class="mermaid">
+            sequenceDiagram
+              autonumber
+              participant Runner as run-tests.php
+              participant Skip as --SKIPIF-- Process
+              participant Engine as PHP CLI Subprocess
+              participant Diff as Diff Evaluator
+              Runner->>Skip: Spawn isolated process
+              Skip-->>Runner: Exit 0 or "skip..."
+              Runner->>Engine: Spawn CLI with --INI-- flags
+              Engine-->>Runner: Capture stdout / stderr
+              Runner->>Diff: Compare stdout against --EXPECTF--
+              Diff-->>Runner: Output Match (PASS) / Artifact (.diff)
+          </div>
+        </div>
+
+        <!-- Details & Artifacts -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-folder-tree"></i> Generated Test Artifacts on Failure</span>
+            <p class="text-xs text-slate-300 mb-3">When a test fails under <code class="text-emerald-300">run-tests.php</code>, the harness generates isolated files alongside the source test:</p>
+            
+            <ul class="text-xs font-mono space-y-2 text-slate-300">
+              <li class="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                <span class="text-rose-400 font-bold">test.php</span>: Extracted code from <code class="text-emerald-300">--FILE--</code> executed by the runner.
+              </li>
+              <li class="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                <span class="text-amber-400 font-bold">test.out</span>: Raw string output received from actual PHP stdout.
+              </li>
+              <li class="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                <span class="text-sky-400 font-bold">test.exp</span>: Compiled expected output pattern from <code class="text-emerald-300">--EXPECT--</code>.
+              </li>
+              <li class="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                <span class="text-purple-400 font-bold">test.diff</span>: Unified line-by-line diff comparing actual vs expected output.
+              </li>
+            </ul>
+          </div>
+
+          <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-400 mt-2">
+            CLI Execution: <code class="text-emerald-300">php run-tests.php -p /usr/bin/php tests/basic/</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Native Assertions & INI -->
+    <div class="slide-wrapper flex-col" data-category="Assertions" data-doc="php.net/manual/en/function.assert.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Native Assertions & The `zend.assertions` Directives</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP provides built-in assertions via `assert()` with zero-cost production bypass capabilities configured at compile time.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Assert Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-teal-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Modern `assert()` Usage (PHP 8+)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Simple expression assertion
+assert($calculatedTotal >= 0, "Total amount cannot be negative");
+
+// Custom exception throwing assertion
+assert(
+    $user->hasPermission('admin'),
+    new \DomainException("User missing required test role")
+);
+
+// Programmatic type verification
+function processItem(mixed $item): void {
+    assert(is_object($item) || is_array($item), "Invalid item container");
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Since PHP 8.0, string code evaluation inside <code class="text-teal-300">assert()</code> has been removed.</p>
+        </div>
+
+        <!-- zend.assertions INI table -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-sliders"></i> `zend.assertions` INI Modes</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Value</th>
+                    <th class="p-2">Mode</th>
+                    <th class="p-2">Engine Behavior</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold text-emerald-400">1</td>
+                    <td class="p-2 text-emerald-300">Development</td>
+                    <td class="p-2">Generates opcode and executes assertions at runtime.</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-amber-400">0</td>
+                    <td class="p-2 text-amber-300">Testing Bypass</td>
+                    <td class="p-2">Generates opcode but skips execution dynamically at runtime.</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-rose-400">-1</td>
+                    <td class="p-2 text-rose-300">Production (Zero-Cost)</td>
+                    <td class="p-2">Completely strips code generation during compilation! Zero performance cost.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 text-[11px] text-slate-300 mt-2">
+            <strong class="text-sky-400"><i class="fa-solid fa-gear"></i> Direct Exception Switch:</strong>
+            <p class="mt-0.5"><code class="text-teal-300">assert.exception = 1</code> forces failed assertions to throw an instance of <code class="text-rose-300">\AssertionError</code>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Exception AssertionError vs Callbacks -->
+    <div class="slide-wrapper flex-col" data-category="Assertions" data-doc="php.net/manual/en/class.assertionerror.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">`AssertionError` Handling vs. Assertion Callbacks</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Understanding exception dispatching versus legacy callback registration during test failures.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- AssertionError Exception Box -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-triangle-exclamation"></i> Modern `AssertionError` Flow</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">ini_set('zend.assertions', 1);
+ini_set('assert.exception', 1);
+
+try {
+    $actual = 15;
+    $expected = 20;
+    assert($actual === $expected, "Value $actual does not equal $expected");
+} catch (\AssertionError $e) {
+    echo "Caught Test Failure: " . $e->getMessage() . "\n";
+    echo "File: " . $e->getFile() . " Line: " . $e->getLine();
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-emerald-300 mt-2"><i class="fa-solid fa-check-circle"></i> Recommended for modern programmatic test harnesses and custom assertion suites.</p>
+        </div>
+
+        <!-- Legacy Callback Box -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-clock-rotate-left"></i> Legacy Callback Handler</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">ini_set('zend.assertions', 1);
+ini_set('assert.exception', 0); // Warning / Callback mode
+
+assert_options(ASSERT_CALLBACK, function(
+    string $file,
+    int $line,
+    ?string $code,
+    ?string $desc = null
+): void {
+    echo "Assertion failed at {$file}:{$line}: {$desc}\n";
+});
+
+assert(2 + 2 === 5, "Math sanity failure");</code></pre>
+          </div>
+          <p class="text-[11px] text-amber-300 mt-2"><i class="fa-solid fa-circle-info"></i> Note: <code class="text-amber-300">assert_options()</code> is deprecated in PHP 8.3 and planned for removal.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Interactive Widget 1 - PHPT Test File & Output Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Interactive Widget" data-doc="php.net/manual/en/qa.surveys.php">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive PHPT Runner Simulator</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select or edit a PHPT scenario to observe how `run-tests.php` parses expectations and produces pass/fail artifacts.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Control bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-emerald-400 font-bold">Select PHPT Preset:</span>
+            <select id="phpt-preset-select" onchange="loadPhptPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-emerald-200 focus:outline-none">
+              <option value="pass_expectf">Passing Case (--EXPECTF Wildcard)</option>
+              <option value="fail_diff">Failing Case (Output Mismatch & Diff)</option>
+              <option value="skip_extension">Skipped Case (--SKIPIF Extension Check)</option>
+            </select>
+          </div>
+
+          <button onclick="runPhptSimulation()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono transition flex items-center gap-2">
+            <i class="fa-solid fa-play text-xs"></i> Execute `run-tests.php`
+          </button>
+        </div>
+
+        <!-- Split Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-file text-emerald-400"></i> Raw `.phpt` File Source</span>
+            <textarea id="phpt-file-editor" class="w-full h-56 bg-slate-950 p-3 text-xs font-mono text-slate-200 border border-slate-800 rounded-xl focus:outline-none focus:border-emerald-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-sky-400"></i> Simulated `run-tests.php` Terminal & Artifacts</span>
+            <div id="phpt-console-output" class="w-full h-56 bg-slate-950 p-3 text-xs font-mono border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Programmatic Reflection -->
+    <div class="slide-wrapper flex-col" data-category="Reflection" data-doc="php.net/manual/en/book.reflection.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Meta-Testing via Reflection API</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Programmatically inspect private state, verify return type contracts, and bypass accessibility rules during test assertions.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Private Property Access -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-key"></i> Inspecting Non-Public State</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class OrderService {
+    private string $internalStatus = 'draft';
+}
+
+$service = new OrderService();
+
+// Programmatically inspect private property for assertion
+$ref = new \ReflectionClass($service);
+$property = $ref->getProperty('internalStatus');
+$property->setAccessible(true); // Accessible in PHP < 8.1 / auto in 8.1+
+
+$value = $property->getValue($service);
+assert($value === 'draft', "Initial status must be draft");</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/reflectionproperty.setaccessible.php" target="_blank" class="text-sky-400 hover:underline">php.net/reflectionproperty.setaccessible</a></p>
+        </div>
+
+        <!-- Strict Method Contract Testing -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-signature"></i> Signature Contract Assertions</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Asserting interface or return type rules programmatically
+$refMethod = new \ReflectionMethod(PaymentGateway::class, 'process');
+
+// Verify return type is declared and allows string
+assert($refMethod->hasReturnType(), "Method must declare return type");
+$returnType = $refMethod->getReturnType();
+
+assert($returnType->getName() === 'bool', "Must return boolean");
+assert(!$returnType->allowsNull(), "Return type cannot be nullable");</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Enforces architectural conventions programmatically within test runners.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Mocking and Mocks -->
+    <div class="slide-wrapper flex-col" data-category="Isolation" data-doc="php.net/manual/en/language.oop5.anonymous.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Mocks, Stubs & Scope Re-Binding (`Closure::bind`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Leveraging core OOP primitives: Anonymous Classes, Magic Interceptors, and Closure context manipulation for test isolation.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Anonymous Class Stubs -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-masks-theater"></i> Anonymous Class Stubbing</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">interface LoggerInterface {
+    public function log(string $msg): void;
+}
+
+// Inline mock object without heavy external frameworks
+$mockLogger = new class implements LoggerInterface {
+    public array $logs = [];
+    public function log(string $msg): void {
+        $this->logs[] = $msg;
+    }
+};
+
+$processor = new OrderProcessor($mockLogger);
+$processor->execute();
+
+assert(count($mockLogger->logs) === 1, "Expected 1 log entry");</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Lightweight native mocking using PHP 7.0+ anonymous classes.</p>
+        </div>
+
+        <!-- Closure Scope Binding -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-link"></i> Dynamic Scope Injection (`Closure::bind`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class PrivateStateContainer {
+    private int $secretCounter = 42;
+}
+
+$container = new PrivateStateContainer();
+
+// Re-bind closure scope to access private variables without altering code
+$extractor = Closure::bind(function(PrivateStateContainer $c) {
+    return $c->secretCounter;
+}, null, PrivateStateContainer::class);
+
+assert($extractor($container) === 42);</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/closure.bind.php" target="_blank" class="text-sky-400 hover:underline">php.net/closure.bind</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Metadata Attributes -->
+    <div class="slide-wrapper flex-col" data-category="Metadata" data-doc="php.net/manual/en/language.attributes.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Attributes as Test Metadata (PHP 8.0+)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Using native `#[Attribute]` tags to declare test methods, data providers, and execution requirements programmatically.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Declaring Attributes -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-tag"></i> Defining Custom Test Attributes</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">#[Attribute(Attribute::TARGET_METHOD)]
+class Test {}
+
+#[Attribute(Attribute::TARGET_METHOD)]
+class DataProvider {
+    public function __construct(public string $methodName) {}
+}
+
+class UserTest {
+    #[Test]
+    #[DataProvider('provideUserAge')]
+    public function testAgeValidation(int $age, bool $expected): void {
+        assert((new User($age))->isValid() === $expected);
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Replaces legacy docblock annotations (<code class="text-amber-300">@test</code>) with structured engine attributes.</p>
+        </div>
+
+        <!-- Attribute Parser -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-code-branch"></i> Programmatic Attribute Test Discovery</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$refClass = new ReflectionClass(UserTest::class);
+
+foreach ($refClass->getMethods() as $method) {
+    // Check if method carries #[Test] attribute
+    $attributes = $method->getAttributes(Test::class);
+    
+    if (!empty($attributes)) {
+        echo "Discovered Test Method: " . $method->getName() . "\n";
+        // Instantiate and execute test...
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/reflectionmethod.getattributes.php" target="_blank" class="text-sky-400 hover:underline">php.net/reflectionmethod.getattributes</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Interactive Assertion INI Inspector -->
+    <div class="slide-wrapper flex-col" data-category="Interactive Widget" data-doc="php.net/manual/en/info.configuration.php#ini.zend.assertions">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Assertion INI Inspector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select combinations of `zend.assertions` and `assert.exception` to observe compiler opcode vs runtime evaluation changes.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Config select buttons -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <label class="text-xs font-mono text-emerald-400 font-bold">Select INI Configuration Preset:</label>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="inspectAssertions(1, 1)" class="assertion-btn px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-mono">zend.assertions=1 & assert.exception=1</button>
+            <button onclick="inspectAssertions(1, 0)" class="assertion-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">zend.assertions=1 & assert.exception=0</button>
+            <button onclick="inspectAssertions(0, 0)" class="assertion-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">zend.assertions=0 (Skip Execution)</button>
+            <button onclick="inspectAssertions(-1, 0)" class="assertion-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">zend.assertions=-1 (Zero Cost)</button>
+          </div>
+        </div>
+
+        <!-- Output display -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-sky-400 font-mono text-xs font-bold block mb-2"><i class="fa-solid fa-microchip"></i> Engine Compilation & Opcode Status</span>
+              <div id="assertion-compiler-log" class="font-mono text-xs text-sky-200 space-y-1">
+                <!-- JS populated -->
+              </div>
+            </div>
+            <div id="assertion-compiler-badge" class="mt-3 p-2 rounded bg-sky-950/60 text-sky-300 border border-sky-800 text-[11px] font-mono">
+              <!-- Result -->
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-amber-400 font-mono text-xs font-bold block mb-2"><i class="fa-solid fa-bug"></i> Runtime Assertion Evaluation (`assert(2 === 5)`)</span>
+              <div id="assertion-runtime-log" class="font-mono text-xs text-amber-200 space-y-1">
+                <!-- JS populated -->
+              </div>
+            </div>
+            <div id="assertion-runtime-badge" class="mt-3 p-2 rounded bg-amber-950/60 text-amber-300 border border-amber-800 text-[11px] font-mono">
+              <!-- Result -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Code Coverage & PHPDBG -->
+    <div class="slide-wrapper flex-col" data-category="Coverage" data-doc="php.net/manual/en/book.phpdbg.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Code Coverage via Bundled PHPDBG Engine SAPI</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP includes a built-in debugging SAPI (PHPDBG) capable of tracking line execution coverage programmatically.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Code snippet -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-terminal"></i> Programmatic PHPDBG Coverage API</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Start op-line log recording
+phpdbg_start_oplog();
+
+// Execute application code during test run
+$calculator = new Calculator();
+$result = $calculator->add(10, 20);
+
+// Retrieve executed lines for the current file
+$executedLines = phpdbg_get_executable_lines();
+$oplog = phpdbg_end_oplog();
+
+// Programmatically calculate percentage coverage
+$executedCount = count($oplog[__FILE__] ?? []);
+$totalCount = count($executedLines);
+$coveragePct = ($executedCount / $totalCount) * 100;
+
+echo "Line Coverage: {$coveragePct}%\n";</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/book.phpdbg.php" target="_blank" class="text-sky-400 hover:underline">php.net/book.phpdbg</a></p>
+        </div>
+
+        <!-- Flow diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-emerald-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Opcode Tracking Lifecycle</span>
+          <div class="mermaid">
+            sequenceDiagram
+              autonumber
+              participant CLI as PHPDBG SAPI Engine
+              participant Op as Opline Logger
+              participant App as Test Target Script
+              CLI->>Op: phpdbg_start_oplog()
+              CLI->>App: Execute Test Suite
+              App->>Op: Mark executed Zend Opcodes
+              CLI->>Op: phpdbg_get_executable_lines()
+              Op-->>CLI: Return Executed vs Total Executable Lines Map
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Interactive Playground / Custom Test Runner -->
+    <div class="slide-wrapper flex-col" data-category="Playground" data-doc="php.net/manual/en/function.assert.php">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Custom PHP Test Runner Playground</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Write custom assertion logic, reflection inspections, and test suites to simulate CLI runner execution.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Controls Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-emerald-400 font-bold">Select Test Suite Template:</span>
+            <select id="sim-preset-select" onchange="loadSimulatorPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-emerald-200 focus:outline-none">
+              <option value="custom_runner">Simple Reflection-Based Test Suite</option>
+              <option value="assert_exception">AssertionError Exception Capture</option>
+              <option value="mock_closure">Closure Scope Override Test</option>
+            </select>
+          </div>
+
+          <button onclick="resetSimulatorCode()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Template
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-teal-400"></i> PHP Test Script Code</span>
+            <textarea id="sim-editor" oninput="runSimulatedCode()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-200 border border-slate-800 rounded-xl focus:outline-none focus:border-emerald-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Simulated PHP CLI Console Output</span>
+            <div id="sim-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Knowledge Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net/manual/en/qa.surveys.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Knowledge Assessment Quiz</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your comprehension of PHP automated testing rules strictly grounded in official manual documentation.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-emerald-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Official Resources & Summary -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net/manual/en/qa.surveys.php">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Documentation Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every testing paradigm, PHPT tag specification, INI directive, and code sample in this presentation is derived directly from the official PHP Manual at php.net.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://qa.php.net/write-test.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-emerald-400">PHPT Testing Specification</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Guide to writing core PHPT tests and run-tests.php flags.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/function.assert.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-emerald-400">assert() Construct & INI</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Documentation for zend.assertions and AssertionError.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/book.reflection.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-emerald-400">Reflection API Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Programmatic inspection of non-public elements & attributes.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/book.phpdbg.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-emerald-400">PHPDBG Coverage SAPI</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Built-in interactive debugger and opcode logging suite.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Control Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-emerald-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net/manual/en/qa.surveys.php" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Slide Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-emerald-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search testing keywords (e.g., phpt, assert, reflection, coverage)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-emerald-400"></i> Presentation Slide Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Questions Dataset (Strictly grounded in php.net)
+    const quizData = [
+      {
+        question: "In the official PHP PHPT specification, what does the `%s` wildcard represent inside an `--EXPECTF--` section?",
+        options: [
+          "A single integer digit only.",
+          "Any string up to the end of the current line.",
+          "A floating point decimal number.",
+          "A single hexadecimal character."
+        ],
+        correct: 1,
+        explanation: "Official Manual (qa.php.net/write-test.php): %s matches any string up to the end of the line, while %d matches integers and %f matches floats."
+      },
+      {
+        question: "What happens when `zend.assertions` is set to `-1` in `php.ini`?",
+        options: [
+          "Assertions throw an AssertionError exception immediately.",
+          "Assertion code is generated but skipped dynamically at runtime.",
+          "Zero-cost assertions mode: assertion code generation is stripped completely during compilation.",
+          "Assertions are logged to stderr as E_WARNING messages."
+        ],
+        correct: 2,
+        explanation: "Official Manual (php.net/manual/en/info.configuration.php#ini.zend.assertions): Setting zend.assertions = -1 results in zero-cost assertions where no code is generated by the Zend compiler."
+      },
+      {
+        question: "When `assert.exception` is enabled (=1) and an `assert()` expression evaluates to false, what exception class is thrown by default?",
+        options: [
+          "\\LogicException",
+          "\\RuntimeException",
+          "\\AssertionError",
+          "\\InvalidArgumentException"
+        ],
+        correct: 2,
+        explanation: "Official Manual (php.net/manual/en/class.assertionerror.php): AssertionError is thrown when an assertion created with assert() fails when assert.exception is set to 1."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // PHPT Presets for Widget 1
+    const phptPresets = {
+      pass_expectf: `--TEST--
+Basic string uppercase test
+--FILE--
+<?php
+$str = "php test";
+var_dump(strtoupper($str));
+?>
+--EXPECTF--
+string(%d) "PHP TEST"`,
+
+      fail_diff: `--TEST--
+Math calculation intentional mismatch
+--FILE--
+<?php
+$result = 10 + 20;
+echo "Result is: " . $result;
+?>
+--EXPECT--
+Result is: 999`,
+
+      skip_extension: `--TEST--
+Imagick rendering test
+--SKIPIF--
+<?php
+if (!extension_loaded('imagick')) {
+    die('skip Imagick extension is not installed');
+}
+?>
+--FILE--
+<?php
+echo "Imagick loaded";
+?>
+--EXPECT--
+Imagick loaded`
+    };
+
+    // Simulator Presets for Playground
+    const simulatorPresets = {
+      custom_runner: `<?php
+class CalculatorTest {
+    public function testAddition(): void {
+        $calc = new stdClass();
+        $calc->sum = 5 + 5;
+        assert($calc->sum === 10, "5 + 5 must equal 10");
+        echo "[PASS] testAddition\\n";
+    }
+
+    public function testTypeCheck(): void {
+        assert(is_string("PHP"), "Must be string");
+        echo "[PASS] testTypeCheck\\n";
+    }
+}
+
+// Minimal Reflection Test Harness
+$ref = new ReflectionClass('CalculatorTest');
+$instance = $ref->newInstance();
+
+foreach ($ref->getMethods() as $method) {
+    if (str_starts_with($method->getName(), 'test')) {
+        $method->invoke($instance);
+    }
+}`,
+      assert_exception: `<?php
+ini_set('zend.assertions', 1);
+ini_set('assert.exception', 1);
+
+try {
+    echo "Running test assertion...\\n";
+    assert(1 === 2, "Failed integer identity test");
+} catch (AssertionError $e) {
+    echo "Caught expected AssertionError!\\n";
+    echo "Message: " . $e->getMessage() . "\\n";
+    echo "Line: " . $e->getLine();
+}`,
+      mock_closure: `<?php
+class User {
+    private string $status = 'pending';
+}
+
+$user = new User();
+
+// Programmatic private status mutation using Closure binding
+$statusSetter = Closure::bind(function(User $u, string $newStatus) {
+    $u->status = $newStatus;
+}, null, User::class);
+
+$statusSetter($user, 'active');
+
+$statusGetter = Closure::bind(function(User $u) {
+    return $u->status;
+}, null, User::class);
+
+echo "User status mutated to: " . $statusGetter($user);`
+    };
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      // Update counters
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // Update Header Chip
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      // Prism highlight
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      // Mermaid re-render
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-emerald-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    // Interactive Widget 1: PHPT Runner Simulator
+    function loadPhptPreset(key) {
+      document.getElementById('phpt-file-editor').value = phptPresets[key] || '';
+      runPhptSimulation();
+    }
+
+    function runPhptSimulation() {
+      const code = document.getElementById('phpt-file-editor').value;
+      const consoleOut = document.getElementById('phpt-console-output');
+
+      if (code.includes('skip Imagick')) {
+        consoleOut.innerHTML = `<span class="text-amber-400">[SKIP] Imagick rendering test</span>\nReason: Imagick extension is not installed\n\n--------------------------------\nResult: SKIPPED (1 skipped test)`;
+      } else if (code.includes('Result is: 999')) {
+        consoleOut.innerHTML = `<span class="text-rose-400">[FAIL] Math calculation intentional mismatch</span>\n\n--- Diff generated: test.diff ---\n- Result is: 999\n+ Result is: 30\n\nGenerated Artifacts:\n- test.php\n- test.out\n- test.exp\n- test.diff\n\n--------------------------------\nResult: FAILED (1 failed test)`;
+      } else {
+        consoleOut.innerHTML = `<span class="text-emerald-400">[PASS] Basic string uppercase test</span>\n\nOutput Match Verified against --EXPECTF--:\nstring(8) "PHP TEST"\n\n--------------------------------\nResult: PASSED (100% successful)`;
+      }
+    }
+
+    // Interactive Widget 2: Assertion Inspector
+    function inspectAssertions(zendAssert, assertExc) {
+      document.querySelectorAll('.assertion-btn').forEach(b => {
+        b.className = "assertion-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono";
+      });
+      event.target.className = "assertion-btn px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-mono";
+
+      const compLog = document.getElementById('assertion-compiler-log');
+      const runtimeLog = document.getElementById('assertion-runtime-log');
+      const compBadge = document.getElementById('assertion-compiler-badge');
+      const runtimeBadge = document.getElementById('assertion-runtime-badge');
+
+      if (zendAssert === 1 && assertExc === 1) {
+        compLog.innerHTML = `<div>zend.assertions = 1:</div><div>1. Zend compiler emits ZEND_ASSERT opcodes.</div><div>2. Complete code instrumentation enabled.</div>`;
+        compBadge.textContent = `Opcode: GENERATED & EXECUTED`;
+
+        runtimeLog.innerHTML = `<div>assert(2 === 5) evaluated:</div><div>1. Expression evaluated to FALSE.</div><div>2. assert.exception=1 triggers error handler.</div><div>3. Throws \\AssertionError.</div>`;
+        runtimeBadge.textContent = `Fatal: Threw \\AssertionError!`;
+      } else if (zendAssert === 1 && assertExc === 0) {
+        compLog.innerHTML = `<div>zend.assertions = 1:</div><div>1. Zend compiler emits ZEND_ASSERT opcodes.</div>`;
+        compBadge.textContent = `Opcode: GENERATED & EXECUTED`;
+
+        runtimeLog.innerHTML = `<div>assert(2 === 5) evaluated:</div><div>1. Expression evaluated to FALSE.</div><div>2. assert.exception=0 triggers warning/callback.</div><div>3. Emits E_WARNING or triggers assert_options() callback.</div>`;
+        runtimeBadge.textContent = `Warning: E_WARNING emitted (no exception)`;
+      } else if (zendAssert === 0) {
+        compLog.innerHTML = `<div>zend.assertions = 0:</div><div>1. Opcode is generated during compilation.</div><div>2. Zend VM skips execution step at runtime.</div>`;
+        compBadge.textContent = `Opcode: GENERATED BUT SKIPPED`;
+
+        runtimeLog.innerHTML = `<div>assert(2 === 5) evaluated:</div><div>1. Expression check is BYPASSED at runtime.</div><div>2. No exception or warning thrown.</div>`;
+        runtimeBadge.textContent = `Status: Assertion Bypassed dynamically`;
+      } else if (zendAssert === -1) {
+        compLog.innerHTML = `<div>zend.assertions = -1 (Zero-Cost):</div><div>1. Zend compiler strips assert() during AST parsing!</div><div>2. ZERO opcodes generated for assert statement!</div>`;
+        compBadge.textContent = `Opcode: STRIPPED (Zero Memory / CPU Cost)`;
+
+        runtimeLog.innerHTML = `<div>assert(2 === 5) evaluated:</div><div>1. Completely removed from compiled script bytecode.</div><div>2. Zero runtime performance penalty.</div>`;
+        runtimeBadge.textContent = `Status: Completely Erased from Bytecode`;
+      }
+    }
+
+    // Playground Simulator
+    function loadSimulatorPreset(key) {
+      document.getElementById('sim-editor').value = simulatorPresets[key] || '';
+      runSimulatedCode();
+    }
+
+    function resetSimulatorCode() {
+      const key = document.getElementById('sim-preset-select').value;
+      loadSimulatorPreset(key);
+    }
+
+    function runSimulatedCode() {
+      const code = document.getElementById('sim-editor').value;
+      const consoleOut = document.getElementById('sim-console-output');
+
+      if (code.includes('CalculatorTest')) {
+        consoleOut.textContent = `[PASS] testAddition\n[PASS] testTypeCheck\n\n2 tests executed, 0 failures.`;
+      } else if (code.includes('AssertionError')) {
+        consoleOut.textContent = `Running test assertion...\nCaught expected AssertionError!\nMessage: Failed integer identity test\nLine: 7`;
+      } else if (code.includes('statusSetter')) {
+        consoleOut.textContent = `User status mutated to: active`;
+      } else {
+        consoleOut.textContent = `[Simulated Output]: Code parsed successfully. Verification against php.net complete.`;
+      }
+    }
+
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-emerald-950/60 border-emerald-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-emerald-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-emerald-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_presentation_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_presentation_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keyboard & Swipe Listeners
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    // Initialization
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_presentation_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      loadPhptPreset('pass_expectf');
+      inspectAssertions(1, 1);
+      loadSimulatorPreset('custom_runner');
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

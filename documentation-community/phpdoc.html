@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PHPDoc Programmatically - Technical Specification & Reference</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Presentation Styles -->
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Prism Syntax Custom Overrides */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.82rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.35);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <!-- Header Navigation -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-file-code text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHPDoc Spec <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 light:text-purple-700 border border-purple-500/30">docs.phpdoc.org</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category Badge -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar Buttons -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Modal Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Directory Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Global Reading Progress Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slide Container -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Documentation: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">docs.phpdoc.org</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10 active" data-category="Overview" data-doc="docs.phpdoc.org/guide/references/phpdoc/basic-syntax.html">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-brands fa-php text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        PHPDoc Programmatically <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-sky-400">In-Depth Reference Spec</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A rigorous, complete technical breakdown of DocBlock anatomy, structural elements, type system syntax, template generics, tag specifications, and inheritance rules based strictly on <strong>docs.phpdoc.org</strong>.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Grounded in docs.phpdoc.org
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-gears text-purple-400"></i> Interactive Type Inspectors
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-amber-400"></i> Interactive Knowledge Quiz
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Explore PHPDoc Architecture</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Anatomy of a DocBlock -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="docs.phpdoc.org/guide/guides/docblocks.html">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Anatomy & Structure of a PHPDoc DocBlock</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">A DocBlock is a combination of a DocComment container and PHPDoc Domain Specific Language (DSL) consisting of Summary, Description, and Tags.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Structural Anatomy Code Box -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> DocBlock Standard Form</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">/**
+ * Summary: One-liner describing the purpose.
+ *
+ * Description: Detailed explanation supporting Markdown
+ * formatting, inline tags like {@link https://example.com},
+ * and multi-line explanations of algorithms or structures.
+ *
+ * @author  Jane Doe &lt;jane@example.com&gt;
+ * @param   string $identifier The entity lookup ID.
+ * @return  \App\Domain\User   The resolved entity object.
+ * @throws  \InvalidArgumentException If ID format is invalid.
+ */
+public function findUser(string $identifier): User</code></pre>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <strong class="text-purple-400"><i class="fa-solid fa-info-circle"></i> Mandatory Delimitation:</strong>
+            <p class="mt-1">
+              DocComments MUST start with <code class="text-purple-300">/**</code> (two asterisks) and end with <code class="text-purple-300">*/</code>. Standard comments <code class="text-purple-300">/* ... */</code> or <code class="text-purple-300">//</code> are ignored by phpDocumentor and Reflection API (<code class="text-purple-300">getDocComment()</code>).
+            </p>
+          </div>
+        </div>
+
+        <!-- Section Rules Breakdown -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-layer-group"></i> 3 Core Sections of a DocBlock</span>
+            
+            <div class="space-y-3 text-xs">
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="font-bold text-purple-300 mb-1">1. Summary (Short Description)</div>
+                <p class="text-slate-300 text-[11px] leading-relaxed">
+                  A high-level summary ending with a full stop (<code class="text-sky-300">.</code>) followed by a newline OR terminated by two consecutive newlines. Plain text only (no Markdown or tags).
+                </p>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="font-bold text-sky-300 mb-1">2. Description (Long Description)</div>
+                <p class="text-slate-300 text-[11px] leading-relaxed">
+                  Provides granular details, algorithms, or code samples. Supports Markdown styling and inline tags enclosed in braces like <code class="text-sky-300">{@link}</code> or <code class="text-sky-300">{@inheritDoc}</code>.
+                </p>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="font-bold text-emerald-300 mb-1">3. Tags Block</div>
+                <p class="text-slate-300 text-[11px] leading-relaxed">
+                  A series of descriptors starting with an <code class="text-emerald-300">@</code> symbol on a new line (e.g. <code class="text-emerald-300">@param</code>, <code class="text-emerald-300">@return</code>). Supplies metadata for IDEs and generators.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">
+            Reference: <a href="https://docs.phpdoc.org/guide/references/phpdoc/basic-syntax.html" target="_blank" class="text-sky-400 hover:underline">docs.phpdoc.org/guide/references/phpdoc/basic-syntax.html</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Structural Elements & Target Binding -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="docs.phpdoc.org/guide/references/phpdoc/basic-syntax.html#structural-elements">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Structural Elements & DocBlock Association</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHPDoc automatically binds a DocBlock to the single Structural Element that immediately follows it in code.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-file-lines"></i></div>
+            File-Level DocBlock
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Must be the FIRST DocBlock in a file, preceding any code except <code class="text-purple-300">declare</code> statements.</p>
+          <pre><code class="language-php">/**
+ * File Overview.
+ * @package App\Core
+ */</code></pre>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-cubes"></i></div>
+            Class, Interface & Trait
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Documents object definitions, interfaces, traits, or PHP 8.1+ Enums.</p>
+          <pre><code class="language-php">/**
+ * User Repository Service.
+ */
+class UserRepository {}</code></pre>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-gears"></i></div>
+            Functions & Methods
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Documents signature parameters, return values, and thrown exceptions.</p>
+          <pre><code class="language-php">/**
+ * @param int $id
+ */
+function getUser($id) {}</code></pre>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-database"></i></div>
+            Properties & Constants
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Defines variable data types and intended access permissions.</p>
+          <pre><code class="language-php">/** @var string */
+private string $name;</code></pre>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-box"></i></div>
+            Includes & Requires
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Documents procedural file imports and dependency inclusion.</p>
+          <pre><code class="language-php">/** @var Config */
+$config = require 'cfg.php';</code></pre>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-sliders"></i></div>
+            Inline Local Variables
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Assists IDE static analysis for local variable type resolution.</p>
+          <pre><code class="language-php">/** @var \App\User $user */
+$user = $container->get('user');</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Standard Signature Tags -->
+    <div class="slide-wrapper flex-col" data-category="Tags" data-doc="docs.phpdoc.org/guide/references/phpdoc/tags/param.html">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Core Signature Tags (`@param`, `@return`, `@throws`, `@var`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">The primary annotations defining inputs, outputs, exceptions, and property types.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Param & Return -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-arrow-right-to-bracket"></i> `@param` & `@return` Syntax</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">/**
+ * Processes incoming order payload.
+ *
+ * @param  int           $orderId  Unique numeric order identifier.
+ * @param  string[]      $items    List of item SKU numbers.
+ * @param  bool          $express  Optional express handling flag.
+ * @return \App\Response           Processing outcome response object.
+ */
+public function processOrder(int $orderId, array $items, bool $express = false): Response</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Syntax: @param [Type] $[name] [Description] & @return [Type] [Description]</p>
+        </div>
+
+        <!-- Throws & Var -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-triangle-exclamation"></i> `@throws` & `@var` Annotations</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class Account {
+    /**
+     * @var \App\Services\LoggerInterface Holds logger reference.
+     */
+    private $logger;
+
+    /**
+     * @param  float $amount
+     * @throws \InsufficientFundsException If balance < $amount.
+     * @throws \InvalidArgumentException    If $amount <= 0.
+     * @return void
+     */
+    public function withdraw(float $amount): void
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-emerald-300 font-mono mt-2">Multiple `@throws` tags indicate all potential raised exceptions.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Type System BNF Specification -->
+    <div class="slide-wrapper flex-col" data-category="Type System" data-doc="docs.phpdoc.org/guide/references/phpdoc/types.html">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHPDoc Type System BNF Specification</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Formal specification of complex types supported in PHPDoc tags according to docs.phpdoc.org/types.html.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-layer-group"></i> Union & Intersection</span>
+          <p class="text-xs text-slate-300 mb-2">Combines multiple types using pipe or ampersand syntax:</p>
+          <pre><code class="language-php">/** @param string|int|null $id */
+/** @param Renderable&Countable $item */</code></pre>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <span class="text-emerald-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-list-ol"></i> Array Notation (`T[]`)</span>
+          <p class="text-xs text-slate-300 mb-2">Denotes an array containing elements of specific type T:</p>
+          <pre><code class="language-php">/** @return User[] */
+/** @param (User|Account)[] $items */</code></pre>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-brackets-curly"></i> Array Shapes</span>
+          <p class="text-xs text-slate-300 mb-2">Specifies expected associative array keys and value types:</p>
+          <pre><code class="language-php">/**
+ * @param array{id: int, name: string, email?: string} $user
+ */</code></pre>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <span class="text-rose-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-box-archive"></i> Generic Collections</span>
+          <p class="text-xs text-slate-300 mb-2">Specifies key-value types in generic maps or lists:</p>
+          <pre><code class="language-php">/** @return array<string, User> */
+/** @return Collection<int, Order> */</code></pre>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <span class="text-indigo-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-hashtag"></i> Class Strings</span>
+          <p class="text-xs text-slate-300 mb-2">Represents string containing valid class names:</p>
+          <pre><code class="language-php">/** @param class-string<Service> $class */
+/** @return class-string */</code></pre>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <span class="text-purple-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-key"></i> Specialized Pseudotypes</span>
+          <p class="text-xs text-slate-300 mb-2">Pseudo-types for enhanced static analysis:</p>
+          <pre><code class="language-php">/** @param callable-string $func */
+/** @param positive-int $count */</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Generics & Template Directives -->
+    <div class="slide-wrapper flex-col" data-category="Generics" data-doc="docs.phpdoc.org/guide/references/phpdoc/tags/template.html">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Generics & Type Parameters (`@template`, `@extends`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHPDoc allows defining type variables using <code class="text-purple-300">@template</code> for generic classes, functions, and interfaces.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Generic Collection Class -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-boxes-stacked"></i> Generic Class & Bounds</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">/**
+ * @template T of \App\Models\Model
+ */
+class Repository {
+    /** @var array<int, T> */
+    private array $items = [];
+
+    /**
+     * @param T $item
+     */
+    public function add(object $item): void {
+        $this->items[] = $item;
+    }
+
+    /**
+     * @return T
+     */
+    public function find(int $id): object {
+        return $this->items[$id];
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">`T of ClassName` specifies an upper bound for the generic parameter.</p>
+        </div>
+
+        <!-- Generic Inheritance -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-sitemap"></i> Concrete Generic Inheritance</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">/**
+ * Binds generic parameter T to concrete User class
+ *
+ * @extends Repository<\App\Models\User>
+ * @implements CollectionInterface<int, \App\Models\User>
+ */
+class UserRepository extends Repository implements CollectionInterface {
+    public function getActiveUsers(): array {
+        // IDE knows return type is User[]!
+        return array_filter($this->items, fn($u) => $u->isActive());
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-sky-300 font-mono mt-2">Use @extends, @implements, and @use to pass concrete types to generic parents.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Interactive Type System Inspector & AST Visualizer -->
+    <div class="slide-wrapper flex-col" data-category="Type System" data-doc="docs.phpdoc.org/guide/references/phpdoc/types.html">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive PHPDoc Type AST Inspector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select or type complex PHPDoc type expressions to inspect their parsed Abstract Syntax Tree (AST).</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <label class="text-xs font-mono text-purple-400 font-bold">Select Sample Type Expression:</label>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="inspectType('User[]')" class="type-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono">User[]</button>
+            <button onclick="inspectType('array<string, User>')" class="type-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">array&lt;string, User&gt;</button>
+            <button onclick="inspectType('array{id: int, name?: string}')" class="type-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">array{id: int, name?: string}</button>
+            <button onclick="inspectType('Renderable&Countable')" class="type-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Renderable&Countable</button>
+            <button onclick="inspectType('class-string<Service>')" class="type-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">class-string&lt;Service&gt;</button>
+          </div>
+        </div>
+
+        <!-- Visual Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-sky-400 font-mono text-xs font-bold block mb-2"><i class="fa-solid fa-code"></i> PHPDoc Annotation Input</span>
+              <div id="type-input-display" class="font-mono text-sm text-purple-300 bg-slate-900 p-3 rounded-lg border border-slate-800">
+                User[]
+              </div>
+            </div>
+            <div id="type-category-badge" class="mt-3 p-2 rounded bg-purple-950/60 text-purple-300 border border-purple-800 text-[11px] font-mono">
+              Category: Typed Array Syntax
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-emerald-400 font-mono text-xs font-bold block mb-2"><i class="fa-solid fa-network-wired"></i> Abstract Syntax Tree Breakdown</span>
+              <div id="type-ast-tree" class="font-mono text-xs text-emerald-300 space-y-1.5 bg-slate-900 p-3 rounded-lg border border-slate-800 leading-relaxed">
+                <!-- JS populated -->
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-500 font-mono mt-2">Parsed according to docs.phpdoc.org/guide/references/phpdoc/types.html</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Virtual Members & Magic Overloading -->
+    <div class="slide-wrapper flex-col" data-category="Virtual Members" data-doc="docs.phpdoc.org/guide/references/phpdoc/tags/property.html">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Virtual Members & Magic Methods (`@property`, `@method`, `@mixin`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Documents dynamic properties and methods handled via magic methods (<code class="text-purple-300">__get</code>, <code class="text-purple-300">__call</code>) or class delegation.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Magic Property Annotations -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-wand-magic-sparkles"></i> `@property` Variations</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">/**
+ * Dynamic Active Record Entity.
+ *
+ * @property        int    $id          Read and write magic property.
+ * @property-read   string $created_at Read-only magic property.
+ * @property-write  string $password   Write-only magic property.
+ */
+class UserEntity {
+    private array $data = [];
+
+    public function __get(string $name) {
+        return $this->data[$name] ?? null;
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Syntax: @property [Type] $[name] [Description]</p>
+        </div>
+
+        <!-- Virtual Method & Mixin -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-cubes-stacked"></i> `@method` & `@mixin` Syntax</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">/**
+ * Dynamic Query Builder Facade.
+ *
+ * @method static UserEntity findOrFail(int $id)
+ * @method self whereStatus(string $status)
+ * @mixin  \App\QueryBuilder
+ */
+class UserFacade {
+    public static function __callStatic($method, $args) {
+        return (new QueryBuilder())->$method(...$args);
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-sky-300 font-mono mt-2">@mixin instructs tools that this class delegates calls to another class.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Inheritance Rules & {@inheritDoc} -->
+    <div class="slide-wrapper flex-col" data-category="Inheritance" data-doc="docs.phpdoc.org/guide/references/phpdoc/basic-syntax.html#inheritance">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">DocBlock Inheritance & Inline `{@inheritDoc}`</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Rules governing how child classes, interfaces, and methods inherit or merge documentation from parent elements.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Automatic vs Explicit Inheritance Rules -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-diagram-nested"></i> Inheritance Propagation Rules</span>
+            <ul class="text-xs text-slate-300 space-y-2 leading-relaxed">
+              <li class="p-2 rounded bg-slate-900 border border-slate-800">
+                <strong class="text-sky-300">1. Automatic Full Fallback:</strong> If a method has NO DocBlock, phpDocumentor automatically inherits the complete DocBlock from overridden parent or implemented interface method.
+              </li>
+              <li class="p-2 rounded bg-slate-900 border border-slate-800">
+                <strong class="text-purple-300">2. Partial Tag Merging:</strong> If a method supplies its own DocBlock with tags, `@param` tags are merged by parameter name, and missing tags inherit from parent automatically.
+              </li>
+              <li class="p-2 rounded bg-slate-900 border border-slate-800">
+                <strong class="text-emerald-300">3. Inline Description Augmentation:</strong> Use <code class="text-emerald-400">{@inheritDoc}</code> inline inside the description to explicitly inject the parent description text at that exact location.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Code Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Augmenting Descriptions via `{@inheritDoc}`</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class BaseService {
+    /**
+     * Executes fundamental service tasks.
+     *
+     * @param string $task Identifier.
+     */
+    public function execute(string $task): void {}
+}
+
+class ExtendedService extends BaseService {
+    /**
+     * {@inheritDoc}
+     * Additionally logs execution metrics to Redis.
+     */
+    public function execute(string $task): void {}
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Source: docs.phpdoc.org/guide/references/phpdoc/basic-syntax.html</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Deprecation, Versioning & Authorship -->
+    <div class="slide-wrapper flex-col" data-category="Metadata" data-doc="docs.phpdoc.org/guide/references/phpdoc/tags/deprecated.html">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Deprecation, Versioning & Lifecycle Annotations</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Provides version history, deprecation warnings, author attribution, and licensing metadata.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-rose-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-ban"></i> `@deprecated`</span>
+            <pre><code class="language-php">/**
+ * @deprecated 2.4.0 Superseded by
+ *   UserResolver::resolve()
+ */
+function oldGetUser() {}</code></pre>
+            <p class="text-xs text-slate-300 mt-2">Flags element as obsolete. IDEs will strike-through method usages.</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">Syntax: @deprecated [ver] [description]</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-code-branch"></i> `@since` & `@version`</span>
+            <pre><code class="language-php">/**
+ * @since   1.2.0 Introduced feature.
+ * @version 2.1.0 Current release.
+ */
+class FeatureHandler {}</code></pre>
+            <p class="text-xs text-slate-300 mt-2">Tracks element version introduction and current release iterations.</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">Syntax: @since [ver] [description]</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-user-pen"></i> `@author` & `@copyright`</span>
+            <pre><code class="language-php">/**
+ * @author    Alex &lt;alex@dev.org&gt;
+ * @copyright 2026 Acme Corp
+ * @license   MIT
+ */</code></pre>
+            <p class="text-xs text-slate-300 mt-2">Attributes ownership, copyright holder, and software distribution license.</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">Syntax: @author Name &lt;email&gt;</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Visibility, Scope & Referencing -->
+    <div class="slide-wrapper flex-col" data-category="Scope & Links" data-doc="docs.phpdoc.org/guide/references/phpdoc/tags/see.html">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">API Visibility & Structural Referencing (`@see`, `@link`, `@internal`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Defines public API boundaries and creates hyperlink cross-references across elements and external URLs.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Internal & Ignore -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-lock"></i> `@internal` & `{@internal}` Tag</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">/**
+ * Internal cache serializer.
+ *
+ * @internal This class is an internal engine implementation detail.
+ *   Do not consume directly in external codebases.
+ */
+class CacheSerializer {
+    /**
+     * @internal Inline tag to mark {@internal internal logic} block.
+     */
+    public function serializeRaw(): string {}
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">phpDocumentor hides @internal items unless generated with --parseprivate flag.</p>
+        </div>
+
+        <!-- Referencing: @see, @link, @uses -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-link"></i> `@see` & `@link` Structural References</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">/**
+ * User authentication service.
+ *
+ * @see \App\Services\OAuthProvider   Refers to related class FQSEN.
+ * @see \App\User::setPassword()       Refers to specific method.
+ * @see https://wiki.example.com/auth  Refers to web documentation.
+ * @link https://tools.ietf.org/html/rfc6749 OAuth2 Spec.
+ */
+class AuthService {}</code></pre>
+          </div>
+          <p class="text-[11px] text-sky-300 font-mono mt-2">FQSEN = Fully Qualified Structural Element Name (\Namespace\Class::method()).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Reflection API Programmatic DocBlock Extraction -->
+    <div class="slide-wrapper flex-col" data-category="Reflection" data-doc="docs.phpdoc.org/guide/guides/docblocks.html">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Programmatic Extraction via PHP Reflection API</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">How to fetch raw DocComments programmatically at runtime using PHP built-in Reflection reflection classes.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Reflection Runtime Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-microchip"></i> Reading DocComments at Runtime</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$refClass  = new \ReflectionClass(\App\User::class);
+$docComment = $refClass->getDocComment();
+
+// Fetching method level DocComment
+$refMethod = $refClass->getMethod('findUser');
+$methodDoc = $refMethod->getDocComment();
+
+if ($methodDoc !== false) {
+    echo "Raw DocComment:\n" . $methodDoc;
+} else {
+    echo "No DocComment attached or stripped by OPcache!";
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Returns raw unparsed string or `false` if missing.</p>
+        </div>
+
+        <!-- OPcache Warning Box -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-triangle-exclamation"></i> Critical Production OPcache Caveat</span>
+            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300 leading-relaxed space-y-2">
+              <p>
+                By default in production, PHP OPcache might strip comments to save bytecode memory if <code class="text-amber-300">opcache.save_comments=0</code> is set in <code class="text-purple-300">php.ini</code>.
+              </p>
+              <p>
+                If comments are stripped, <code class="text-purple-300">getDocComment()</code> will return <code class="text-rose-400">false</code>! Frameworks relying on PHPDoc annotations (like Doctrine or Symfony) require:
+              </p>
+              <div class="p-2 bg-slate-950 font-mono text-emerald-300 rounded border border-slate-800">
+                opcache.save_comments=1
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://docs.phpdoc.org" target="_blank" class="text-sky-400 hover:underline">docs.phpdoc.org</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Programmatic AST Parsing with phpDocumentor Library -->
+    <div class="slide-wrapper flex-col" data-category="Reflection" data-doc="docs.phpdoc.org">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Parsing DocBlocks via `phpdocumentor/reflection-docblock`</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Programmatically converting raw DocComment strings into structured object AST using the official parser library.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Composer & Factory Usage -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-code"></i> DocBlockFactory AST Parsing</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">use phpDocumentor\Reflection\DocBlockFactory;
+
+$factory  = DocBlockFactory::createInstance();
+$docBlock = $factory->create($rawDocCommentString);
+
+// Programmatic AST Accessors
+$summary     = $docBlock->getSummary();     // string
+$description = $docBlock->getDescription(); // Description object
+$tags        = $docBlock->getTags();        // Tag[] array
+
+// Querying specific tags programmatically
+$paramTags = $docBlock->getTagsByName('param');
+foreach ($paramTags as $param) {
+    /** @var \phpDocumentor\Reflection\DocBlock\Tags\Param $param */
+    echo $param->getVariableName(); // "identifier"
+    echo $param->getType();         // "string"
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Package: composer require phpdocumentor/reflection-docblock</p>
+        </div>
+
+        <!-- Object Model Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-sitemap"></i> AST Object Hierarchy Structure</span>
+            <div class="space-y-2 text-xs font-mono">
+              <div class="p-2 rounded bg-purple-950/40 border border-purple-800 text-purple-200">
+                <strong>DocBlock Object</strong>
+                <div class="pl-4 text-[11px] text-slate-300 space-y-1 mt-1">
+                  <div>├── <strong>getSummary()</strong>: string</div>
+                  <div>├── <strong>getDescription()</strong>: Description</div>
+                  <div>└── <strong>getTags()</strong>: TagInterface[]</div>
+                </div>
+              </div>
+
+              <div class="p-2 rounded bg-sky-950/40 border border-sky-800 text-sky-200">
+                <strong>Tag Objects (`Param`, `Return`, `Var`, `Throws`)</strong>
+                <div class="pl-4 text-[11px] text-slate-300 space-y-1 mt-1">
+                  <div>├── <strong>getName()</strong>: string ("param")</div>
+                  <div>├── <strong>getType()</strong>: Type ("string|int")</div>
+                  <div>└── <strong>getDescription()</strong>: Description</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Official Specification from <a href="https://docs.phpdoc.org" target="_blank" class="text-sky-400 hover:underline">docs.phpdoc.org</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Interactive DocBlock Validator & AST Simulator Playground -->
+    <div class="slide-wrapper flex-col" data-category="Playground" data-doc="docs.phpdoc.org/guide/references/phpdoc/basic-syntax.html">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive DocBlock Validator & AST Playground</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Edit the PHPDoc snippet below to validate syntax rules, extract summaries, and generate a real-time AST breakdown.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-mono text-purple-400 font-bold"><i class="fa-solid fa-pen-to-square"></i> Editable Code Input</span>
+          <button onclick="resetDocBlockCode()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Code
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> PHPDoc Source Code</span>
+            <textarea id="sim-editor" oninput="runDocBlockValidator()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Parser Validation & AST Summary</span>
+            <div id="sim-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Knowledge Quiz & Official References -->
+    <div class="slide-wrapper flex-col" data-category="Quiz & Directory" data-doc="docs.phpdoc.org">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive PHPDoc Knowledge Quiz</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your technical mastery of PHPDoc specifications grounded in docs.phpdoc.org.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Interactive Quiz Box -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+              <span class="text-xs font-mono text-purple-400 font-bold"><i class="fa-solid fa-circle-question"></i> PHPDoc Mastery Check</span>
+              <span id="quiz-score-badge" class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-800">
+                Score: 0 / 0
+              </span>
+            </div>
+
+            <!-- Question Body -->
+            <div id="quiz-container">
+              <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+                Loading Quiz Question...
+              </h3>
+
+              <div id="quiz-options-list" class="space-y-2 mb-6">
+                <!-- Options populated by JS -->
+              </div>
+
+              <!-- Feedback Box -->
+              <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+                <!-- Feedback content -->
+              </div>
+
+              <div class="flex justify-end">
+                <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+                  Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Official References Directory Box -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between text-center">
+          <div>
+            <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Documentation Index</h2>
+            <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+              Every tag, type syntax rule, DocBlock structure, and inheritance principle in this presentation is derived directly from <strong>docs.phpdoc.org</strong>.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+              <a href="https://docs.phpdoc.org/guide/references/phpdoc/basic-syntax.html" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Basic Syntax Manual</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+                </div>
+                <p class="text-[11px] text-slate-400">DocBlock anatomy, summary/description rules, and element association.</p>
+              </a>
+
+              <a href="https://docs.phpdoc.org/guide/references/phpdoc/tags/index.html" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-sky-500/50 transition group">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-sky-400">Tag Reference Directory</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+                </div>
+                <p class="text-[11px] text-slate-400">Complete index of official tags (@param, @return, @var, @template, etc.).</p>
+              </a>
+
+              <a href="https://docs.phpdoc.org/guide/references/phpdoc/types.html" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 transition group">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-emerald-400">PHPDoc Type System</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+                </div>
+                <p class="text-[11px] text-slate-400">Detailed BNF specifications for scalar, generic, union, and array types.</p>
+              </a>
+
+              <a href="https://github.com/phpDocumentor/fig-standards" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-amber-500/50 transition group">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-amber-400">PSR-5 / PSR-19 Draft Specs</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+                </div>
+                <p class="text-[11px] text-slate-400">PHP-FIG standardization drafts for PHPDoc and DocBlock tags.</p>
+              </a>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-center gap-4">
+            <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-white font-medium text-xs transition">
+              <i class="fa-solid fa-rotate-left mr-1"></i> Restart Presentation
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer Controls Nav -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between">
+    <button id="prev-btn" onclick="prevSlide()" class="px-4 py-2 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:bg-slate-800 text-slate-300 light:text-slate-700 font-medium text-xs flex items-center gap-2 transition disabled:opacity-30 disabled:cursor-not-allowed">
+      <i class="fa-solid fa-chevron-left"></i> Previous
+    </button>
+
+    <!-- Slide Indicators Dots -->
+    <div id="slide-dots" class="hidden sm:flex items-center space-x-1.5 max-w-md overflow-x-auto py-1 px-2">
+      <!-- Dots inserted dynamically -->
+    </div>
+
+    <button id="next-btn" onclick="nextSlide()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium text-xs flex items-center gap-2 shadow-md transition disabled:opacity-30 disabled:cursor-not-allowed">
+      Next <i class="fa-solid fa-chevron-right"></i>
+    </button>
+  </footer>
+
+  <!-- Search Modal -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-card max-w-xl w-full rounded-2xl border border-slate-800 p-4 shadow-2xl">
+      <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+        <span class="text-xs font-mono text-purple-400 font-bold"><i class="fa-solid fa-magnifying-glass"></i> Search PHPDoc Manual Topics</span>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <input type="text" id="search-input" oninput="performSearch(this.value)" placeholder="Search keywords (e.g. @param, generics, @template, inheritance)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-purple-200 focus:outline-none focus:border-purple-500 mb-3">
+
+      <div id="search-results" class="max-h-64 overflow-y-auto space-y-2">
+        <p class="text-xs text-slate-500 text-center py-4">Type to search across all slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide Directory Index Modal -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-card max-w-2xl w-full rounded-2xl border border-slate-800 p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+        <span class="text-sm font-mono text-purple-400 font-bold"><i class="fa-solid fa-bars-staggered"></i> Slide Directory Index</span>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div id="index-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto pr-1">
+        <!-- JS populated index list -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism Syntax Highlighting JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <!-- Interactive Logic Script -->
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide-wrapper');
+    const totalSlides = slides.length;
+
+    // Default editable DocBlock sample
+    const sampleDocBlockCode = `/**
+ * Calculates discount rates for active premium users.
+ *
+ * Appulates tiered pricing strategies based on transaction history
+ * and membership duration. Supports custom promo overrides.
+ *
+ * @param  int              $userId    Target account entity ID.
+ * @param  float            $amount    Order basket gross total.
+ * @param  array<string,mixed> $options Promo metadata overrides.
+ * @return float                       Final calculated net total.
+ * @throws \InvalidArgumentException    If $amount is negative.
+ */
+public function calculateDiscount(int $userId, float $amount, array $options = []): float`;
+
+    // Quiz Questions Data grounded in docs.phpdoc.org
+    const quizData = [
+      {
+        question: "1. According to docs.phpdoc.org, how MUST a valid DocComment container start?",
+        options: [
+          "/* (Single asterisk)",
+          "/** (Double asterisk)",
+          "/// (Triple slash)",
+          "/*# (Asterisk hash)"
+        ],
+        correct: 1,
+        explanation: "DocComments MUST start with /** and end with */. Standard comments like /* ... */ are ignored by phpDocumentor and Reflection API."
+      },
+      {
+        question: "2. How is a DocBlock Summary terminated according to basic syntax rules?",
+        options: [
+          "By a period followed by a newline, OR by two consecutive newlines",
+          "By a semicolon at the end of the line",
+          "By an explicit @summary tag only",
+          "By a double slash delimiter"
+        ],
+        correct: 0,
+        explanation: "A Summary ends with a full stop (.) followed by a newline OR is terminated by two consecutive newlines."
+      },
+      {
+        question: "3. What tag is used to bound a generic type parameter in PHPDoc?",
+        options: [
+          "@type-bound T",
+          "@template T of BaseClass",
+          "@generic-where T",
+          "@constraint T : BaseClass"
+        ],
+        correct: 1,
+        explanation: "@template T of BaseClass specifies an upper bound for the generic type variable T."
+      },
+      {
+        question: "4. If a child class method has NO DocBlock, what happens under PHPDoc inheritance rules?",
+        options: [
+          "A compilation error is raised",
+          "It automatically inherits the entire DocBlock from its parent method or interface",
+          "Documentation is lost permanently",
+          "It inherits only the @param tags"
+        ],
+        correct: 1,
+        explanation: "If a structural element lacks a DocBlock, phpDocumentor automatically inherits the complete DocBlock from the overridden parent method or implemented interface."
+      },
+      {
+        question: "5. What happens if PHP OPcache option `opcache.save_comments` is set to 0 in production?",
+        options: [
+          "Code runs 50% faster with no side effects",
+          "ReflectionClass::getDocComment() returns false because comments were stripped from opcode",
+          "PHPDoc tags are automatically converted to PHP 8 Attributes",
+          "DocComments are stored in a separate cache file"
+        ],
+        correct: 1,
+        explanation: "When opcache.save_comments=0, OPcache strips comments from opcode, causing getDocComment() to return false at runtime."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('total-slide-num').textContent = totalSlides;
+      document.getElementById('sim-editor').value = sampleDocBlockCode;
+      
+      initSlideDots();
+      updateSlideView();
+      runDocBlockValidator();
+      loadQuizQuestion();
+
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+        
+        if (e.key === 'ArrowRight' || e.key === 'Space') {
+          nextSlide();
+        } else if (e.key === 'ArrowLeft') {
+          prevSlide();
+        } else if (e.ctrlKey && e.key === 'k') {
+          e.preventDefault();
+          toggleSearchModal();
+        }
+      });
+    });
+
+    function initSlideDots() {
+      const container = document.getElementById('slide-dots');
+      container.innerHTML = '';
+      slides.forEach((_, idx) => {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${idx === currentSlide ? 'bg-purple-500 w-5' : 'bg-slate-700 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(idx);
+        container.appendChild(dot);
+      });
+    }
+
+    function updateSlideView() {
+      slides.forEach((slide, idx) => {
+        if (idx === currentSlide) {
+          slide.classList.add('active');
+        } else {
+          slide.classList.remove('active');
+        }
+      });
+
+      // Update counters & badges
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      
+      const activeSlide = slides[currentSlide];
+      const category = activeSlide.getAttribute('data-category') || 'General';
+      const docTopic = activeSlide.getAttribute('data-doc') || 'docs.phpdoc.org';
+      
+      document.getElementById('slide-category-badge').textContent = category;
+      document.getElementById('chip-doc-topic').textContent = docTopic;
+
+      // Update progress bar
+      const progressPercent = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+
+      // Update button states
+      document.getElementById('prev-btn').disabled = currentSlide === 0;
+      document.getElementById('next-btn').disabled = currentSlide === totalSlides - 1;
+
+      initSlideDots();
+      Prism.highlightAll();
+    }
+
+    function goToSlide(index) {
+      if (index >= 0 && index < totalSlides) {
+        currentSlide = index;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    const typeASTMap = {
+      'User[]': {
+        category: 'Typed Array Syntax',
+        nodes: [
+          '• Root: ArrayType',
+          '  └── ValueType: ObjectType (FQSEN: \\User)',
+          '  └── Syntax: Short array suffix []'
+        ]
+      },
+      'array<string, User>': {
+        category: 'Generic Map Collection',
+        nodes: [
+          '• Root: CollectionType (array)',
+          '  ├── KeyType: Primitive (string)',
+          '  └── ValueType: ObjectType (FQSEN: \\User)'
+        ]
+      },
+      'array{id: int, name?: string}': {
+        category: 'Array Shape Specification',
+        nodes: [
+          '• Root: ArrayShape',
+          '  ├── Field "id": Required -> Primitive (int)',
+          '  └── Field "name": Optional (?) -> Primitive (string)'
+        ]
+      },
+      'Renderable&Countable': {
+        category: 'Intersection Type',
+        nodes: [
+          '• Root: IntersectionType',
+          '  ├── Member 1: Interface (\\Renderable)',
+          '  └── Member 2: Interface (\\Countable)'
+        ]
+      },
+      'class-string<Service>': {
+        category: 'Class String Pseudotype',
+        nodes: [
+          '• Root: ClassString',
+          '  └── Bound: ObjectType (\\Service)'
+        ]
+      }
+    };
+
+    function inspectType(typeExpr) {
+      document.getElementById('type-input-display').textContent = typeExpr;
+      const data = typeASTMap[typeExpr];
+      if (data) {
+        document.getElementById('type-category-badge').textContent = `Category: ${data.category}`;
+        const container = document.getElementById('type-ast-tree');
+        container.innerHTML = data.nodes.map(n => `<div>${n}</div>`).join('');
+      }
+      
+      // Update button styling
+      document.querySelectorAll('.type-btn').forEach(btn => {
+        if (btn.textContent.replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim() === typeExpr) {
+          btn.className = 'type-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono';
+        } else {
+          btn.className = 'type-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono';
+        }
+      });
+    }
+
+    // Default trigger for type inspector on load
+    inspectType('User[]');
+
+    function runDocBlockValidator() {
+      const code = document.getElementById('sim-editor').value;
+      const outputBox = document.getElementById('sim-console-output');
+
+      if (!code.trim().startsWith('/**')) {
+        outputBox.innerHTML = '<span class="text-rose-400">[ERROR] Invalid DocComment delimiter! Must begin with /**</span>';
+        return;
+      }
+
+      let log = '<span class="text-purple-400">[AST PARSER SUCCESS] DocBlock Parsed!</span>\n\n';
+      
+      // Extract Summary
+      const lines = code.split('\n').map(l => l.replace(/^\s*\*?\s?/, '').trim());
+      const nonTagLines = lines.filter(l => !l.startsWith('@') && !l.startsWith('/**') && !l.startsWith('*/') && l.length > 0);
+      
+      const summary = nonTagLines[0] || 'No summary provided';
+      log += `<span class="text-sky-300">► Summary:</span> "${summary}"\n`;
+
+      // Extract Tags
+      const tagLines = lines.filter(l => l.startsWith('@'));
+      log += `<span class="text-emerald-300">► Total Tags Found:</span> ${tagLines.length}\n\n`;
+
+      tagLines.forEach(tag => {
+        const parts = tag.split(' ');
+        const tagName = parts[0];
+        const rest = parts.slice(1).join(' ');
+        log += `  • <strong class="text-amber-300">${tagName}</strong> => ${rest}\n`;
+      });
+
+      log += `\n<span class="text-slate-500">Grounded in docs.phpdoc.org/guide/references/phpdoc/basic-syntax.html</span>`;
+      outputBox.innerHTML = log;
+    }
+
+    function resetDocBlockCode() {
+      document.getElementById('sim-editor').value = sampleDocBlockCode;
+      runDocBlockValidator();
+    }
+
+    function loadQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-question-title').textContent = q.question;
+      
+      const optionsList = document.getElementById('quiz-options-list');
+      optionsList.innerHTML = '';
+
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-mono text-slate-200 transition flex items-center justify-between group';
+        btn.innerHTML = `<span>${opt}</span> <i class="fa-regular fa-circle text-slate-600 group-hover:text-purple-400"></i>`;
+        btn.onclick = () => submitQuizAnswer(idx);
+        optionsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').classList.add('hidden');
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+      document.getElementById('quiz-score-badge').textContent = `Score: ${quizScore} / ${quizData.length}`;
+    }
+
+    function submitQuizAnswer(selectedIdx) {
+      const q = quizData[currentQuizIndex];
+      const feedbackBox = document.getElementById('quiz-feedback');
+      const optionsButtons = document.querySelectorAll('#quiz-options-list button');
+
+      optionsButtons.forEach((btn, idx) => {
+        btn.disabled = true;
+        if (idx === q.correct) {
+          btn.className = 'w-full text-left p-3 rounded-xl bg-emerald-950/80 border border-emerald-600 text-xs font-mono text-emerald-200 flex items-center justify-between';
+        } else if (idx === selectedIdx) {
+          btn.className = 'w-full text-left p-3 rounded-xl bg-rose-950/80 border border-rose-600 text-xs font-mono text-rose-200 flex items-center justify-between';
+        }
+      });
+
+      if (selectedIdx === q.correct) {
+        quizScore++;
+        feedbackBox.className = 'p-3 rounded-xl border border-emerald-800 bg-emerald-950/60 text-emerald-300 text-xs font-mono mb-4 leading-relaxed';
+        feedbackBox.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        feedbackBox.className = 'p-3 rounded-xl border border-rose-800 bg-rose-950/60 text-rose-300 text-xs font-mono mb-4 leading-relaxed';
+        feedbackBox.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Incorrect!</strong> ${q.explanation}`;
+      }
+
+      feedbackBox.classList.remove('hidden');
+      document.getElementById('quiz-next-btn').classList.remove('hidden');
+      document.getElementById('quiz-score-badge').textContent = `Score: ${quizScore} / ${quizData.length}`;
+    }
+
+    function nextQuizQuestion() {
+      currentQuizIndex = (currentQuizIndex + 1) % quizData.length;
+      loadQuizQuestion();
+    }
+
+    function toggleTheme() {
+      document.documentElement.classList.toggle('light');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        document.getElementById('fullscreen-icon').className = 'fa-solid fa-compress';
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = 'fa-solid fa-expand';
+        }
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const code = container.querySelector('code').innerText;
+      
+      const textarea = document.createElement('textarea');
+      textarea.value = code;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> Copied!';
+      setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        buildIndexGrid();
+      }
+    }
+
+    function buildIndexGrid() {
+      const grid = document.getElementById('index-grid');
+      grid.innerHTML = '';
+      slides.forEach((slide, idx) => {
+        const title = slide.querySelector('h1, h2')?.innerText || `Slide ${idx + 1}`;
+        const cat = slide.getAttribute('data-category') || 'Overview';
+        
+        const card = document.createElement('button');
+        card.className = `p-3 rounded-xl border text-left text-xs font-mono transition flex flex-col justify-between ${idx === currentSlide ? 'bg-purple-950/80 border-purple-500 text-purple-200' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'}`;
+        card.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] text-sky-400 font-bold">${cat}</span>
+            <span class="text-[10px] text-slate-500">#${idx + 1}</span>
+          </div>
+          <div class="font-sans font-semibold text-white light:text-slate-900 truncate">${title}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function performSearch(query) {
+      const resultsContainer = document.getElementById('search-results');
+      if (!query.trim()) {
+        resultsContainer.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Type to search across all slides...</p>';
+        return;
+      }
+
+      const q = query.toLowerCase();
+      let matches = [];
+
+      slides.forEach((slide, idx) => {
+        const text = slide.innerText.toLowerCase();
+        if (text.includes(q)) {
+          const title = slide.querySelector('h1, h2')?.innerText || `Slide ${idx + 1}`;
+          matches.push({ idx, title });
+        }
+      });
+
+      if (matches.length === 0) {
+        resultsContainer.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">No matching slides found.</p>';
+        return;
+      }
+
+      resultsContainer.innerHTML = matches.map(m => `
+        <button onclick="goToSlide(${m.idx}); toggleSearchModal();" class="w-full text-left p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-mono text-purple-300 flex items-center justify-between">
+          <span>${m.title}</span>
+          <span class="text-[10px] text-slate-500">Slide ${m.idx + 1}</span>
+        </button>
+      `).join('');
+    }
+  </script>
+</body>
+</html>

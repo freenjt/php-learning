@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PHP Lifecycle Management Programmatically - Technical Reference & Spec</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Presentation Styles -->
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Prism Syntax Custom Overrides */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.82rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    .step-active {
+      border-color: #8b5cf6 !important;
+      background: rgba(139, 92, 246, 0.15) !important;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <!-- Header Navigation -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-brands fa-php text-lg"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Lifecycle Spec <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 light:text-purple-700 border border-purple-500/30">php.net/manual</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category Badge -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar Buttons -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Modal Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Directory Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Global Reading Progress Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slide Container -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded strictly in Official Documentation: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/manual</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10 active" data-category="Overview" data-doc="php.net/manual/en/features.commandline.php">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-brands fa-php text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Programmatic Lifecycle Management <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-sky-400">In PHP Engine & SAPI Contexts</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A deep, authoritative technical reference covering SAPI startup (MINIT), Request Init (RINIT), output buffers, object construction/destruction, garbage collection, fastcgi response detach, and shutdown teardowns.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Source: php.net
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-timeline text-purple-400"></i> Step-by-Step Execution Visualizers
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-terminal text-amber-400"></i> Interactive Lifecycle Sandbox
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Explore PHP Lifecycle Architecture</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: The 4 Core Engine Stages -->
+    <div class="slide-wrapper flex-col" data-category="SAPI & Engine" data-doc="php.net/manual/en/internals2.structure.modifying.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">The 4 Core PHP Execution Lifecycle Stages</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Every PHP process transitions through standard engine phases managed by the Server API (SAPI) layer.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center font-mono">1</div>
+            MINIT (Module Init)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Executed once when PHP SAPI process initializes (e.g. php-fpm master process start).</p>
+          <ul class="text-[11px] text-slate-400 space-y-1 font-mono">
+            <li>• Extension loading</li>
+            <li>• Global constants registered</li>
+            <li>• Class entries initialized</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center font-mono">2</div>
+            RINIT (Request Init)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Executed before every HTTP request or script invocation.</p>
+          <ul class="text-[11px] text-slate-400 space-y-1 font-mono">
+            <li>• Superglobals populated</li>
+            <li>• `auto_prepend_file` executed</li>
+            <li>• Output buffering prepped</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center font-mono">3</div>
+            RSHUTDOWN (Request Term)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Fired when script finishes execution, calls exit(), or hits fatal error.</p>
+          <ul class="text-[11px] text-slate-400 space-y-1 font-mono">
+            <li>• `register_shutdown_function`</li>
+            <li>• Object `__destruct()` order</li>
+            <li>• Memory zval free/cleanup</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center font-mono">4</div>
+            MSHUTDOWN (Module Term)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Executed when web server or PHP process shuts down completely.</p>
+          <ul class="text-[11px] text-slate-400 space-y-1 font-mono">
+            <li>• Unloads extensions</li>
+            <li>• Frees global resource pools</li>
+            <li>• Closes persistent sockets</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Request Shutdown Hooks -->
+    <div class="slide-wrapper flex-col" data-category="Request Hooks" data-doc="php.net/manual/en/function.register-shutdown-function.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Request Shutdown Hooks (`register_shutdown_function`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Programmatically registering callbacks that execute during RSHUTDOWN regardless of exit status or fatal errors.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Shutdown Handler & Fatal Error Capture</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">register_shutdown_function(function () {
+    $error = error_get_last();
+    if ($error !== null &amp;&amp; in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR])) {
+        // Intercept fatal engine crash before output closes
+        error_log("Fatal error intercepted in shutdown: " . $error['message']);
+        http_response_code(500);
+        echo json_encode(["status" => "error", "message" => "Internal System Crash"]);
+    }
+    // Clean up temporary database locks or metrics
+    MetricsCollector::flush();
+});</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Source: php.net/manual/en/function.register-shutdown-function.php</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-list-check"></i> Critical Rules of `register_shutdown_function`</span>
+            <div class="space-y-2 text-xs">
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="font-bold text-purple-300 mb-1">1. Working Directory Reset</div>
+                <p class="text-slate-300 text-[11px]">In older SAPI builds or specific webservers, working directory during shutdown may change to root. Always use absolute paths!</p>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="font-bold text-sky-300 mb-1">2. Multiple Registered Callbacks</div>
+                <p class="text-slate-300 text-[11px]">Callbacks execute in FIFO (First-In, First-Out) order of registration.</p>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="font-bold text-emerald-300 mb-1">3. Executed After Connection Close</div>
+                <p class="text-slate-300 text-[11px]">If output buffers are flushed or `fastcgi_finish_request()` was invoked, shutdown output is invisible to the HTTP client.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Ticks & Low-Level Code Hooks -->
+    <div class="slide-wrapper flex-col" data-category="Ticks & Execution" data-doc="php.net/manual/en/control-structures.declare.php#control-structures.declare.ticks">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Ticks & Low-Level Execution Hooks (`declare(ticks=N)`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Hooking into low-level statement execution for async signal handling, execution profiling, or micro-benchmarking.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Registering Tick Callbacks</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">declare(ticks=1);
+
+// Callback triggered every 1 low-level tick statement
+register_tick_function(function () {
+    // Check for pending POSIX signals (e.g. SIGINT, SIGTERM)
+    pcntl_signal_dispatch();
+});
+
+unregister_tick_function('tick_handler');</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Reference: php.net/manual/en/function.register-tick-function.php</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-bolt"></i> Tick Event Semantics & Overhead</span>
+            <p class="text-xs text-slate-300 leading-relaxed mb-3">
+              A tick is an event that occurs for every <code class="text-purple-300">N</code> low-level tickable statements executed by the Zend Engine within the <code class="text-purple-300">declare</code> block.
+            </p>
+            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-2 font-mono">
+              <div>• Non-tickable: conditions without body, variable definitions</div>
+              <div>• Tickable: assignments, function calls, loop iterations</div>
+              <div>• Performance note: ticks=1 introduces noticeable engine overhead</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Object Constructor & Destructor Lifecycle -->
+    <div class="slide-wrapper flex-col" data-category="Object Lifecycle" data-doc="php.net/manual/en/language.oop5.decon.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Object Lifecycle: Instantiation to Destructor (`__construct`, `__destruct`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Understanding object reference counts, explicit unsetting, and LIFO destruction ordering.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-cube"></i> Constructor & Destructor Ordering</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class ResourceHolder {
+    private $handle;
+
+    public function __construct(string $resource) {
+        $this->handle = fopen($resource, 'w+');
+    }
+
+    public function __destruct() {
+        if (is_resource($this->handle)) {
+            fclose($this->handle);
+        }
+    }
+}
+
+$a = new ResourceHolder('file1.txt');
+$b = new ResourceHolder('file2.txt');
+unset($a); // Explicit immediate destruction of $a!</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Destructors fire when refcount hits 0 or during script termination.</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-clock-rotate-left"></i> Destruction Sequence Rules</span>
+            <ul class="text-xs text-slate-300 space-y-2">
+              <li class="p-2 rounded bg-slate-900 border border-slate-800">
+                <strong class="text-purple-300">Explicit unset():</strong> Decrements refcount. Destructor runs immediately when refcount reaches zero.
+              </li>
+              <li class="p-2 rounded bg-slate-900 border border-slate-800">
+                <strong class="text-sky-300">Script Termination Teardown:</strong> Remaining objects are destroyed in LIFO (Last-In, First-Out) creation order during request shutdown.
+              </li>
+              <li class="p-2 rounded bg-slate-900 border border-slate-800">
+                <strong class="text-rose-300">Exceptions in Destructors:</strong> Throwing an uncaught exception in <code class="text-purple-300">__destruct()</code> during request shutdown triggers a fatal engine error.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Object Serialization Lifecycle -->
+    <div class="slide-wrapper flex-col" data-category="Object Lifecycle" data-doc="php.net/manual/en/language.oop5.serialization.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Object Serialization & Hydration Lifecycle</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Managing object state across request boundaries with <code class="text-purple-300">__serialize</code> / <code class="text-purple-300">__unserialize</code> (PHP 7.4+).</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-arrows-split-up-and-left"></i> Modern Serialization Hooks</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class DatabaseUser {
+    private string $id;
+    private $connection; // Non-serializable resource
+
+    public function __serialize(): array {
+        // Exclude connection resource from serial array
+        return ['id' => $this->id];
+    }
+
+    public function __unserialize(array $data): void {
+        $this->id = $data['id'];
+        $this->reconnectDatabase();
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Replaces legacy `__sleep` & `__wakeup` magic methods.</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-diagram-project"></i> Serialization Lifecycle Execution Flow</span>
+            <div class="space-y-2 text-xs">
+              <div class="p-2 bg-slate-900 rounded border border-slate-800 font-mono">
+                1. serialize($obj) called -> Engine checks for __serialize()
+              </div>
+              <div class="p-2 bg-slate-900 rounded border border-slate-800 font-mono">
+                2. __serialize() returns array of state properties
+              </div>
+              <div class="p-2 bg-slate-900 rounded border border-slate-800 font-mono">
+                3. unserialize($str) called -> Allocates object WITHOUT calling __construct()
+              </div>
+              <div class="p-2 bg-slate-900 rounded border border-slate-800 font-mono">
+                4. __unserialize($data) called to restore dependencies/resources
+              </div>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-500 font-mono mt-2">Reference: php.net/manual/en/language.oop5.magic.php</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Interactive Step-by-Step Request Lifecycle Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Interactive Simulator" data-doc="php.net/manual/en/features.commandline.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Request Lifecycle Step-by-Step Visualizer</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Click through the sequential phases of a PHP web request to observe state transitions programmatically.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Step Buttons Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <button onclick="setStep(0)" id="step-btn-0" class="step-btn px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-900 text-xs font-mono font-bold text-slate-300">1. MINIT</button>
+          <button onclick="setStep(1)" id="step-btn-1" class="step-btn px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-900 text-xs font-mono font-bold text-slate-300">2. RINIT & Superglobals</button>
+          <button onclick="setStep(2)" id="step-btn-2" class="step-btn px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-900 text-xs font-mono font-bold text-slate-300">3. Execution & Buffers</button>
+          <button onclick="setStep(3)" id="step-btn-3" class="step-btn px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-900 text-xs font-mono font-bold text-slate-300">4. FastCGI Finish</button>
+          <button onclick="setStep(4)" id="step-btn-4" class="step-btn px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-900 text-xs font-mono font-bold text-slate-300">5. Shutdown Hooks</button>
+          <button onclick="setStep(5)" id="step-btn-5" class="step-btn px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-900 text-xs font-mono font-bold text-slate-300">6. Object Destructors</button>
+        </div>
+
+        <!-- Step Output Panel -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span id="step-phase-title" class="text-sm font-bold text-purple-400 block mb-2 font-mono">Phase: MINIT</span>
+              <p id="step-phase-desc" class="text-xs text-slate-300 leading-relaxed font-sans">
+                Loading PHP SAPI master process...
+              </p>
+            </div>
+            <div id="step-state-badge" class="mt-4 p-2 rounded bg-purple-950/60 border border-purple-800 text-[11px] font-mono text-purple-300">
+              HTTP Connection: Idle
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-xs font-bold text-sky-400 block mb-2 font-mono"><i class="fa-solid fa-terminal"></i> Simulated Engine Output Stream</span>
+              <div id="step-console" class="p-3 bg-slate-900 rounded-lg border border-slate-800 text-xs font-mono text-emerald-400 space-y-1">
+                <!-- Log output via JS -->
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-500 font-mono mt-2">Engine state tracked per php.net execution lifecycle rules.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: FastCGI Response Detach & Early Finish -->
+    <div class="slide-wrapper flex-col" data-category="SAPI & Engine" data-doc="php.net/manual/en/function.fastcgi-finish-request.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Process Early Detach (`fastcgi_finish_request`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Flushes response data to client while allowing long-running background tasks to complete in the same request cycle.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-paper-plane"></i> `fastcgi_finish_request()` Implementation</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Output response to HTTP Client immediately
+echo json_encode(["status" => "accepted", "job_id" => 9042]);
+
+// Flush all output buffers and close socket connection to HTTP client
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}
+
+// Client receives 200 OK instantly!
+// Script continues running heavy background tasks programmatically:
+sendWebhookNotifications();
+generatePdfReports();</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Available under PHP-FPM SAPI context.</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-triangle-exclamation"></i> SAPI Constraints & Memory Management</span>
+            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-2 leading-relaxed">
+              <p><strong class="text-purple-300">Execution Timeout:</strong> The script remains bound by <code class="text-purple-300">max_execution_time</code> ini setting unless extended via <code class="text-purple-300">set_time_limit(0)</code>.</p>
+              <p><strong class="text-sky-300">Worker Worker Blocking:</strong> The PHP-FPM process remains busy until script termination, delaying subsequent requests assigned to that worker process.</p>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-500 font-mono mt-2">Reference: php.net/manual/en/function.fastcgi-finish-request.php</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Output Buffering Stack Lifecycle -->
+    <div class="slide-wrapper flex-col" data-category="Output Buffering" data-doc="php.net/manual/en/book.outcontrol.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Nested Output Buffering Stack Lifecycle</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Managing output buffer levels (<code class="text-purple-300">ob_start</code>, <code class="text-purple-300">ob_get_clean</code>, <code class="text-purple-300">ob_flush</code>) during execution.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-layer-group"></i> Output Buffer Manipulation</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">ob_start(); // Level 1 Buffer
+echo "Internal Render Data";
+
+if (conditionFailed()) {
+    ob_end_clean(); // Discards output, buffer deleted
+} else {
+    $content = ob_get_clean(); // Captures string and closes buffer
+}
+
+// Check current stack depth
+$level = ob_get_level(); // Returns integer buffer depth</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Reference: php.net/manual/en/ref.outcontrol.php</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-list-ol"></i> Buffer Cleanup on Request Teardown</span>
+            <p class="text-xs text-slate-300 leading-relaxed mb-3">
+              When a script reaches termination, the Zend Engine automatically flushes all open output buffers in reverse order (LIFO) out to the SAPI layer before firing final connection shutdown.
+            </p>
+            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs font-mono text-slate-400 space-y-1">
+              <div>• `ob_implicit_flush(true)` disables buffering auto-flush</div>
+              <div>• Output buffers prevent headers_sent() errors!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Memory & Garbage Collection Lifecycle -->
+    <div class="slide-wrapper flex-col" data-category="Garbage Collection" data-doc="php.net/manual/en/features.gc.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Memory & Garbage Collection Cycle Collector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">How Zend Engine reference counting (zvals) and circular reference garbage collection operate programmatically.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-recycle"></i> Programmatic GC Controls</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Enable cycle collector
+gc_enable();
+
+$a = new stdClass();
+$a->self = $a; // Circular reference created!
+unset($a);     // Refcount drops to 1, added to GC root buffer
+
+// Force immediate collection of circular roots
+$collectedCycles = gc_collect_cycles();
+$gcStats = gc_status(); // Returns memory & root buffer metrics
+
+gc_mem_caches(); // Releases memory cached by memory manager</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Source: php.net/manual/en/features.gc.collecting-cycles.php</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-chart-pie"></i> Root Buffer & Refcount Mechanics</span>
+            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-2 leading-relaxed">
+              <p>Zend Engine uses a <strong>root buffer</strong> (holding up to 10,000 possible roots by default).</p>
+              <p>When the buffer fills or <code class="text-purple-300">gc_collect_cycles()</code> is called programmatically, the engine performs a synchronous mark-and-sweep algorithm to free unreferenced cycles.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Long-Running CLI Worker Lifecycles -->
+    <div class="slide-wrapper flex-col" data-category="SAPI & Engine" data-doc="php.net/manual/en/features.commandline.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Long-Running Workers vs Standard Request Lifecycles</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Managing persistent memory, stat leaks, and state reset in CLI daemons (e.g. Swoole, RoadRunner, queue workers).</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-rotate"></i> Worker Loop State Reset</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">while ($running) {
+    // 1. Clear static/global state leaks between jobs
+    Container::reset();
+    clearstatcache(); // Clear file stat cache
+    
+    // 2. Process payload
+    $job = $queue->pop();
+    $job->execute();
+
+    // 3. Prevent memory growth via explicit garbage collection
+    if (memory_get_usage() > 128 * 1024 * 1024) {
+        gc_collect_cycles();
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">CLI processes bypass traditional web RSHUTDOWN automatic cleanup!</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-triangle-exclamation"></i> Common Long-Running Worker Pitfalls</span>
+            <div class="space-y-2 text-xs text-slate-300">
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <strong class="text-rose-300">Static Variable Persistence:</strong> Static class properties remain in memory across all loop iterations.
+              </div>
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <strong class="text-amber-300">Database Sockets:</strong> Idle database sockets may timeout server-side, requiring reconnect checks.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: OPcache & Opcode Compilation Lifecycle -->
+    <div class="slide-wrapper flex-col" data-category="OPcache" data-doc="php.net/manual/en/book.opcache.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">OPcache & Opcode Compilation Lifecycle</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Controlling bytecode compilation, shared memory persistence, and programmatic cache invalidation.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-microchip"></i> Programmatic OPcache Control</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Invalidate single cached script file
+opcache_invalidate('/path/to/script.php', true);
+
+// Reset entire opcode cache memory
+opcache_reset();
+
+// Inspect compilation status & memory usage
+$status = opcache_get_status();
+$config = opcache_get_configuration();</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Reference: php.net/manual/en/ref.opcache.php</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-diagram-next"></i> Compilation Lifecycle Sequence</span>
+            <div class="space-y-2 text-xs">
+              <div class="p-2 bg-slate-900 rounded border border-slate-800 font-mono">1. Tokenization -> Lexical Analysis</div>
+              <div class="p-2 bg-slate-900 rounded border border-slate-800 font-mono">2. AST Generation -> Abstract Syntax Tree</div>
+              <div class="p-2 bg-slate-900 rounded border border-slate-800 font-mono">3. Bytecode Compilation -> Zend Opcodes stored in OPcache SHM</div>
+              <div class="p-2 bg-slate-900 rounded border border-slate-800 font-mono">4. Zend Engine Execution</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Error Handling & Shutdown Synergy -->
+    <div class="slide-wrapper flex-col" data-category="Request Hooks" data-doc="php.net/manual/en/function.set-error-handler.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Error Handling & Shutdown Teardown Synergy</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Combining <code class="text-purple-300">set_error_handler</code>, <code class="text-purple-300">set_exception_handler</code>, and shutdown callbacks for bulletproof recovery.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-shield-halved"></i> Global Lifecycle Error Capture</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Convert PHP Warnings/Notices into ErrorExceptions
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() &amp; $severity)) return;
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
+// Uncaught Exception Fallback
+set_exception_handler(function (Throwable $e) {
+    error_log("Unhandled Exception: " . $e->getMessage());
+    http_response_code(500);
+});</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono mt-2">Source: php.net/manual/en/function.set-error-handler.php</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-life-ring"></i> Complete Graceful Lifecycle Protection</span>
+            <p class="text-xs text-slate-300 leading-relaxed mb-3">
+              Combining error handlers with shutdown callbacks ensures that even non-catchable fatal errors (e.g. memory exhaustion, max execution time exceeded) are intercepted before PHP shuts down.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Interactive Lifecycle Sandbox & Code Visualizer -->
+    <div class="slide-wrapper flex-col" data-category="Playground" data-doc="php.net/manual/en/function.register-shutdown-function.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Lifecycle Execution Sandbox</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Simulate PHP request execution to observe the precise sequence of outputs, destructors, and shutdown callbacks.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-mono text-purple-400 font-bold"><i class="fa-solid fa-flask"></i> Simulated Execution Sandbox</span>
+          <button onclick="runLifecycleSimulator()" class="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-mono text-white font-bold transition">
+            <i class="fa-solid fa-play mr-1"></i> Run Lifecycle Code
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> PHP Script Input</span>
+            <textarea id="sandbox-editor" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Real-time Output Execution Stream</span>
+            <div id="sandbox-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Knowledge Quiz & Directory -->
+    <div class="slide-wrapper flex-col" data-category="Quiz & Directory" data-doc="php.net">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive PHP Lifecycle Knowledge Quiz</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your technical mastery of PHP execution lifecycles grounded strictly in php.net documentation.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Interactive Quiz Box -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+              <span class="text-xs font-mono text-purple-400 font-bold"><i class="fa-solid fa-circle-question"></i> Lifecycle Mastery Check</span>
+              <span id="quiz-score-badge" class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-800">
+                Score: 0 / 0
+              </span>
+            </div>
+
+            <!-- Question Body -->
+            <div id="quiz-container">
+              <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+                Loading Quiz Question...
+              </h3>
+
+              <div id="quiz-options-list" class="space-y-2 mb-6">
+                <!-- Options populated by JS -->
+              </div>
+
+              <!-- Feedback Box -->
+              <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+                <!-- Feedback content -->
+              </div>
+
+              <div class="flex justify-end">
+                <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+                  Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Official References Directory Box -->
+        <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between text-center">
+          <div>
+            <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Documentation Index</h2>
+            <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+              Every execution phase, shutdown hook, and memory collector detail in this specification is derived directly from <strong>php.net</strong>.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+              <a href="https://www.php.net/manual/en/function.register-shutdown-function.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Shutdown Functions</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+                </div>
+                <p class="text-[11px] text-slate-400">register_shutdown_function manual page.</p>
+              </a>
+
+              <a href="https://www.php.net/manual/en/function.fastcgi-finish-request.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-sky-500/50 transition group">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-sky-400">FastCGI Detach</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+                </div>
+                <p class="text-[11px] text-slate-400">fastcgi_finish_request specification.</p>
+              </a>
+
+              <a href="https://www.php.net/manual/en/features.gc.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-emerald-500/50 transition group">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-emerald-400">Garbage Collector</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+                </div>
+                <p class="text-[11px] text-slate-400">Zend Garbage Collection cycle collector mechanics.</p>
+              </a>
+
+              <a href="https://www.php.net/manual/en/language.oop5.decon.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-amber-500/50 transition group">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-amber-400">Constructors & Destructors</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+                </div>
+                <p class="text-[11px] text-slate-400">Object lifecycle methods manual.</p>
+              </a>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-center gap-4">
+            <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-white font-medium text-xs transition">
+              <i class="fa-solid fa-rotate-left mr-1"></i> Restart Presentation
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer Controls Nav -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between">
+    <button id="prev-btn" onclick="prevSlide()" class="px-4 py-2 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:bg-slate-800 text-slate-300 light:text-slate-700 font-medium text-xs flex items-center gap-2 transition disabled:opacity-30 disabled:cursor-not-allowed">
+      <i class="fa-solid fa-chevron-left"></i> Previous
+    </button>
+
+    <!-- Slide Indicators Dots -->
+    <div id="slide-dots" class="hidden sm:flex items-center space-x-1.5 max-w-md overflow-x-auto py-1 px-2">
+      <!-- Dots inserted dynamically -->
+    </div>
+
+    <button id="next-btn" onclick="nextSlide()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium text-xs flex items-center gap-2 shadow-md transition disabled:opacity-30 disabled:cursor-not-allowed">
+      Next <i class="fa-solid fa-chevron-right"></i>
+    </button>
+  </footer>
+
+  <!-- Search Modal -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-card max-w-xl w-full rounded-2xl border border-slate-800 p-4 shadow-2xl">
+      <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+        <span class="text-xs font-mono text-purple-400 font-bold"><i class="fa-solid fa-magnifying-glass"></i> Search PHP Lifecycle Manual Topics</span>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <input type="text" id="search-input" oninput="performSearch(this.value)" placeholder="Search keywords (e.g. shutdown, MINIT, fastcgi, __destruct, gc)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-purple-200 focus:outline-none focus:border-purple-500 mb-3">
+
+      <div id="search-results" class="max-h-64 overflow-y-auto space-y-2">
+        <p class="text-xs text-slate-500 text-center py-4">Type to search across all slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide Directory Index Modal -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-card max-w-2xl w-full rounded-2xl border border-slate-800 p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+        <span class="text-sm font-mono text-purple-400 font-bold"><i class="fa-solid fa-bars-staggered"></i> Slide Directory Index</span>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div id="index-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto pr-1">
+        <!-- JS populated index list -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism Syntax Highlighting JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <!-- Interactive Logic Script -->
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide-wrapper');
+    const totalSlides = slides.length;
+
+    // Sandbox PHP code default
+    const sandboxSampleCode = `// 1. Register a shutdown hook
+register_shutdown_function(function() {
+    echo "[RSHUTDOWN] Executing registered shutdown function!\\n";
+});
+
+// 2. Class with Constructor & Destructor
+class DatabaseWorker {
+    public function __construct() {
+        echo "[EXEC] DatabaseWorker instance created (__construct)\\n";
+    }
+    public function __destruct() {
+        echo "[RSHUTDOWN] DatabaseWorker destroyed (__destruct)\\n";
+    }
+}
+
+// 3. Script Execution Phase
+echo "[RINIT] Processing HTTP Request...\\n";
+$worker = new DatabaseWorker();
+echo "[EXEC] Performing database query operations...\\n";
+echo "[EXEC] Flushed response buffer.\\n";`;
+
+    // Interactive Quiz grounded in php.net
+    const quizData = [
+      {
+        question: "1. According to php.net, during which lifecycle stage are $_GET and $_POST populated?",
+        options: [
+          "MINIT (Module Initialization)",
+          "RINIT (Request Initialization)",
+          "RSHUTDOWN (Request Shutdown)",
+          "MSHUTDOWN (Module Shutdown)"
+        ],
+        correct: 1,
+        explanation: "Superglobals like $_GET, $_POST, and $_SERVER are initialized during the RINIT (Request Initialization) phase before script execution."
+      },
+      {
+        question: "2. When does a registered shutdown function (`register_shutdown_function`) execute?",
+        options: [
+          "Only when exit() is called explicitly",
+          "During RSHUTDOWN, even if a fatal error occurred or script hit execution timeout",
+          "Immediately when registered",
+          "Only if ob_start() was invoked beforehand"
+        ],
+        correct: 1,
+        explanation: "Shutdown callbacks execute during request teardown (RSHUTDOWN), whether the script completed naturally, called exit(), or died from a fatal engine error."
+      },
+      {
+        question: "3. What function allows PHP-FPM to flush the HTTP response body to the client while continuing execution?",
+        options: [
+          "ob_flush_now()",
+          "fastcgi_finish_request()",
+          "process_detach()",
+          "session_write_close()"
+        ],
+        correct: 1,
+        explanation: "fastcgi_finish_request() flushes all response data to the client and closes the socket connection while allowing the PHP script to execute background tasks."
+      },
+      {
+        question: "4. What happens when an object's reference count drops to zero?",
+        options: [
+          "Its __destruct() method is called immediately",
+          "It waits for the Garbage Collector cycle to run",
+          "It is kept in memory until MSHUTDOWN",
+          "It throws a NullPointerException"
+        ],
+        correct: 0,
+        explanation: "In PHP's reference counting system, as soon as a zval's refcount hits zero (e.g. via unset()), its destructor runs immediately."
+      },
+      {
+        question: "5. Why should clearstatcache() or Container::reset() be called in CLI long-running worker loops?",
+        options: [
+          "To force MINIT re-execution",
+          "To prevent stat/memory leaks across independent loop iterations",
+          "To clear OPcache bytecode memory",
+          "To trigger fastcgi_finish_request()"
+        ],
+        correct: 1,
+        explanation: "CLI worker loops persist process memory across jobs, so resetting static references and clearing file stat caches prevents memory leaks and stale file metadata."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Interactive step visualizer data
+    const stepsData = [
+      {
+        title: "Phase 1: MINIT (Module Initialization)",
+        desc: "SAPI process initializes. PHP loads extension shared objects (.so / .dll), registers global constants, and initializes internal class entries in memory once.",
+        badge: "SAPI: Booting / Master Process Idle",
+        log: ["[MINIT] PHP 8.x Engine Bootstrapping...", "[MINIT] Loaded extensions: opcache, pdo, json", "[MINIT] Master process standing by for requests."]
+      },
+      {
+        title: "Phase 2: RINIT (Request Initialization)",
+        desc: "Incoming HTTP request arrives at SAPI worker. Engine clears request environment, parses request headers/body, populates $_GET, $_POST, $_COOKIE, and executes auto_prepend_file.",
+        badge: "HTTP Connection: ACTIVE (200 OK)",
+        log: ["[RINIT] Request received: GET /api/user", "[RINIT] Superglobals initialized ($ _GET, $_SERVER)", "[RINIT] Memory allocation tracking initialized."]
+      },
+      {
+        title: "Phase 3: Execution & Output Buffering",
+        desc: "Main script file executes. Opcode executed by Zend Virtual Machine. User code instantiates objects, handles logic, and writes to nested output buffer stacks.",
+        badge: "Engine: Running Script Opcodes",
+        log: ["[EXEC] Executing main script logic...", "[EXEC] ob_start() activated (Level 1 Buffer)", "[EXEC] Objects instantiated in heap memory."]
+      },
+      {
+        title: "Phase 4: FastCGI Early Detach (Optional)",
+        desc: "If fastcgi_finish_request() is invoked, output buffers are flushed to webserver, HTTP content length headers are set, and the client connection is closed immediately.",
+        badge: "HTTP Connection: CLOSED (Client Detached)",
+        log: ["[FASTCGI] Flushed output buffers to client.", "[FASTCGI] Connection closed to HTTP client.", "[EXEC] Continuing deferred background tasks..."]
+      },
+      {
+        title: "Phase 5: Shutdown Functions (RSHUTDOWN)",
+        desc: "Script execution finishes or terminates. Zend Engine invokes all registered shutdown callbacks in FIFO order. Fatal errors can be intercepted via error_get_last().",
+        badge: "Phase: Request Teardown (RSHUTDOWN)",
+        log: ["[RSHUTDOWN] Executing register_shutdown_function()", "[RSHUTDOWN] Intercepting fatal error status: NONE", "[RSHUTDOWN] Flushing remaining system buffers."]
+      },
+      {
+        title: "Phase 6: Object Destruction & Garbage Cleanup",
+        desc: "Engine destroys remaining active objects in LIFO order (firing __destruct()), clears request zval tables, unsets superglobals, and returns worker process to idle pool.",
+        badge: "SAPI: Worker Ready for Next Request",
+        log: ["[DESTRUCT] Invoking object __destruct() methods", "[CLEANUP] Releasing request memory pool", "[RSHUTDOWN] Request complete. Worker idle."]
+      }
+    ];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('total-slide-num').textContent = totalSlides;
+      document.getElementById('sandbox-editor').value = sandboxSampleCode;
+      
+      initSlideDots();
+      updateSlideView();
+      setStep(0);
+      runLifecycleSimulator();
+      loadQuizQuestion();
+
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+        
+        if (e.key === 'ArrowRight' || e.key === 'Space') {
+          nextSlide();
+        } else if (e.key === 'ArrowLeft') {
+          prevSlide();
+        } else if (e.ctrlKey && e.key === 'k') {
+          e.preventDefault();
+          toggleSearchModal();
+        }
+      });
+    });
+
+    function initSlideDots() {
+      const container = document.getElementById('slide-dots');
+      container.innerHTML = '';
+      slides.forEach((_, idx) => {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${idx === currentSlide ? 'bg-purple-500 w-5' : 'bg-slate-700 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(idx);
+        container.appendChild(dot);
+      });
+    }
+
+    function updateSlideView() {
+      slides.forEach((slide, idx) => {
+        if (idx === currentSlide) {
+          slide.classList.add('active');
+        } else {
+          slide.classList.remove('active');
+        }
+      });
+
+      // Update counters & badges
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      
+      const activeSlide = slides[currentSlide];
+      const category = activeSlide.getAttribute('data-category') || 'General';
+      const docTopic = activeSlide.getAttribute('data-doc') || 'php.net';
+      
+      document.getElementById('slide-category-badge').textContent = category;
+      document.getElementById('chip-doc-topic').textContent = docTopic;
+
+      // Update progress bar
+      const progressPercent = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+
+      // Update button states
+      document.getElementById('prev-btn').disabled = currentSlide === 0;
+      document.getElementById('next-btn').disabled = currentSlide === totalSlides - 1;
+
+      initSlideDots();
+      Prism.highlightAll();
+    }
+
+    function goToSlide(index) {
+      if (index >= 0 && index < totalSlides) {
+        currentSlide = index;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function setStep(stepIdx) {
+      const data = stepsData[stepIdx];
+      document.getElementById('step-phase-title').textContent = data.title;
+      document.getElementById('step-phase-desc').textContent = data.desc;
+      document.getElementById('step-state-badge').textContent = data.badge;
+
+      const consoleBox = document.getElementById('step-console');
+      consoleBox.innerHTML = data.log.map(l => `<div>${l}</div>`).join('');
+
+      document.querySelectorAll('.step-btn').forEach((btn, idx) => {
+        if (idx === stepIdx) {
+          btn.className = 'step-btn px-3 py-1.5 rounded-xl border border-purple-500 bg-purple-950/50 text-xs font-mono font-bold text-purple-300 shadow-md';
+        } else {
+          btn.className = 'step-btn px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-900 text-xs font-mono font-bold text-slate-400 hover:text-white';
+        }
+      });
+    }
+
+    function runLifecycleSimulator() {
+      const code = document.getElementById('sandbox-editor').value;
+      const outputBox = document.getElementById('sandbox-output');
+
+      let logs = [];
+      logs.push('<span class="text-slate-500">[SAPI] Initiating Request Execution Cycle...</span>');
+      logs.push('<span class="text-sky-400">[RINIT] Global Environment Initialized.</span>');
+
+      // Simple regex parser for simulated sandbox logs
+      const echoMatches = code.match(/echo\s+["'](.*?)["'];/g);
+      if (echoMatches) {
+        echoMatches.forEach(m => {
+          const text = m.replace(/echo\s+["']/, '').replace(/["'];/, '').replace(/\\n/g, '');
+          logs.push(`<span class="text-emerald-300">${text}</span>`);
+        });
+      }
+
+      logs.push('<span class="text-purple-400">[RSHUTDOWN] Engine enters Request Teardown...</span>');
+      logs.push('<span class="text-amber-300">[RSHUTDOWN] All registered shutdown callbacks executed.</span>');
+      logs.push('<span class="text-rose-400">[RSHUTDOWN] Zval memory pools freed. Request Terminated.</span>');
+
+      outputBox.innerHTML = logs.join('\n');
+    }
+
+    function loadQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-question-title').textContent = q.question;
+      
+      const optionsList = document.getElementById('quiz-options-list');
+      optionsList.innerHTML = '';
+
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-mono text-slate-200 transition flex items-center justify-between group';
+        btn.innerHTML = `<span>${opt}</span> <i class="fa-regular fa-circle text-slate-600 group-hover:text-purple-400"></i>`;
+        btn.onclick = () => submitQuizAnswer(idx);
+        optionsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').classList.add('hidden');
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+      document.getElementById('quiz-score-badge').textContent = `Score: ${quizScore} / ${quizData.length}`;
+    }
+
+    function submitQuizAnswer(selectedIdx) {
+      const q = quizData[currentQuizIndex];
+      const feedbackBox = document.getElementById('quiz-feedback');
+      const optionsButtons = document.querySelectorAll('#quiz-options-list button');
+
+      optionsButtons.forEach((btn, idx) => {
+        btn.disabled = true;
+        if (idx === q.correct) {
+          btn.className = 'w-full text-left p-3 rounded-xl bg-emerald-950/80 border border-emerald-600 text-xs font-mono text-emerald-200 flex items-center justify-between';
+        } else if (idx === selectedIdx) {
+          btn.className = 'w-full text-left p-3 rounded-xl bg-rose-950/80 border border-rose-600 text-xs font-mono text-rose-200 flex items-center justify-between';
+        }
+      });
+
+      if (selectedIdx === q.correct) {
+        quizScore++;
+        feedbackBox.className = 'p-3 rounded-xl border border-emerald-800 bg-emerald-950/60 text-emerald-300 text-xs font-mono mb-4 leading-relaxed';
+        feedbackBox.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        feedbackBox.className = 'p-3 rounded-xl border border-rose-800 bg-rose-950/60 text-rose-300 text-xs font-mono mb-4 leading-relaxed';
+        feedbackBox.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Incorrect!</strong> ${q.explanation}`;
+      }
+
+      feedbackBox.classList.remove('hidden');
+      document.getElementById('quiz-next-btn').classList.remove('hidden');
+      document.getElementById('quiz-score-badge').textContent = `Score: ${quizScore} / ${quizData.length}`;
+    }
+
+    function nextQuizQuestion() {
+      currentQuizIndex = (currentQuizIndex + 1) % quizData.length;
+      loadQuizQuestion();
+    }
+
+    function toggleTheme() {
+      document.documentElement.classList.toggle('light');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        document.getElementById('fullscreen-icon').className = 'fa-solid fa-compress';
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = 'fa-solid fa-expand';
+        }
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const code = container.querySelector('code').innerText;
+      
+      const textarea = document.createElement('textarea');
+      textarea.value = code;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> Copied!';
+      setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        buildIndexGrid();
+      }
+    }
+
+    function buildIndexGrid() {
+      const grid = document.getElementById('index-grid');
+      grid.innerHTML = '';
+      slides.forEach((slide, idx) => {
+        const title = slide.querySelector('h1, h2')?.innerText || `Slide ${idx + 1}`;
+        const cat = slide.getAttribute('data-category') || 'Overview';
+        
+        const card = document.createElement('button');
+        card.className = `p-3 rounded-xl border text-left text-xs font-mono transition flex flex-col justify-between ${idx === currentSlide ? 'bg-purple-950/80 border-purple-500 text-purple-200' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'}`;
+        card.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] text-sky-400 font-bold">${cat}</span>
+            <span class="text-[10px] text-slate-500">#${idx + 1}</span>
+          </div>
+          <div class="font-sans font-semibold text-white light:text-slate-900 truncate">${title}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function performSearch(query) {
+      const resultsContainer = document.getElementById('search-results');
+      if (!query.trim()) {
+        resultsContainer.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Type to search across all slides...</p>';
+        return;
+      }
+
+      const q = query.toLowerCase();
+      let matches = [];
+
+      slides.forEach((slide, idx) => {
+        const text = slide.innerText.toLowerCase();
+        if (text.includes(q)) {
+          const title = slide.querySelector('h1, h2')?.innerText || `Slide ${idx + 1}`;
+          matches.push({ idx, title });
+        }
+      });
+
+      if (matches.length === 0) {
+        resultsContainer.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">No matching slides found.</p>';
+        return;
+      }
+
+      resultsContainer.innerHTML = matches.map(m => `
+        <button onclick="goToSlide(${m.idx}); toggleSearchModal();" class="w-full text-left p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-mono text-purple-300 flex items-center justify-between">
+          <span>${m.title}</span>
+          <span class="text-[10px] text-slate-500">Slide ${m.idx + 1}</span>
+        </button>
+      `).join('');
+    }
+  </script>
+</body>
+</html>

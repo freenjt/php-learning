@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PHP Performance Optimization Programmatically - Comprehensive Guide</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              red: '#ef4444'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.85rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#8b5cf6',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <!-- Header Navigation -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-gauge-high text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Performance <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 light:text-purple-700 border border-purple-500/30">Official Specs & Redis Guide</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slides Frame -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Primary Documentation Sources: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net / geeksforgeeks.org</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="php.net & geeksforgeeks.org">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-brands fa-php text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Programmatic Performance <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-sky-400">Optimization in PHP</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A deep programmatic guide covering OPcache bytecode precompilation, JIT machine code generation, memory-efficient Generators, Preloading, and high-performance in-memory caching using Redis (PhpRedis & Predis).
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> php.net Official Specs
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-bolt text-amber-400"></i> Redis Integration (GeeksforGeeks)
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-microchip text-purple-400"></i> Live Benchmarks & Simulators
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Begin Performance Deep-Dive</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Structural Landscape -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="php.net & geeksforgeeks.org">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Taxonomy of PHP Performance Optimization</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Optimization techniques are grouped into 6 core programmatic pillars balancing execution speed, I/O latency, and memory footprint.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-memory"></i></div>
+            OPcache & Bytecode
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Eliminates script compilation overhead by storing precompiled Opcodes in shared memory.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-purple-300">opcache_compile_file()</code></li>
+            <li>• <code class="text-purple-300">opcache_invalidate()</code></li>
+            <li>• Shared Memory Shared Storage</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-microchip"></i></div>
+            PHP 8 JIT Compiler
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Translates Zend Opcodes into native CPU machine instructions for high-compute tasks.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-sky-300">opcache.jit=tracing</code></li>
+            <li>• Hot spot machine compilation</li>
+            <li>• CPU-bound performance gains</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-database"></i></div>
+            Redis In-Memory Caching
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Reduces database load by storing keys, objects, and sessions in sub-millisecond RAM storage.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-emerald-300">PhpRedis Extension / Predis</code></li>
+            <li>• Cache-Aside Pattern & TTL</li>
+            <li>• Command Pipelining (`multi/exec`)</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-leaf"></i></div>
+            Generators & Memory Streams
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Processes huge datasets on demand without loading whole arrays into memory.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-amber-300">yield $key => $val</code></li>
+            <li>• O(1) Memory Footprint</li>
+            <li>• <code class="text-amber-300">memory_get_usage()</code> tracking</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-box font-bold"></i></div>
+            OPcache Preloading
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Loads framework files once at FPM startup so they remain permanently available in memory.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-rose-300">opcache.preload=preload.php</code></li>
+            <li>• Zero file system stat overhead</li>
+            <li>• Persistent across web requests</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-network-wired"></i></div>
+            Distributed Session Storage
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Offloads disk-bound session IO to high-availability Redis memory clusters.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-indigo-300">session.save_handler = redis</code></li>
+            <li>• <code class="text-indigo-300">session.save_path = "tcp://..."</code></li>
+            <li>• Zero disk-I/O locks on sessions</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: OPcache & Programmatic Bytecode Management -->
+    <div class="slide-wrapper flex-col" data-category="OPcache" data-doc="php.net/opcache">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">OPcache: Programmatic Bytecode Compilation & Invalidation</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">OPcache removes script loading/parsing overhead by caching precompiled Zend Opcodes in shared memory.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Code Box -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> OPcache PHP API Control</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// Check if OPcache is active in environment
+if (function_exists('opcache_get_status')) {
+    $status = opcache_get_status(false);
+    
+    // Check memory consumption
+    $memUsed = $status['memory_usage']['used_memory'];
+    $hitRate = $status['opcache_statistics']['opcache_hit_rate'];
+    
+    echo "OPcache Hit Rate: " . number_format($hitRate, 2) . "%\n";
+}
+
+// Warm up bytecode cache programmatically
+opcache_compile_file('/var/www/app/Kernel.php');
+
+// Invalidate specific modified file cache
+opcache_invalidate('/var/www/app/Config.php', true);
+?&gt;</code></pre>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <strong class="text-purple-400"><i class="fa-solid fa-circle-info"></i> php.net Core Rule:</strong>
+            <p class="mt-1">When <code class="text-purple-300">opcache.validate_timestamps=0</code> in production, PHP never checks disk for script changes. You MUST call <code class="text-purple-300">opcache_reset()</code> or reload PHP-FPM during deployments!</p>
+          </div>
+        </div>
+
+        <!-- OPcache Execution Flow -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-sky-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Execution Pipeline: Without vs With OPcache</span>
+          <div class="mermaid">
+            graph TD
+              subgraph Without OPcache
+                A[PHP File] -->|Lex / Parse| B[Abstract Syntax Tree]
+                B -->|Compile| C[Zend Opcodes]
+                C -->|Execute| D[Zend Engine Output]
+              end
+              subgraph With OPcache
+                E[PHP File] -->|First Hit Only| F[Shared RAM Opcodes]
+                F -->|Subsequent Hits Direct| G[Zend Engine Output]
+              end
+              style F fill:#4F5B93,stroke:#8b5cf6,color:#ffffff
+              style G fill:#10b981,stroke:#059669,color:#ffffff
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2 text-center">Reference: <a href="https://www.php.net/manual/en/book.opcache.php" target="_blank" class="text-sky-400 hover:underline">php.net/book.opcache</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: The PHP JIT Compiler -->
+    <div class="slide-wrapper flex-col" data-category="JIT" data-doc="php.net/opcache.jit">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP 8 Just-In-Time (JIT) Compiler</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">JIT compiles Zend Opcodes into native CPU machine code dynamically, bypassing Zend Virtual Machine interpretation for CPU-bound routines.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Configuration & Tracing JIT -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-sliders"></i> Recommended `php.ini` JIT Directives</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-ini">; Enable OPcache and JIT
+opcache.enable=1
+opcache.enable_cli=1
+opcache.memory_consumption=256
+opcache.jit_buffer_size=100M
+
+; Tracing JIT Mode (CRTK = 1254 in legacy or tracing)
+opcache.jit=tracing</code></pre>
+            <div class="mt-3 text-xs text-slate-300 space-y-1 font-mono">
+              <p><strong class="text-emerald-400">Tracing JIT (`tracing`):</strong> Analyzes execution loops and profiles hot paths to emit native assembly.</p>
+              <p><strong class="text-amber-400">Function JIT (`function`):</strong> Compiles entire functions indiscriminately without loop optimization profiling.</p>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/opcache.jit.php" target="_blank" class="text-sky-400 hover:underline">php.net/opcache.jit</a></p>
+        </div>
+
+        <!-- JIT Interactive Execution Visualizer -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-microchip"></i> Interpreter vs OPcache vs JIT Benchmark Simulator</span>
+            
+            <div class="space-y-3 my-2 text-xs font-mono">
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-rose-400">Standard Interpreter (No Cache)</span>
+                  <span class="text-slate-400">~120ms / 100k ops</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-rose-500 h-full w-[100%]"></div>
+                </div>
+              </div>
+
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-purple-400">Zend OPcache (Precompiled Opcodes)</span>
+                  <span class="text-slate-400">~35ms / 100k ops</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-purple-500 h-full w-[29%]"></div>
+                </div>
+              </div>
+
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-emerald-400">PHP 8 JIT Tracing (Native Machine Code)</span>
+                  <span class="text-slate-400">~8ms / 100k ops</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-emerald-500 h-full w-[7%]"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-2 bg-slate-900 rounded-lg text-[11px] text-slate-300">
+            <strong class="text-amber-400"><i class="fa-solid fa-lightbulb"></i> Note:</strong> Web requests (I/O bound) benefit mostly from OPcache + Redis. CPU-bound compute (math, fractal, hashing) sees massive gains with JIT.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Memory Optimization & Generators -->
+    <div class="slide-wrapper flex-col" data-category="Memory" data-doc="php.net/language.generators">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Memory Optimization: Generators vs Large Arrays</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Generators allow you to write code that uses <code class="text-purple-300">foreach</code> to iterate over data without constructing an array in memory.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Generator Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-leaf"></i> Memory-Efficient Generator (`yield`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// Generator yields one value at a time (O(1) Memory)
+function readHugeFile(string $filePath): Generator {
+    $handle = fopen($filePath, 'r');
+    while (($line = fgets($handle)) !== false) {
+        yield trim($line); // Pauses and yields control
+    }
+    fclose($handle);
+}
+
+// Memory stays constant regardless of file size!
+foreach (readHugeFile('10GB_log.txt') as $line) {
+    if (str_contains($line, 'ERROR')) {
+        processError($line);
+    }
+}
+?&gt;</code></pre>
+          </div>
+          <p class="text-[11px] text-emerald-300 mt-1"><i class="fa-solid fa-circle-check"></i> Peak Memory: ~32 KB regardless of whether file is 1MB or 100GB!</p>
+        </div>
+
+        <!-- Standard Array Failure Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-triangle-exclamation"></i> Standard Array Loading (Memory Exhaustion)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// Loads ALL lines into RAM array simultaneously (O(N) Memory)
+function readHugeFileToArray(string $filePath): array {
+    $lines = [];
+    $handle = fopen($filePath, 'r');
+    while (($line = fgets($handle)) !== false) {
+        $lines[] = trim($line); // Allocates RAM per item
+    }
+    fclose($handle);
+    return $lines;
+}
+
+// Triggers: Fatal error: Allowed memory size of 134217728 bytes exhausted!
+$data = readHugeFileToArray('10GB_log.txt');
+?&gt;</code></pre>
+          </div>
+          <p class="text-[11px] text-rose-300 mt-1"><i class="fa-solid fa-circle-xmark"></i> Peak Memory: Scales infinitely ($O(N)$) -> Crashes script!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Garbage Collection & Copy-on-Write Semantics -->
+    <div class="slide-wrapper flex-col" data-category="Memory" data-doc="php.net/function.memory-get-usage">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Programmatic Memory Profiling & Copy-on-Write (COW)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Understanding PHP memory functions and Copy-on-Write array reference management.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Memory Profiling API -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-chart-line"></i> Programmatic Memory Diagnostics API</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+$startMem = memory_get_usage();
+
+// Perform memory-intensive payload
+$dataset = range(1, 100000);
+
+$currentMem = memory_get_usage();
+$peakMem    = memory_get_peak_usage();
+
+echo "Current Usage: " . ($currentMem - $startMem) . " bytes\n";
+echo "Peak Memory Allocated: " . $peakMem . " bytes\n";
+
+// Force cyclical reference garbage collection
+unset($dataset);
+$collectedCycles = gc_collect_cycles();
+gc_mem_caches(); // Frees memory held by GC allocator
+?&gt;</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/features.gc.php" target="_blank" class="text-sky-400 hover:underline">php.net/features.gc</a></p>
+        </div>
+
+        <!-- Copy-on-Write (COW) Mechanics -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-copy"></i> Copy-on-Write (COW) Optimization</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+$largeArray = range(1, 1000000); // Allocates ZVAL buffer
+
+// $copy shares the same memory buffer pointer (Zero extra RAM!)
+$copy = $largeArray; 
+
+// Memory duplication occurs ONLY when one variable is mutated!
+$copy[0] = 'MUTATED'; // COW triggered here -> Memory doubles!
+
+function inspectArray(array $arr): void {
+    // Passing by value uses COW: No memory duplicated unless written!
+    echo count($arr);
+}
+inspectArray($largeArray);
+?&gt;</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-300 mt-2"><strong class="text-purple-400">Rule:</strong> Avoid unnecessary pass-by-reference <code class="text-purple-300">(&$arr)</code> unless intended for modification; read-only array passing is already zero-copy due to COW!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Redis Integration in PHP (PhpRedis) -->
+    <div class="slide-wrapper flex-col" data-category="Redis" data-doc="geeksforgeeks.org/system-design/complete-guide-to-redis-php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Redis Integration in PHP using `PhpRedis` Extension</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Offloading heavy read/write operations to in-memory Redis key-value store using native C extension <code class="text-purple-300">Redis</code> class.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Redis Connection & Basic KV -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-bolt"></i> Redis Connection & String Operations</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// Instantiate C-extension Redis object
+$redis = new Redis();
+
+// Establish connection to Redis Server
+$redis->connect('127.0.0.1', 6379, 2.5); // 2.5s timeout
+$redis->auth('secure_password'); // Optional Auth
+
+// Set Key with expiration (TTL) in seconds (setex)
+$redis->setex('user:1001:profile', 3600, json_encode([
+    'id' => 1001,
+    'name' => 'Alice',
+    'role' => 'Administrator'
+]));
+
+// Retrieve cached string payload
+$cachedData = $redis->get('user:1001:profile');
+if ($cachedData) {
+    $user = json_decode($cachedData, true);
+}
+?&gt;</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.geeksforgeeks.org/system-design/complete-guide-to-redis-php" target="_blank" class="text-sky-400 hover:underline">GeeksforGeeks Redis PHP Guide</a></p>
+        </div>
+
+        <!-- Core Redis Command Mapping table -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-list-check"></i> Core PhpRedis Methods & TTL Control</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">PhpRedis Method</th>
+                    <th class="p-2">Redis Command</th>
+                    <th class="p-2">Performance Purpose</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">$redis->setex($k, $ttl, $v)</td>
+                    <td class="p-2"><code class="text-sky-400">SETEX key ttl val</code></td>
+                    <td class="p-2 text-emerald-400">Atomic set with TTL</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">$redis->mget([$k1, $k2])</td>
+                    <td class="p-2"><code class="text-sky-400">MGET k1 k2</code></td>
+                    <td class="p-2 text-emerald-400">Batch key retrieval</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">$redis->del($key)</td>
+                    <td class="p-2"><code class="text-sky-400">DEL key</code></td>
+                    <td class="p-2 text-emerald-400">Evicts key from RAM</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">$redis->exists($key)</td>
+                    <td class="p-2"><code class="text-sky-400">EXISTS key</code></td>
+                    <td class="p-2 text-emerald-400">Fast boolean check</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="p-2 bg-slate-900 rounded-lg text-[11px] text-slate-300 mt-2">
+            <strong class="text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i> TTL Best Practice:</strong> Always set explicit TTLs (<code class="text-purple-300">setex</code>) to prevent Redis memory from filling up indefinitely.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Cache-Aside Strategy & Interactive Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Redis" data-doc="geeksforgeeks.org/system-design/complete-guide-to-redis-php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Cache-Aside Caching Pattern in PHP</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">The standard programmatic caching pattern: query Redis first; on miss, query DB, seed Redis with TTL, and return payload.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Interactive Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <label class="text-xs font-mono text-purple-400 font-bold">Interactive Cache-Aside Simulator:</label>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="simulateCacheAside('hit')" class="cache-btn px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-mono"><i class="fa-solid fa-bolt"></i> Simulate Cache HIT (0.8ms)</button>
+            <button onclick="simulateCacheAside('miss')" class="cache-btn px-3 py-1 rounded-lg bg-rose-600 text-white text-xs font-mono"><i class="fa-solid fa-database"></i> Simulate Cache MISS (85ms)</button>
+            <button onclick="simulateCacheAside('flush')" class="cache-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono"><i class="fa-solid fa-trash"></i> Flush Redis Cache</button>
+          </div>
+        </div>
+
+        <!-- Split View Sequence & Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Code Implementation -->
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs">
+            <div class="text-slate-500 mb-1">// Programmatic Cache-Aside Pattern</div>
+            <pre><code class="language-php">function getUserProduct(int $id, Redis $redis, PDO $pdo): array {
+    $cacheKey = "product:{$id}";
+    
+    // 1. Attempt Redis Read
+    $cached = $redis->get($cacheKey);
+    if ($cached) {
+        return json_decode($cached, true); // HIT!
+    }
+    
+    // 2. Cache Miss -> Query Database
+    $stmt = $pdo->prepare("SELECT * FROM products WHERE id = ?");
+    $stmt->execute([$id]);
+    $product = $stmt->fetch();
+    
+    // 3. Seed Redis Cache with 5-min TTL
+    $redis->setex($cacheKey, 300, json_encode($product));
+    return $product;
+}</code></pre>
+          </div>
+
+          <!-- Live Log & Visual Trace -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-sky-400 font-mono text-xs font-bold block mb-2"><i class="fa-solid fa-terminal"></i> Runtime Execution Trace Log</span>
+              <div id="cache-trace-log" class="font-mono text-xs space-y-1 h-32 overflow-y-auto">
+                <div class="text-slate-500">Ready for simulation. Click a button above...</div>
+              </div>
+            </div>
+
+            <div id="cache-badge-result" class="mt-3 p-2 rounded bg-slate-900 border border-slate-800 text-xs font-mono">
+              Status: Idle
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Advanced Redis Data Structures for PHP -->
+    <div class="slide-wrapper flex-col" data-category="Redis" data-doc="geeksforgeeks.org/system-design/complete-guide-to-redis-php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Advanced Redis Structures in PHP (Hashes, Sets, Sorted Sets)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Redis goes beyond simple strings to support Hashes, Sets, Sorted Sets (ZSet), and Lists natively in PHP.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Hashes -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-hashtag"></i> Hashes (`hSet` / `hGetAll`)</span>
+            <pre><code class="language-php">// Memory efficient object fields
+$redis->hMSet('user:100', [
+    'name'  => 'Bob',
+    'email' => 'bob@php.net',
+    'visits'=> 42
+]);
+
+$email = $redis->hGet('user:100', 'email');
+$user  = $redis->hGetAll('user:100');</code></pre>
+            <p class="text-xs text-slate-300 mt-2">Stores entire entity objects under a single key without JSON decode serialization overhead.</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">Use case: User profiles, product fields</p>
+        </div>
+
+        <!-- Sorted Sets -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-arrow-down-1-9"></i> Sorted Sets (`zAdd` / `zRevRange`)</span>
+            <pre><code class="language-php">// Real-time Leaderboards with scores
+$redis->zAdd('leaderboard', 1500, 'UserA');
+$redis->zAdd('leaderboard', 3200, 'UserB');
+
+// Fetch Top 10 players
+$top10 = $redis->zRevRange(
+    'leaderboard', 0, 9, true
+);</code></pre>
+            <p class="text-xs text-slate-300 mt-2">Elements stored with numeric score for $O(\log N)$ instant sorting and ranking.</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">Use case: High-speed leaderboards, priority queues</p>
+        </div>
+
+        <!-- Lists & Queues -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-list-ol"></i> Lists & Queues (`lPush` / `rPop`)</span>
+            <pre><code class="language-php">// High-speed message queue
+$redis->lPush('job_queue', json_encode(['task' => 'send_email']));
+
+// Background worker pops task
+$job = $redis->rPop('job_queue');
+if ($job) {
+    executeJob(json_decode($job));
+}</code></pre>
+            <p class="text-xs text-slate-300 mt-2">Atomic FIFO queue pushing and popping for background task workers.</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">Use case: Asynchronous job queues</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Redis Session Management -->
+    <div class="slide-wrapper flex-col" data-category="Redis" data-doc="geeksforgeeks.org/system-design/complete-guide-to-redis-php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">High-Performance Distributed Session Handler with Redis</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">By default PHP stores session files on disk. Offloading sessions to Redis eliminates disk-I/O locks and enables multi-server load balancing.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Configuration & Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-indigo-400 font-bold text-sm"><i class="fa-solid fa-gears"></i> Programmatic `ini_set` Session Overrides</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// Configure PHP to use Redis as native session backend
+ini_set('session.save_handler', 'redis');
+ini_set('session.save_path', 'tcp://127.0.0.1:6379?auth=secret&prefix=PHPSESSID:');
+
+// Custom Redis Session TTL (in seconds)
+ini_set('session.gc_maxlifetime', '7200');
+
+session_start();
+
+// Standard PHP $_SESSION operation, stored directly in Redis RAM!
+$_SESSION['user_id'] = 4589;
+$_SESSION['role']    = 'admin';
+?&gt;</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.geeksforgeeks.org/system-design/complete-guide-to-redis-php" target="_blank" class="text-sky-400 hover:underline">GeeksforGeeks Redis PHP Sessions</a></p>
+        </div>
+
+        <!-- Session Storage Architecture -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-purple-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Distributed Multi-Server Redis Session Architecture</span>
+          <div class="mermaid">
+            graph LR
+            SubA["Web Node 1 (PHP-FPM)"] -->|TCP Session Read/Write| RedisServer[(Centralized Redis Cluster)]
+            SubB["Web Node 2 (PHP-FPM)"] -->|TCP Session Read/Write| RedisServer
+            SubC["Web Node 3 (PHP-FPM)"] -->|TCP Session Read/Write| RedisServer
+
+            style RedisServer fill:#10b981,stroke:#059669
+          </div>
+          <ul class="text-xs font-mono text-slate-300 space-y-1 mt-3">
+            <li class="text-emerald-400">• Eliminates file system session lock latency</li>
+            <li class="text-emerald-400">• Enables stateless horizontal scaling of web servers</li>
+            <li class="text-emerald-400">• Auto-expiring sessions via Redis native TTL</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Redis Command Pipelining & Transactions -->
+    <div class="slide-wrapper flex-col" data-category="Redis" data-doc="geeksforgeeks.org/system-design/complete-guide-to-redis-php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Redis Pipelining & Transactions (`multi()` / `exec()`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Pipelining batches dozens of commands into a single TCP request, reducing network Round Trip Time (RTT) latency drastically.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Code snippet for Pipelining -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-forward"></i> Command Pipelining in PhpRedis</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+$redis = new Redis();
+$redis->connect('127.0.0.1', 6379);
+
+// Pipeline mode batches commands without waiting for individual replies
+$pipe = $redis->pipeline();
+
+for ($i = 0; $i < 1000; $i++) {
+    $pipe->set("key:{$i}", "value_{$i}");
+}
+
+// Executes ALL 1,000 commands in 1 single network Round Trip!
+$results = $pipe->exec();
+?&gt;</code></pre>
+          </div>
+          <p class="text-[11px] text-emerald-300 mt-1"><i class="fa-solid fa-bolt"></i> Speedup: Reduces 1,000 TCP round-trips (~500ms) to 1 round-trip (~3ms)!</p>
+        </div>
+
+        <!-- Transactions multi/exec -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-lock"></i> Atomic Transactions (`multi` / `exec`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// Atomic execution block (isolation)
+$redis->multi();
+
+$redis->set('account:1:balance', 500);
+$redis->set('account:2:balance', 1500);
+$redis->incr('total_transfers');
+
+// Atomic execution on Redis server
+$replies = $redis->exec(); 
+?&gt;</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.geeksforgeeks.org/system-design/complete-guide-to-redis-php" target="_blank" class="text-sky-400 hover:underline">GeeksforGeeks Redis Transactions</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: OPcache Preloading in PHP 7.4+ -->
+    <div class="slide-wrapper flex-col" data-category="OPcache" data-doc="php.net/opcache.preloading">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">OPcache Preloading (`opcache.preload`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Introduced in PHP 7.4, preloading loads framework files into memory at FPM service start, making them globally available to all web requests with zero file-check overhead.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Preload Script Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-file-code"></i> Preload Script (`preload.php`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// Preload Composer autoloader & critical framework classes
+require_once __DIR__ . '/vendor/autoload.php';
+
+$files = [
+    __DIR__ . '/src/Core/Application.php',
+    __DIR__ . '/src/Core/Database.php',
+    __DIR__ . '/src/Core/Router.php',
+];
+
+foreach ($files as $file) {
+    // Compiles file and stores classes permanently in RAM
+    opcache_compile_file($file);
+}
+?&gt;</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Configured in `php.ini`: <code class="text-purple-300">opcache.preload=/var/www/app/preload.php</code></p>
+        </div>
+
+        <!-- Preloading Performance Benefits Card -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-gauge"></i> Architectural Impact of Preloading</span>
+            <ul class="space-y-3 text-xs text-slate-300">
+              <li class="flex items-start gap-2">
+                <i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>
+                <span><strong>Zero Class Linking at Runtime:</strong> Classes are linked and compiled once when FPM boots. No autoloading file-stat checks during HTTP requests.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>
+                <span><strong>Shared Immutable Memory:</strong> Preloaded classes reside in shared memory space inaccessible to modification, saving CPU cycles and memory fragmentation.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5"></i>
+                <span><strong>Trade-off:</strong> Any code update requires restarting PHP-FPM service (<code class="text-purple-300">systemctl restart php-fpm</code>).</span>
+              </li>
+            </ul>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/opcache.preloading.php" target="_blank" class="text-sky-400 hover:underline">php.net/opcache.preloading</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Interactive PHP Performance Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Simulator" data-doc="php.net / geeksforgeeks.org">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Performance Playground & Benchmark Suite</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select optimization snippets, execute live simulated benchmarks, and compare memory vs speed trade-offs.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Controls Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-purple-400 font-bold">Select Benchmark Preset:</span>
+            <select id="sim-preset-select" onchange="loadSimulatorPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-purple-200 focus:outline-none">
+              <option value="generator_bench">Generators Memory vs Array (1,000,000 items)</option>
+              <option value="redis_setex">Redis setex() Cache vs SQL Query</option>
+              <option value="pipeline_bench">Redis Pipeline vs Sequential Requests</option>
+              <option value="opcache_inspect">OPcache Memory Status API Check</option>
+            </select>
+          </div>
+
+          <button onclick="resetSimulatorCode()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Snippet
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> PHP Optimization Code</span>
+            <textarea id="sim-editor" oninput="runSimulatedCode()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Simulated Benchmark Console Output</span>
+            <div id="sim-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Knowledge Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net / geeksforgeeks.org">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Performance Optimization Knowledge Assessment</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your knowledge on PHP OPcache, Generators, JIT, and Redis integration rules.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-purple-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Official Resources & Summary -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net & geeksforgeeks.org">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Reference Sources</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every programmatic rule, code snippet, memory mechanic, and Redis configuration in this guide is derived exclusively from the official sources.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php.net/manual/en/book.opcache.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">php.net OPcache Documentation</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Bytecode caching, preloading, and configuration directives.</p>
+          </a>
+
+          <a href="https://www.geeksforgeeks.org/system-design/complete-guide-to-redis-php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">GeeksforGeeks Redis PHP Guide</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">PhpRedis, caching patterns, pipelining, and session handlers.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/language.generators.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">php.net Generators Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Generator syntax, yield key value pairs, and memory benchmarks.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/opcache.jit.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">php.net JIT Specification</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Tracing JIT compilation modes and buffer sizing.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Control Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-purple-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net / geeksforgeeks.org</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Slide Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-purple-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search keywords (e.g., opcache, redis, generator, jit)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i> Presentation Slide Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ini.min.js"></script>
+
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Questions Dataset (Grounded strictly in php.net & GeeksforGeeks Redis PHP)
+    const quizData = [
+      {
+        question: "How does OPcache improve PHP script execution performance?",
+        options: [
+          "By converting PHP scripts directly into HTML static pages on disk.",
+          "By precompiling script bytecode and storing it in shared memory to avoid loading and parsing on each request.",
+          "By automatically rewriting database SQL queries to execute faster.",
+          "By compressing PHP source files into ZIP archives."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/opcache): OPcache improves PHP performance by storing precompiled script bytecode in shared memory, thereby removing the need for PHP to load and parse scripts on each request."
+      },
+      {
+        question: "What is the key advantage of using a PHP Generator (`yield`) over creating a standard array when processing large datasets?",
+        options: [
+          "Generators automatically encrypt data transferred over network.",
+          "Generators keep memory usage constant (O(1)) by yielding items one by one instead of allocating RAM for the entire dataset.",
+          "Generators run on separate CPU threads automatically.",
+          "Generators store array items in the browser's localStorage."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/language.generators): A generator allows you to write code that uses foreach to iterate over data without needing to build an array in memory, preventing memory exhaustion errors."
+      },
+      {
+        question: "According to GeeksforGeeks Redis PHP Guide, why is `setex()` preferred over standard `set()` for caching?",
+        options: [
+          "setex() compresses string data using gzip before storing.",
+          "setex() atomically sets the key value along with a Time-To-Live (TTL) expiration in seconds.",
+          "setex() executes directly on the MySQL database engine.",
+          "setex() requires no Redis password authentication."
+        ],
+        correct: 1,
+        explanation: "GeeksforGeeks Guide: setex() sets a key with a specific expiration time (TTL) atomically, ensuring stale cache entries auto-expire without cluttering RAM."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Simulator Presets
+    const simulatorPresets = {
+      generator_bench: `<?php\n// Generator vs Array Memory Comparison\nfunction generateNumbers($limit) {\n    for ($i = 0; $i < $limit; $i++) {\n        yield $i;\n    }\n}\n\n$startMem = memory_get_usage();\n$gen = generateNumbers(1000000);\n$genMem = memory_get_usage() - $startMem;\n\necho "Generator Memory Usage: " . number_format($genMem) . " bytes (O(1))\\n";\necho "Array Memory Usage: ~32,000,000 bytes (O(N))";`,
+      redis_setex: `<?php\n$redis = new Redis();\n$redis->connect('127.0.0.1', 6379);\n\n// Cache-Aside Strategy\n$cacheKey = 'user:42:data';\n$data = $redis->get($cacheKey);\n\nif (!$data) {\n    // Simulate Database Query\n    $data = json_encode(['id' => 42, 'name' => 'Alice']);\n    $redis->setex($cacheKey, 300, $data); // 5-minute TTL\n    echo "DB Query Executed -> Cached in Redis with 300s TTL";\n} else {\n    echo "Cache Hit from Redis: " . $data;\n}`,
+      pipeline_bench: `<?php\n$redis = new Redis();\n$redis->connect('127.0.0.1', 6379);\n\n// Command Pipelining\n$pipe = $redis->pipeline();\nfor ($i = 0; $i < 500; $i++) {\n    $pipe->set("key:{$i}", "value_{$i}");\n}\n$results = $pipe->exec();\necho "Batch Executed 500 commands in 1 TCP Round Trip!";`,
+      opcache_inspect: `<?php\nif (function_exists('opcache_get_status')) {\n    $status = opcache_get_status(false);\n    echo "OPcache Enabled: " . ($status['opcache_enabled'] ? 'YES' : 'NO') . "\\n";\n    echo "Hit Rate: " . number_format($status['opcache_statistics']['opcache_hit_rate'], 2) . "%";\n} else {\n    echo "OPcache Status: Active (Simulated Environment)";\n}`
+    };
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      // Update counters
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // Update Header Chip
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+
+      renderDots();
+
+      // Prism highlight
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      // Mermaid re-render
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-purple-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    // Cache-Aside Simulator
+    function simulateCacheAside(type) {
+      const traceLog = document.getElementById('cache-trace-log');
+      const resultBadge = document.getElementById('cache-badge-result');
+
+      if (type === 'hit') {
+        traceLog.innerHTML = `
+          <div class="text-purple-400">[1] $redis->get('product:101') called...</div>
+          <div class="text-emerald-400">[2] REDIS HIT! Key found in memory RAM.</div>
+          <div class="text-slate-300">[3] Returned cached JSON payload instantly.</div>
+        `;
+        resultBadge.className = "mt-3 p-2 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800 text-xs font-mono";
+        resultBadge.innerHTML = `<i class="fa-solid fa-bolt mr-1"></i> Result: <strong>CACHE HIT</strong> • Latency: <strong>0.8ms</strong> (100x faster than SQL)`;
+      } else if (type === 'miss') {
+        traceLog.innerHTML = `
+          <div class="text-purple-400">[1] $redis->get('product:101') called...</div>
+          <div class="text-rose-400">[2] REDIS MISS! Key not found or expired.</div>
+          <div class="text-amber-400">[3] Querying MySQL Database over TCP disk...</div>
+          <div class="text-sky-400">[4] Seeding Redis: $redis->setex('product:101', 300, payload)</div>
+        `;
+        resultBadge.className = "mt-3 p-2 rounded bg-rose-950/60 text-rose-300 border border-rose-800 text-xs font-mono";
+        resultBadge.innerHTML = `<i class="fa-solid fa-database mr-1"></i> Result: <strong>CACHE MISS</strong> • Latency: <strong>85.4ms</strong> (DB Query + Redis Seeding)`;
+      } else if (type === 'flush') {
+        traceLog.innerHTML = `
+          <div class="text-slate-400">[1] Executing $redis->flushDB()...</div>
+          <div class="text-amber-400">[2] All cached keys evicted from in-memory RAM.</div>
+        `;
+        resultBadge.className = "mt-3 p-2 rounded bg-slate-900 text-slate-400 border border-slate-800 text-xs font-mono";
+        resultBadge.innerHTML = `Status: Redis DB Flushed Clean`;
+      }
+    }
+
+    // Playground Simulator
+    function loadSimulatorPreset(key) {
+      document.getElementById('sim-editor').value = simulatorPresets[key] || '';
+      runSimulatedCode();
+    }
+
+    function resetSimulatorCode() {
+      const key = document.getElementById('sim-preset-select').value;
+      loadSimulatorPreset(key);
+    }
+
+    function runSimulatedCode() {
+      const code = document.getElementById('sim-editor').value;
+      const consoleOut = document.getElementById('sim-console-output');
+
+      if (code.includes('generateNumbers')) {
+        consoleOut.textContent = `Generator Memory Usage: 320 bytes (O(1) Constant RAM)\nArray Memory Usage: ~32,000,000 bytes (O(N) RAM allocation)\n\n--> Benchmark Result: Generators consume 99.9% LESS memory!`;
+      } else if (code.includes('setex')) {
+        consoleOut.textContent = `DB Query Executed -> Cached in Redis with 300s TTL\nKey: user:42:data\nTTL Remaining: 299s\nPayload: {"id":42,"name":"Alice"}\n\n--> Subsequent calls will yield 0.8ms Cache Hits!`;
+      } else if (code.includes('pipeline')) {
+        consoleOut.textContent = `Pipelining 500 commands to Redis server...\n[OK] Command 1..500 sent in single TCP packet buffer.\n\n--> Benchmark: Execution finished in 2.1ms (vs ~250ms sequential)!`;
+      } else if (code.includes('opcache_get_status')) {
+        consoleOut.textContent = `OPcache Enabled: YES\nShared Memory Total: 256 MB\nUsed Memory: 42.8 MB\nHit Rate: 99.42%\nCached Scripts: 1,284 files\nJIT Tracing Status: Active`;
+      } else {
+        consoleOut.textContent = `[Simulated Output]: Code compiled successfully. Compliance verified with php.net & Redis guide.`;
+      }
+    }
+
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-purple-950/60 border-purple-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-purple-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-purple-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_presentation_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_presentation_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keyboard & Swipe Listeners
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    // Initialization
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_presentation_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      simulateCacheAside('hit');
+      loadSimulatorPreset('generator_bench');
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

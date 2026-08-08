@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Programmatic Static Analysis in PHP - Official Manual Deep Dive</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              rose: '#f43f5e'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Presentation Styles -->
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.85rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for AST & Parser Flow Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#8b5cf6',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <!-- Header Navigation -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-magnifying-glass-chart text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Static Analysis <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 light:text-purple-700 border border-purple-500/30">Official Spec</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slides Frame -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Manual: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/book.tokenizer</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="php.net/manual/en/book.tokenizer.php">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-brands fa-php text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Programmatic Static Analysis <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-sky-400">in Native PHP</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A rigorous, deep-dive exploration of inspecting PHP code programmatically using native core APIs: Tokenizer (`PhpToken`), Reflection, Attributes, Abstract Syntax Trees (`zend_ast`), and OPcache verification grounded strictly on official php.net manual specs.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Strict php.net Compliance
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-microchip text-purple-400"></i> Tokenizer & AST Steppers
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-terminal text-amber-400"></i> Live Static Linting Engine
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Begin Analysis Exploration</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Programmatic Static Analysis Taxonomy -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="php.net/manual/en/book.tokenizer.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Native PHP Static Analysis Taxonomy</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Official engine components and core extensions for inspecting PHP source code without execution.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-key"></i></div>
+            Lexical Tokenization
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Scans source strings into atomic tokens without executing scripts.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-purple-300">PhpToken::tokenize()</code> (PHP 8.0+)</li>
+            <li>• <code class="text-purple-300">token_get_all()</code></li>
+            <li>• <code class="text-purple-300">PhpToken::getTokenName()</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-magnifying-glass"></i></div>
+            Reflection API Introspection
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Inspects structural metadata, method signatures, and class hierarchies.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-sky-300">ReflectionClass / ReflectionMethod</code></li>
+            <li>• <code class="text-sky-300">ReflectionType / ReflectionNamedType</code></li>
+            <li>• <code class="text-sky-300">ReflectionUnionType / Intersection</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-tag"></i></div>
+            Attribute Metadata Parsing
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Extracts structured PHP 8.0+ metadata attributes via reflection.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-emerald-300">ReflectionAttribute::getArguments()</code></li>
+            <li>• <code class="text-emerald-300">ReflectionAttribute::getName()</code></li>
+            <li>• <code class="text-emerald-300">#[Attribute]</code> Target Flags</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-sitemap"></i></div>
+            Zend Abstract Syntax Tree
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Converts tokens into structured syntactic tree nodes (`zend_ast`).</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Lexer -> Parser -> AST Node mapping</li>
+            <li>• <code class="text-amber-300">ast\parse_code()</code> extension API</li>
+            <li>• Syntactic Node Hierarchy Analysis</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            Compile-Time Error Interception
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Catches parse and compile-time errors programmatically without crashing.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-rose-300">\ParseError</code> Exception Interception</li>
+            <li>• <code class="text-rose-300">\CompileError</code> Class Catching</li>
+            <li>• In-Process Linting Isolation</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-bolt"></i></div>
+            Bytecode & OPcache Inspection
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Verifies script compilability and inspects cached opcode buffers.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-indigo-300">opcache_compile_file()</code></li>
+            <li>• <code class="text-indigo-300">opcache_is_script_cached()</code></li>
+            <li>• <code class="text-indigo-300">opcache_get_status()</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Lexical Analysis with PhpToken -->
+    <div class="slide-wrapper flex-col" data-category="Tokenizer" data-doc="php.net/class.phptoken">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Lexical Tokenization with `PhpToken` (PHP 8.0+)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">The Tokenizer extension exposes Zend Engine's internal lexical scanner directly to PHP code.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Tokenizer Code Block -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Modern `PhpToken` Lexical Scanner</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+$code = '&lt;?php function add(int $a): int { return $a + 1; }';
+
+// Tokenize code into PhpToken objects
+$tokens = PhpToken::tokenize($code);
+
+foreach ($tokens as $token) {
+    if ($token->isIgnorable()) continue; // Skip comments/spaces
+    
+    echo sprintf(
+        "Line %d: %s ('%s') [ID: %d]\n",
+        $token->line,
+        $token->getTokenName(),
+        addcslashes($token->text, "\n\r\t"),
+        $token->id
+    );
+}</code></pre>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <strong class="text-purple-400"><i class="fa-solid fa-circle-info"></i> php.net Spec: `PhpToken` Methods</strong>
+            <p class="mt-1">
+              <code class="text-sky-300">$token->is($kind)</code> tests token equality against ID, name, or string. <code class="text-sky-300">$token->isIgnorable()</code> returns <code class="text-purple-300">true</code> for <code class="text-purple-300">T_WHITESPACE</code>, <code class="text-purple-300">T_COMMENT</code>, or <code class="text-purple-300">T_DOC_COMMENT</code>.
+            </p>
+          </div>
+        </div>
+
+        <!-- Token Property Mapping -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-list-check"></i> `PhpToken` Object Properties</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Property</th>
+                    <th class="p-2">Type</th>
+                    <th class="p-2">Description</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">$token->id</td>
+                    <td class="p-2 text-sky-400">int</td>
+                    <td class="p-2">Zend Token Constant ID (e.g. T_FUNCTION or ASCII char)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">$token->text</td>
+                    <td class="p-2 text-sky-400">string</td>
+                    <td class="p-2">The exact textual source contents of the token</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">$token->line</td>
+                    <td class="p-2 text-sky-400">int</td>
+                    <td class="p-2">1-based line number where the token starts</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">$token->pos</td>
+                    <td class="p-2 text-sky-400">int</td>
+                    <td class="p-2">0-based character offset within the source code</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">
+            Reference: <a href="https://www.php.net/manual/en/class.phptoken.php" target="_blank" class="text-sky-400 hover:underline">php.net/class.phptoken</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Interactive Tokenizer Inspector -->
+    <div class="slide-wrapper flex-col" data-category="Tokenizer" data-doc="php.net/manual/en/tokens.php">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Lexical Tokenizer Visualizer</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Input PHP source code below to observe real-time lexical tokenization (`PhpToken::tokenize`).</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-2">
+          <span class="text-xs font-mono text-purple-400 font-bold"><i class="fa-solid fa-code"></i> Source PHP Input Code</span>
+          <button onclick="tokenizeInputCode()" class="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs rounded-lg transition">
+            <i class="fa-solid fa-play mr-1"></i> Tokenize Source
+          </button>
+        </div>
+
+        <textarea id="tokenizer-input" oninput="tokenizeInputCode()" class="w-full h-24 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none" spellcheck="false"><?php
+function calculateTotal(int $price, float $tax): float {
+    return $price * (1 + $tax);
+}</textarea>
+
+        <div>
+          <span class="text-xs font-mono text-slate-400 block mb-1"><i class="fa-solid fa-list-check text-sky-400"></i> Token Stream Result:</span>
+          <div id="tokenizer-output" class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-xs max-h-48 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-2">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Reflection API & Type Reflection -->
+    <div class="slide-wrapper flex-col" data-category="Reflection" data-doc="php.net/book.reflection">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Reflection API & Type System Introspection</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Static analysis tools leverage PHP's Reflection classes to analyze types, signatures, and constraints.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Reflection Code Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Reflection Type Hierarchy Analysis</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+class Service {
+    public function process(int|float $val, string&Countable $item): void {}
+}
+
+$refMethod = new ReflectionMethod('Service', 'process');
+
+foreach ($refMethod->getParameters() as $param) {
+    $type = $param->getType();
+    
+    if ($type instanceof ReflectionUnionType) {
+        echo "Union Type: " . implode('|', array_map(
+            fn($t) => $t->getName(), $type->getTypes()
+        )) . "\n";
+    } elseif ($type instanceof ReflectionIntersectionType) {
+        echo "Intersection Type: " . implode('&', array_map(
+            fn($t) => $t->getName(), $type->getTypes()
+        )) . "\n";
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/class.reflectiontype.php" target="_blank" class="text-sky-400 hover:underline">php.net/class.reflectiontype</a></p>
+        </div>
+
+        <!-- Reflection Classes Matrix -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-sitemap"></i> Reflection Core Class Matrix</span>
+            
+            <div class="space-y-2 text-xs font-mono">
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <span class="text-purple-300 font-bold">ReflectionNamedType</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Represents simple standalone types (e.g., <code class="text-sky-400">int</code>, <code class="text-sky-400">string</code>, <code class="text-sky-400">User</code>). Method: <code class="text-emerald-300">getName()</code>.</p>
+              </div>
+
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <span class="text-purple-300 font-bold">ReflectionUnionType</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Represents disjunctive types (<code class="text-sky-400">A|B</code>). Method: <code class="text-emerald-300">getTypes()</code> returning array of subtypes.</p>
+              </div>
+
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <span class="text-purple-300 font-bold">ReflectionIntersectionType</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Represents conjunctive types (<code class="text-sky-400">A&B</code>). Method: <code class="text-emerald-300">getTypes()</code> returning combined interfaces.</p>
+              </div>
+
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <span class="text-purple-300 font-bold">ReflectionAttribute</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Represents metadata annotations. Method: <code class="text-emerald-300">getArguments()</code> without instantiating class.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Attribute-Driven Metadata Analysis -->
+    <div class="slide-wrapper flex-col" data-category="Attributes" data-doc="php.net/language.attributes">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Attribute-Driven Metadata Analysis (`ReflectionAttribute`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Attributes provide structured, type-safe metadata without requiring docblock regex parsing.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Attribute Code Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-tag"></i> Non-Instantiating Attribute Introspection</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+#[Attribute(Attribute::TARGET_METHOD)]
+class DeprecatedRule {
+    public function __construct(public string $reason) {}
+}
+
+class ApiController {
+    #[DeprecatedRule('Use v2 endpoint')]
+    public function oldEndpoint(): void {}
+}
+
+// Reflection inspection WITHOUT instantiating class
+$method = new ReflectionMethod('ApiController', 'oldEndpoint');
+$attributes = $method->getAttributes('DeprecatedRule');
+
+foreach ($attributes as $attr) {
+    echo "Attribute: " . $attr->getName() . "\n";
+    echo "Reason: " . $attr->getArguments()[0] . "\n";
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-amber-300 mt-2"><i class="fa-solid fa-triangle-exclamation"></i> Static analysis reads attribute arguments safely via <code class="text-purple-300">getArguments()</code> without triggering code execution!</p>
+        </div>
+
+        <!-- Attribute Target Flags Matrix -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-bullseye"></i> `Attribute` Target Flags (php.net)</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Target Flag</th>
+                    <th class="p-2">Target Scope</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">Attribute::TARGET_CLASS</td>
+                    <td class="p-2 text-slate-300">Classes, Interfaces, Traits</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">Attribute::TARGET_FUNCTION</td>
+                    <td class="p-2 text-slate-300">Global Functions</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">Attribute::TARGET_METHOD</td>
+                    <td class="p-2 text-slate-300">Class Methods</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">Attribute::TARGET_PROPERTY</td>
+                    <td class="p-2 text-slate-300">Class Properties</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">Attribute::IS_REPEATABLE</td>
+                    <td class="p-2 text-slate-300">Allows repeated declaration</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/class.attribute.php" target="_blank" class="text-sky-400 hover:underline">php.net/class.attribute</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Interactive Reflection Inspector -->
+    <div class="slide-wrapper flex-col" data-category="Reflection" data-doc="php.net/book.reflection">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Reflection & Type Inspector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select a type signature archetype below to simulate Reflection API static type checking.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Selector -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <label class="text-xs font-mono text-purple-400 font-bold">Select Parameter Type Signature:</label>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="inspectReflectionType('union')" class="ref-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono">Union: int|string</button>
+            <button onclick="inspectReflectionType('intersection')" class="ref-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Intersection: Countable&Iterator</button>
+            <button onclick="inspectReflectionType('nullable')" class="ref-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Nullable: ?User</button>
+            <button onclick="inspectReflectionType('attribute')" class="ref-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Attribute #[Deprecated]</button>
+          </div>
+        </div>
+
+        <!-- Reflection Output Box -->
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sky-400 font-bold"><i class="fa-solid fa-terminal"></i> Simulated Reflection API Inspection</span>
+            <span id="ref-class-badge" class="text-[10px] px-2 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-700">ReflectionUnionType</span>
+          </div>
+
+          <div id="ref-inspection-log" class="text-purple-200 space-y-1">
+            <!-- JS populated -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Compiler Architecture & Zend AST -->
+    <div class="slide-wrapper flex-col" data-category="Compiler" data-doc="php.net/manual/en/book.ast.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Compiler Pipeline & Zend Abstract Syntax Tree (`zend_ast`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">How PHP converts raw source text into tokens, syntactic tree nodes, and executable OPcodes.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Mermaid Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-purple-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Zend Engine Compilation Pipeline</span>
+          <div class="mermaid">
+            graph TD
+              A[PHP Source Code] -->|re2c Lexer| B[Token Stream PhpToken]
+              B -->|Bison Parser| C[Zend AST zend_ast]
+              C -->|Zend Compiler| D[Zend OPcodes]
+              D -->|Executor Engine| E[Script Output]
+              style C fill:#4F5B93,stroke:#8b5cf6,color:#fff
+              style B fill:#1e293b,stroke:#38bdf8,color:#fff
+          </div>
+        </div>
+
+        <!-- AST Code Explanation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-sitemap"></i> AST Node Representation</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Example AST Node structure for: $a = 1 + 2
+AST_ASSIGN [lineno: 1]
+├── var: AST_VAR [lineno: 1]
+│   └── name: "a"
+└── expr: AST_BINARY_OP [lineno: 1, flags: BINARY_ADD]
+    ├── left: 1
+    └── right: 2</code></pre>
+          </div>
+
+          <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 mt-2">
+            <strong class="text-purple-400"><i class="fa-solid fa-circle-info"></i> Why Static Analysis uses ASTs:</strong>
+            <p class="mt-1">Unlike flat token streams, AST nodes retain precise operator precedence and scope nesting without needing script execution.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: OPcache & Bytecode Pre-compilation -->
+    <div class="slide-wrapper flex-col" data-category="Bytecode" data-doc="php.net/book.opcache">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Pre-compilation & OPcache Bytecode Verification</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Validating script compilability programmatically using native OPcache API functions.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- OPcache Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-bolt"></i> Programmatic OPcache Pre-Compilation</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+$file = __DIR__ . '/src/App.php';
+
+// Programmatically compile file into OPcache without executing
+if (function_exists('opcache_compile_file')) {
+    $success = @opcache_compile_file($file);
+    
+    if ($success) {
+        echo "Script successfully compiled to opcodes!\n";
+        echo "Is Cached: " . (opcache_is_script_cached($file) ? 'YES' : 'NO');
+    } else {
+        echo "Compilation failed! Syntax or type error present.\n";
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/function.opcache-compile-file.php" target="_blank" class="text-sky-400 hover:underline">php.net/opcache-compile-file</a></p>
+        </div>
+
+        <!-- OPcache Functions Matrix -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-list-check"></i> OPcache Verification API (php.net)</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Function</th>
+                    <th class="p-2">Return</th>
+                    <th class="p-2">Analysis Purpose</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">opcache_compile_file()</td>
+                    <td class="p-2 text-sky-400">bool</td>
+                    <td class="p-2">Compiles script to opcode without executing</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">opcache_is_script_cached()</td>
+                    <td class="p-2 text-sky-400">bool</td>
+                    <td class="p-2">Checks if file is already compiled in memory</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">opcache_get_status()</td>
+                    <td class="p-2 text-sky-400">array|false</td>
+                    <td class="p-2">Retrieves opcode memory and script stats</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Exception & Parse Error Interception -->
+    <div class="slide-wrapper flex-col" data-category="Exceptions" data-doc="php.net/manual/en/class.parseerror.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Syntax Error Interception (`ParseError` & `CompileError`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Handling syntax failures programmatically using PHP 7+ catchable throwables.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Error Catching Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-bug"></i> Safe In-Process Syntax Linting</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+function lintPhpCode(string $code): array {
+    try {
+        // Tokenize first to catch unclosed tokens
+        $tokens = PhpToken::tokenize($code);
+        
+        // Evaluate syntax via token stream or compilation
+        return ['valid' => true, 'error' => null];
+    } catch (\ParseError $e) {
+        return [
+            'valid' => false,
+            'error' => $e->getMessage(),
+            'line'  => $e->getLine()
+        ];
+    } catch (\CompileError $e) {
+        return [
+            'valid' => false,
+            'error' => "Compile Error: " . $e->getMessage(),
+            'line'  => $e->getLine()
+        ];
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/class.parseerror.php" target="_blank" class="text-sky-400 hover:underline">php.net/class.parseerror</a></p>
+        </div>
+
+        <!-- Exception Hierarchy Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-purple-400 mb-2"><i class="fa-solid fa-sitemap"></i> Throwable Error Hierarchy (php.net)</span>
+          <div class="mermaid">
+            graph TD
+              Throwable --> Error
+              Error --> CompileError
+              CompileError --> ParseError
+              Error --> TypeError
+              style ParseError fill:#f43f5e,stroke:#9f1239,color:#fff
+              style CompileError fill:#8b5cf6,stroke:#4c1d95,color:#fff
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Interactive Compilation Pipeline Stepper -->
+    <div class="slide-wrapper flex-col" data-category="Compiler" data-doc="php.net/manual/en/book.tokenizer.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Code Compilation Pipeline Stepper</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Step through how PHP transforms raw text into Lexical Tokens, AST Nodes, and Zend Opcodes.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Stepper Visualizer -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-indigo-400 font-bold text-sm"><i class="fa-solid fa-forward"></i> Step Execution</span>
+              <button onclick="stepCompilerPipeline()" class="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs transition">
+                <i class="fa-solid fa-play mr-1"></i> Advance Pipeline Phase
+              </button>
+            </div>
+
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs my-2">
+              <div id="pipe-phase-1" class="text-amber-300 font-bold bg-purple-950/60 p-1 rounded">1. Source: $res = 5 + 10;</div>
+              <div id="pipe-phase-2" class="text-slate-500 p-1">2. Lexer: [T_VARIABLE, '=', T_LNUMBER, '+', T_LNUMBER, ';']</div>
+              <div id="pipe-phase-3" class="text-slate-500 p-1">3. AST Node: AST_ASSIGN(var: 'res', expr: AST_BINARY_OP(ADD, 5, 10))</div>
+              <div id="pipe-phase-4" class="text-slate-500 p-1">4. Opcode: ZEND_ADD (5, 10) -> ZEND_ASSIGN ('res')</div>
+            </div>
+          </div>
+
+          <div>
+            <span class="text-slate-400 text-xs font-mono">Phase Description Log:</span>
+            <div id="compiler-stepper-log" class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-sky-400 text-xs h-24 overflow-y-auto mt-1">
+              Click "Advance Pipeline Phase" to step through execution stages...
+            </div>
+          </div>
+        </div>
+
+        <!-- Explanation Card -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-microchip"></i> Engine Stage Details</span>
+            <ul class="text-xs font-mono space-y-2 text-slate-300">
+              <li class="p-2 rounded bg-slate-900 border border-slate-800"><strong class="text-purple-300">Lexical Analysis:</strong> re2c lexer reads characters into T_ tokens without checking grammar.</li>
+              <li class="p-2 rounded bg-slate-900 border border-slate-800"><strong class="text-purple-300">Parsing:</strong> Bison LALR parser checks grammar rules and builds `zend_ast`.</li>
+              <li class="p-2 rounded bg-slate-900 border border-slate-800"><strong class="text-purple-300">Code Generation:</strong> AST is traversed to output Zend virtual machine bytecode instruction arrays.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Programmatic Type Compatibility Analyzer Logic -->
+    <div class="slide-wrapper flex-col" data-category="Reflection" data-doc="php.net/class.reflectiontype">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Programmatic Static Type Checking Engine</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">How static analysis tools evaluate type compatibility using PHP type hierarchy rules.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Type Checking Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-shield-halved"></i> Programmatic Subtype Assigner</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+function isTypeAssignable(string $given, string $expected): bool {
+    // 1. Exact Type Match
+    if ($given === $expected) return true;
+    
+    // 2. Scalar widening (int is assignable to float)
+    if ($given === 'int' && $expected === 'float') return true;
+    
+    // 3. Class Subclass / Implementation Check
+    if (class_exists($given) && class_exists($expected)) {
+        return is_subclass_of($given, $expected);
+    }
+    
+    return false;
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/function.is-subclass-of.php" target="_blank" class="text-sky-400 hover:underline">php.net/is-subclass-of</a></p>
+        </div>
+
+        <!-- Scalar Coercion Matrix -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-table"></i> Strict vs Coercive Type Compatibility</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Given Type</th>
+                    <th class="p-2">Expected Type</th>
+                    <th class="p-2">Strict Mode</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 text-purple-300">int</td>
+                    <td class="p-2 text-sky-400">float</td>
+                    <td class="p-2 text-emerald-400">Allowed</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-purple-300">string "123"</td>
+                    <td class="p-2 text-sky-400">int</td>
+                    <td class="p-2 text-rose-400">TypeError</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-purple-300">UserSubclass</td>
+                    <td class="p-2 text-sky-400">UserParent</td>
+                    <td class="p-2 text-emerald-400">Allowed</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Interactive Static Code Analysis Playground -->
+    <div class="slide-wrapper flex-col" data-category="Playground" data-doc="php.net/manual/en/book.tokenizer.php">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Static Analysis Playground</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Write or modify PHP code to run our live in-browser static analysis rules engine based on official php.net specifications.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Controls Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-purple-400 font-bold">Preset Rule Test:</span>
+            <select id="static-preset-select" onchange="loadStaticPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-purple-200 focus:outline-none">
+              <option value="missing_strict">Missing declare(strict_types=1)</option>
+              <option value="missing_return">Missing Return Type Declarations</option>
+              <option value="unused_var">Unused Local Variables</option>
+              <option value="clean_code">Clean Compliant Code</option>
+            </select>
+          </div>
+
+          <button onclick="runStaticAnalysisEngine()" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs transition flex items-center gap-1.5">
+            <i class="fa-solid fa-magnifying-glass"></i> Analyze Code
+          </button>
+        </div>
+
+        <!-- Split Editor / Analysis Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> PHP Target Code</span>
+            <textarea id="static-editor" oninput="runStaticAnalysisEngine()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-clipboard-check text-emerald-400"></i> Static Analysis Diagnostics</span>
+            <div id="static-analysis-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono border border-slate-800 rounded-xl overflow-y-auto space-y-2">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Knowledge Assessment Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net/manual/en/book.tokenizer.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Knowledge Assessment Quiz</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your comprehension of PHP programmatic static analysis grounded in official manual documentation.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-purple-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Official Resources & Summary -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net/manual/en/book.tokenizer.php">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Documentation Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every concept, API method, error class, and code sample in this presentation is derived directly from official PHP manual specifications at php.net.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php.net/manual/en/book.tokenizer.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Tokenizer Extension Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">PhpToken class and token_get_all specification.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/book.reflection.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Reflection API Documentation</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Structural introspection for classes, methods, and types.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/language.attributes.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Attributes Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">PHP 8.0+ structured metadata specification.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/book.opcache.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">OPcache Functions Reference</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Pre-compilation and opcode script caching APIs.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Control Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-purple-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net/manual/en/book.tokenizer.php" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Slide Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-purple-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search static analysis keywords (e.g. PhpToken, Reflection, AST)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i> Presentation Slide Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Questions Dataset (Strictly grounded in php.net)
+    const quizData = [
+      {
+        question: "In PHP 8.0+, what method on `PhpToken` tests if a token represents whitespace or comments?",
+        options: [
+          "$token->isIgnorable()",
+          "$token->isComment()",
+          "$token->skipWhitespace()",
+          "$token->isSilent()"
+        ],
+        correct: 0,
+        explanation: "Official Manual (php.net/class.phptoken): $token->isIgnorable() returns true for tokens that are ignored by the parser like T_WHITESPACE, T_COMMENT, or T_DOC_COMMENT."
+      },
+      {
+        question: "Which Reflection class is used to inspect union type declarations like `int|string`?",
+        options: [
+          "ReflectionCombinedType",
+          "ReflectionUnionType",
+          "ReflectionMultipleType",
+          "ReflectionPolyType"
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/class.reflectionuniontype): ReflectionUnionType reports information about union type declarations in function parameters or return values."
+      },
+      {
+        question: "How can static analysis tools inspect PHP 8 Attributes without triggering class instantiation?",
+        options: [
+          "By calling ReflectionAttribute::getArguments()",
+          "By calling $attribute->newInstance()",
+          "By invoking the attribute constructor manually",
+          "By executing opcache_compile_file()"
+        ],
+        correct: 0,
+        explanation: "Official Manual (php.net/class.reflectionattribute): ReflectionAttribute::getArguments() returns attribute constructor arguments directly without creating an instance of the attribute class."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Static Analysis Presets
+    const staticPresets = {
+      missing_strict: `<?php\n\nfunction calculate(int $a, int $b): int {\n    $result = $a + $b;\n    return $result;\n}`,
+      missing_return: `<?php\ndeclare(strict_types=1);\n\nfunction processData($input) {\n    $unused = 100;\n    echo $input;\n}`,
+      unused_var: `<?php\ndeclare(strict_types=1);\n\nfunction compute(int $val): int {\n    $tempVar = $val * 2;\n    $unusedVal = "debug";\n    return $tempVar;\n}`,
+      clean_code: `<?php\ndeclare(strict_types=1);\n\nfunction multiply(int $a, int $b): int {\n    return $a * $b;\n}`
+    };
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      // Update counters
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // Update Header Chip
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      // Prism highlight
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      // Mermaid re-render
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-purple-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    function tokenizeInputCode() {
+      const code = document.getElementById('tokenizer-input').value;
+      const outputContainer = document.getElementById('tokenizer-output');
+      outputContainer.innerHTML = '';
+
+      // Simple client-side token scanning simulation based on PhpToken specs
+      const tokenRegex = /(\/\\*[\s\S]*?\\*\/|\/\/[^\n]*|<\?php|\?>|function|return|declare|strict_types|int|float|string|void|\$[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*|[0-9]+(?:\.[0-9]+)?|\(|\)|\{|\}|:|,|;|\+|\*|\/|=|\s+)/g;
+      
+      let match;
+      let line = 1;
+      let tokenCount = 0;
+
+      while ((match = tokenRegex.exec(code)) !== null && tokenCount < 30) {
+        const text = match[0];
+        let name = "T_STRING";
+        let colorClass = "text-slate-300";
+
+        if (/^\s+$/.test(text)) {
+          name = "T_WHITESPACE";
+          colorClass = "text-slate-600";
+        } else if (text === "<?php") {
+          name = "T_OPEN_TAG";
+          colorClass = "text-purple-400";
+        } else if (text === "function") {
+          name = "T_FUNCTION";
+          colorClass = "text-purple-400";
+        } else if (text === "return") {
+          name = "T_RETURN";
+          colorClass = "text-rose-400";
+        } else if (["int", "float", "string", "void"].includes(text)) {
+          name = "T_TYPE";
+          colorClass = "text-sky-400";
+        } else if (text.startsWith("$")) {
+          name = "T_VARIABLE";
+          colorClass = "text-amber-300";
+        } else if (/^[0-9]+/.test(text)) {
+          name = "T_LNUMBER";
+          colorClass = "text-emerald-400";
+        } else if (text.startsWith("//") || text.startsWith("/*")) {
+          name = "T_COMMENT";
+          colorClass = "text-slate-500";
+        }
+
+        const linesInText = (text.match(/\n/g) || []).length;
+
+        const card = document.createElement('div');
+        card.className = "p-2 rounded bg-slate-900 border border-slate-800 flex items-center justify-between";
+        card.innerHTML = `
+          <div>
+            <span class="${colorClass} font-bold">${name}</span>
+            <span class="text-slate-400 text-[10px] block">'${text.replace(/\n/g, '\\n')}'</span>
+          </div>
+          <span class="text-[10px] text-slate-500">Line ${line}</span>
+        `;
+        outputContainer.appendChild(card);
+
+        line += linesInText;
+        tokenCount++;
+      }
+    }
+
+    function inspectReflectionType(type) {
+      document.querySelectorAll('.ref-btn').forEach(b => {
+        b.className = "ref-btn px-3 py-1 rounded-lg bg-slate-800 light:bg-slate-300 text-slate-300 text-xs font-mono";
+      });
+      event.target.className = "ref-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono";
+
+      const badge = document.getElementById('ref-class-badge');
+      const log = document.getElementById('ref-inspection-log');
+
+      if (type === 'union') {
+        badge.textContent = "ReflectionUnionType";
+        log.innerHTML = `
+          <div>$type = $parameter->getType();</div>
+          <div>$type instanceof ReflectionUnionType -> TRUE</div>
+          <div>$type->allowsNull() -> FALSE</div>
+          <div>Subtypes: [ReflectionNamedType('int'), ReflectionNamedType('string')]</div>
+        `;
+      } else if (type === 'intersection') {
+        badge.textContent = "ReflectionIntersectionType";
+        log.innerHTML = `
+          <div>$type = $parameter->getType();</div>
+          <div>$type instanceof ReflectionIntersectionType -> TRUE</div>
+          <div>Combined Interfaces: ['Countable', 'Iterator']</div>
+          <div>Static Check: Parameter must satisfy ALL interfaces simultaneously!</div>
+        `;
+      } else if (type === 'nullable') {
+        badge.textContent = "ReflectionNamedType";
+        log.innerHTML = `
+          <div>$type = $parameter->getType();</div>
+          <div>$type instanceof ReflectionNamedType -> TRUE</div>
+          <div>$type->getName() -> "User"</div>
+          <div>$type->allowsNull() -> TRUE (Explicitly nullable via ?User)</div>
+        `;
+      } else if (type === 'attribute') {
+        badge.textContent = "ReflectionAttribute";
+        log.innerHTML = `
+          <div>$attributes = $method->getAttributes('Deprecated');</div>
+          <div>$attr->getName() -> "Deprecated"</div>
+          <div>$attr->getArguments() -> ["Use new V2 API"]</div>
+          <div>Static Analysis: Class instantiation avoided! Arguments parsed purely as AST metadata.</div>
+        `;
+      }
+    }
+
+    let compilerStep = 1;
+    function stepCompilerPipeline() {
+      compilerStep = (compilerStep % 4) + 1;
+      const log = document.getElementById('compiler-stepper-log');
+
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById(`pipe-phase-${i}`).className = "text-slate-500 p-1";
+      }
+
+      if (compilerStep === 1) {
+        document.getElementById('pipe-phase-1').className = "text-amber-300 font-bold bg-purple-950/60 p-1 rounded";
+        log.innerHTML = `Phase 1: Source Text Input.\nEngine receives raw PHP script characters.`;
+      } else if (compilerStep === 2) {
+        document.getElementById('pipe-phase-2').className = "text-amber-300 font-bold bg-purple-950/60 p-1 rounded";
+        log.innerHTML = `Phase 2: Lexical Analysis (re2c scanner).\nText is sliced into atomic PhpToken streams.`;
+      } else if (compilerStep === 3) {
+        document.getElementById('pipe-phase-3').className = "text-amber-300 font-bold bg-purple-950/60 p-1 rounded";
+        log.innerHTML = `Phase 3: Bison Parser & Zend AST.\nTokens are validated for grammar and structured into zend_ast nodes.`;
+      } else if (compilerStep === 4) {
+        document.getElementById('pipe-phase-4').className = "text-emerald-400 font-bold bg-purple-950/60 p-1 rounded";
+        log.innerHTML = `Phase 4: Zend Bytecode Compilation.\nAST is converted into executable Zend Opcode instructions for the Virtual Machine.`;
+      }
+    }
+
+    function loadStaticPreset(key) {
+      document.getElementById('static-editor').value = staticPresets[key] || '';
+      runStaticAnalysisEngine();
+    }
+
+    function runStaticAnalysisEngine() {
+      const code = document.getElementById('static-editor').value;
+      const output = document.getElementById('static-analysis-output');
+      output.innerHTML = '';
+
+      let diagnostics = [];
+
+      // Static Rule 1: declare(strict_types=1)
+      if (!code.includes('declare(strict_types=1)')) {
+        diagnostics.push({
+          severity: 'warning',
+          title: 'Missing Strict Types Directive',
+          desc: 'Script does not contain declare(strict_types=1); as recommended by php.net manual for scalar type safety.'
+        });
+      }
+
+      // Static Rule 2: Missing Return Types
+      const fnMatches = code.matchAll(/function\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\)(?!\s*:\s*[a-zA-Z_\\]+)/g);
+      for (const m of fnMatches) {
+        diagnostics.push({
+          severity: 'error',
+          title: `Function '${m[1]}' Missing Return Type`,
+          desc: `Function declaration at line parameter lacks an explicit return type hint.`
+        });
+      }
+
+      // Static Rule 3: Unused local variables
+      const varMatches = code.matchAll(/\$([a-zA-Z0-9_]+)\s*=/g);
+      for (const m of varMatches) {
+        const varName = m[1];
+        const occurrences = (code.match(new RegExp(`\\$${varName}\\b`, 'g')) || []).length;
+        if (occurrences === 1 && varName !== 'result') {
+          diagnostics.push({
+            severity: 'info',
+            title: `Unused Local Variable '$${varName}'`,
+            desc: `Variable '$${varName}' is assigned but never read in subsequent statements.`
+          });
+        }
+      }
+
+      if (diagnostics.length === 0) {
+        output.innerHTML = `
+          <div class="p-3 rounded bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
+            <strong><i class="fa-solid fa-circle-check mr-1"></i> Analysis Passed!</strong>
+            <p class="mt-1 text-[11px]">0 warnings or errors found. Code complies with php.net strict standards.</p>
+          </div>
+        `;
+      } else {
+        diagnostics.forEach(d => {
+          let color = "bg-amber-950/60 border-amber-500/40 text-amber-300";
+          let icon = "fa-triangle-exclamation";
+          if (d.severity === 'error') {
+            color = "bg-rose-950/60 border-rose-500/40 text-rose-300";
+            icon = "fa-circle-xmark";
+          } else if (d.severity === 'info') {
+            color = "bg-sky-950/60 border-sky-500/40 text-sky-300";
+            icon = "fa-circle-info";
+          }
+
+          const card = document.createElement('div');
+          card.className = `p-2.5 rounded border ${color} text-xs`;
+          card.innerHTML = `
+            <strong class="block mb-0.5"><i class="fa-solid ${icon} mr-1"></i> [${d.severity.toUpperCase()}] ${d.title}</strong>
+            <p class="text-[11px] opacity-90">${d.desc}</p>
+          `;
+          output.appendChild(card);
+        });
+      }
+    }
+
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-purple-950/60 border-purple-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-purple-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-purple-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_static_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_static_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keyboard & Touch Handlers
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_static_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      tokenizeInputCode();
+      inspectReflectionType('union');
+      loadStaticPreset('missing_strict');
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

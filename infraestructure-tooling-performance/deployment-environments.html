@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Programmatic PHP Deployment & Environments - Deep Dive</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Presentation Styles -->
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.85rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Architecture Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#8b5cf6',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <!-- Header Navigation -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-server text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Deployment & Environments <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 light:text-purple-700 border border-purple-500/30">Official Specs</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slides Frame -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Documentation: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">deployer.org & php.net</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="deployer.org/docs/8.x/basics">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-solid fa-network-wired text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Programmatic Deployment <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-sky-400">& Environments in PHP</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A rigorous architectural guide to zero-downtime releases, atomic symlinks, host selection, shared persistent state, and production OPcache preloading strictly sourced from php.net and deployer.org.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Strict deployer.org & php.net Specs
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-microchip text-purple-400"></i> Interactive Symlink & Host Simulators
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-lightbulb text-amber-400"></i> Verified Knowledge Assessment
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Begin Architecture Exploration</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Structural Landscape -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="deployer.org/docs/8.x/basics">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP Deployment & Environment Taxonomy</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Modern PHP deployment structures application releases across six core programmatic pillars.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-link"></i></div>
+            Atomic Symlink Swapping
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Swaps releases atomically using single kernel POSIX syscalls.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-purple-300">mv -T release current</code></li>
+            <li>• <code class="text-purple-300">rename(2)</code> kernel guarantee</li>
+            <li>• Zero request drop window</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-server"></i></div>
+            Host & Selector Engine
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Programmatic host inventory and multi-server execution targeting.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-sky-300">host('prod')->setLabels(...)</code></li>
+            <li>• <code class="text-sky-300">dep deploy stage=prod&role=web</code></li>
+            <li>• SSH multiplexing & ranges</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-folder-tree"></i></div>
+            Shared Persistent State
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Isolates immutable release code from persistent environment files.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-emerald-300">shared_files</code> (<code class="text-emerald-300">.env</code>)</li>
+            <li>• <code class="text-emerald-300">shared_dirs</code> (<code class="text-emerald-300">storage/</code>)</li>
+            <li>• Unshared file caches</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-sliders"></i></div>
+            Environment Directives
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Programmatic management of runtime INI settings & ENV variables.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-amber-300">getenv()</code> & <code class="text-amber-300">$_ENV</code></li>
+            <li>• Production vs Staging INI flags</li>
+            <li>• <code class="text-amber-300">display_errors=Off</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-bolt"></i></div>
+            OPcache & Preloading
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Compiles PHP bytecodes directly into shared memory in production.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-rose-300">opcache.preload=preload.php</code></li>
+            <li>• <code class="text-rose-300">opcache.validate_timestamps=0</code></li>
+            <li>• Cache invalidation on deploy</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-list-check"></i></div>
+            Tasks, Recipes & Hooks
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Modular deployment pipelines with failure handlers and rollbacks.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-indigo-300">task('deploy', [...])</code></li>
+            <li>• <code class="text-indigo-300">before()</code> / <code class="text-indigo-300">after()</code> hooks</li>
+            <li>• <code class="text-indigo-300">dep rollback</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Environment Management & Configuration -->
+    <div class="slide-wrapper flex-col" data-category="Environment" data-doc="php.net/manual/en/configuration.file.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Environment Management & Programmatic Configuration</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Configuring PHP runtimes across environments using environment variables and production INI directives.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Reading ENV Variables -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Accessing Environment Variables</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// Reading variables from process environment
+$dbHost = getenv('DB_HOST') ?: '127.0.0.1';
+
+// Superglobal $_ENV access
+$appEnv = $_ENV['APP_ENV'] ?? 'production';
+
+// Programmatically altering runtime INI settings
+if ($appEnv === 'production') {
+    ini_set('display_errors', '0');
+    ini_set('log_errors', '1');
+} else {
+    ini_set('display_errors', '1');
+    error_reporting(E_ALL);
+}</code></pre>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <strong class="text-amber-400"><i class="fa-solid fa-shield-halved"></i> Production Security Guideline:</strong>
+            <p class="mt-1">Never enable <code class="text-purple-300">display_errors</code> in production. Stack traces expose database credentials and secret paths to end-users.</p>
+          </div>
+        </div>
+
+        <!-- INI Comparison Table -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-sliders"></i> Development vs. Production Directives</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Directive</th>
+                    <th class="p-2">Development</th>
+                    <th class="p-2">Production</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">display_errors</td>
+                    <td class="p-2"><code class="text-amber-400">On</code></td>
+                    <td class="p-2"><code class="text-emerald-400">Off</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">opcache.enable</td>
+                    <td class="p-2"><code class="text-amber-400">0</code></td>
+                    <td class="p-2"><code class="text-emerald-400">1</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">opcache.validate_timestamps</td>
+                    <td class="p-2"><code class="text-amber-400">1</code></td>
+                    <td class="p-2"><code class="text-emerald-400">0 (Max Speed)</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">opcache.preload</td>
+                    <td class="p-2"><code class="text-amber-400">None</code></td>
+                    <td class="p-2"><code class="text-emerald-400">/app/preload.php</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">zend.assertions</td>
+                    <td class="p-2"><code class="text-amber-400">1</code></td>
+                    <td class="p-2"><code class="text-emerald-400">-1 (Zero Overhead)</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">
+            Source: <a href="https://www.php.net/manual/en/configuration.file.php" target="_blank" class="text-sky-400 hover:underline">php.net/configuration.file</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Atomic Symlink Swap Mechanics -->
+    <div class="slide-wrapper flex-col" data-category="Zero-Downtime" data-doc="deployer.org/blog/atomic-symlinks">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Atomic Symlink Swap Mechanics (`rename(2)`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">How Deployer guarantees zero-downtime releases using POSIX atomic directory entry updates.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Explanatory Box -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-triangle-exclamation"></i> Why Naive `ln -sf` Fails</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed mb-3">
+              Standard <code class="text-purple-300">ln -sf target current</code> is NOT atomic! Under the hood, <code class="text-purple-300">ln -sf</code> executes an <code class="text-rose-400">unlink(current)</code> followed by a <code class="text-rose-400">symlink(target, current)</code>. During those few microseconds, web requests hit a missing directory and trigger HTTP 404/500 errors.
+            </p>
+
+            <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs font-mono">
+              <div class="text-purple-400 font-bold mb-1">// The Deployer Atomic Protocol:</div>
+              <div class="text-slate-300">1. Create side-channel symlink: <code class="text-sky-300">ln -s releases/43 release</code></div>
+              <div class="text-slate-300">2. Atomic Kernel Swap: <code class="text-emerald-400">mv -T release current</code></div>
+              <div class="text-slate-300">3. Kernel calls POSIX <code class="text-amber-300">rename("release", "current")</code></div>
+            </div>
+          </div>
+
+          <div class="mt-3 p-3 bg-purple-950/40 rounded-xl border border-purple-800/40 text-[11px] text-purple-200">
+            <i class="fa-solid fa-atom text-purple-400 mr-1"></i> The Linux kernel guarantees <code class="text-purple-300">rename(2)</code> is indivisible on a single filesystem. Requests see either the old release or the new release, never an incomplete state!
+          </div>
+        </div>
+
+        <!-- Mermaid Sequence Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-sky-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Symlink Swap Call Sequence</span>
+          <div class="mermaid">
+            sequenceDiagram
+              autonumber
+              participant Web as Nginx / PHP-FPM
+              participant Curr as current -> releases/42
+              participant Rel as release -> releases/43
+              participant Kernel as Linux Kernel rename(2)
+              Web->>Curr: Serve Active Traffic (v42)
+              Note over Rel: Prepare v43 in background
+              Rel->>Kernel: Execute: mv -T release current
+              Kernel->>Curr: Indivisibly Swap Pointer to v43
+              Web->>Curr: Serve Next Request (v43 instantly)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Interactive Release & Symlink Swap Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Zero-Downtime" data-doc="deployer.org/blog/atomic-symlinks">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Symlink Swap Simulator</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Step through the lifecycle of a Deployer release to observe how filesystem paths and HTTP requests behave.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <label class="text-xs font-mono text-purple-400 font-bold">Select Deployment Lifecycle Stage:</label>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="runSymlinkSim(1)" class="sym-step-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono">1. Prepare Release 43</button>
+            <button onclick="runSymlinkSim(2)" class="sym-step-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">2. Link Shared Files</button>
+            <button onclick="runSymlinkSim(3)" class="sym-step-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">3. Build & Composer</button>
+            <button onclick="runSymlinkSim(4)" class="sym-step-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">4. Atomic Swap (mv -T)</button>
+            <button onclick="runSymlinkSim(5)" class="sym-step-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">5. Cleanup Old Releases</button>
+          </div>
+        </div>
+
+        <!-- Inspector Display Split -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Directory Layout -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-amber-400 font-mono text-xs font-bold"><i class="fa-solid fa-folder-tree"></i> Server Filesystem Layout (`/var/www/app`)</span>
+                <span class="text-[10px] text-slate-500 font-mono">Directory Tree</span>
+              </div>
+              <div id="symlink-tree-view" class="font-mono text-xs text-slate-300 space-y-1">
+                <!-- JS populated -->
+              </div>
+            </div>
+          </div>
+
+          <!-- HTTP Request Handling -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-emerald-400 font-mono text-xs font-bold"><i class="fa-solid fa-globe"></i> Traffic & Web Server Status</span>
+                <span class="text-[10px] text-slate-500 font-mono">HTTP 200 OK Guaranteed</span>
+              </div>
+              <div id="symlink-http-log" class="font-mono text-xs text-emerald-200 space-y-1">
+                <!-- JS populated -->
+              </div>
+            </div>
+            <div id="symlink-status-badge" class="mt-3 p-2 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800 text-[11px] font-mono">
+              <!-- Result -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Deployer Recipe Anatomy -->
+    <div class="slide-wrapper flex-col" data-category="Deployer" data-doc="deployer.org/docs/8.x/basics">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Deployer Recipe Anatomy (`deploy.php`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">A recipe defines host target configurations, global variables, and custom deployment tasks.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Recipe Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-file-code"></i> Standard `deploy.php` Recipe</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+namespace Deployer;
+
+require 'recipe/common.php';
+
+// Config
+set('application', 'my_app');
+set('repository', 'git@github.com:org/app.git');
+set('shared_files', ['.env']);
+set('shared_dirs', ['storage']);
+
+// Hosts
+host('prod.example.com')
+    ->setRemoteUser('deployer')
+    ->setDeployPath('/var/www/app');
+
+// Custom Task
+task('build', function () {
+    run('cd {{release_path}} && npm run build');
+});
+
+after('deploy:failed', 'deploy:unlock');</code></pre>
+          </div>
+        </div>
+
+        <!-- Recipe Components Details -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-cube"></i> Core DSL Primitives</span>
+            
+            <div class="space-y-2 text-xs font-mono">
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span class="text-purple-400 font-bold">host('alias')</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Defines an SSH target machine, IP, remote user, and deploy path.</p>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span class="text-sky-400 font-bold">set('key', 'value' | callback)</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Sets global or per-host configuration variables. Callbacks run lazily once per host.</p>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span class="text-emerald-400 font-bold">task('name', function () { ... })</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Encapsulates bash commands executed remotely over SSH via <code class="text-emerald-300">run()</code>.</p>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span class="text-amber-400 font-bold">before() / after()</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Hooks custom tasks into existing execution flow pipelines.</p>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">
+            Reference: <a href="https://deployer.org/docs/8.x/basics" target="_blank" class="text-sky-400 hover:underline">deployer.org/docs/8.x/basics</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Interactive Host & Selector Inspector -->
+    <div class="slide-wrapper flex-col" data-category="Deployer" data-doc="deployer.org/docs/8.x/hosts">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Host Config & Label Selector Inspector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select host roles and label queries to inspect Deployer's host evaluation and CLI targeting.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Selector Buttons -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <label class="text-xs font-mono text-purple-400 font-bold">Select CLI Target Command:</label>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="inspectHostSelector('prod_web')" class="host-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono">dep deploy stage=prod&role=web</button>
+            <button onclick="inspectHostSelector('staging')" class="host-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">dep deploy stage=staging</button>
+            <button onclick="inspectHostSelector('all')" class="host-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">dep deploy all</button>
+          </div>
+        </div>
+
+        <!-- Evaluation Results Split -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Recipe Code Definition -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sky-400 font-mono text-xs font-bold"><i class="fa-solid fa-server"></i> Host Inventory Definitions</span>
+              </div>
+              <pre><code class="language-php">host('web-1.prod.com')
+  ->setLabels(['stage' => 'prod', 'role' => 'web']);
+
+host('web-2.prod.com')
+  ->setLabels(['stage' => 'prod', 'role' => 'web']);
+
+host('stage.internal.com')
+  ->setLabels(['stage' => 'staging', 'role' => 'web']);</code></pre>
+            </div>
+          </div>
+
+          <!-- Selected Targets Display -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-emerald-400 font-mono text-xs font-bold"><i class="fa-solid fa-list-check"></i> Matched Target Hosts</span>
+                <span id="host-match-count" class="text-[10px] text-purple-400 font-mono">2 Hosts Selected</span>
+              </div>
+              <div id="host-matched-list" class="font-mono text-xs text-emerald-200 space-y-2">
+                <!-- JS Populated -->
+              </div>
+            </div>
+            <div id="host-selector-cli-output" class="mt-3 p-2 rounded bg-slate-900 text-sky-300 border border-slate-800 text-[11px] font-mono">
+              <!-- CLI Output -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Shared Files, Directories & Writable Paths -->
+    <div class="slide-wrapper flex-col" data-category="State" data-doc="deployer.org/docs/8.x/hosts">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Shared Persistent State & Writable Directories</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Separating static deployment code from stateful files using symlinked shared storage.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Shared Paths Configuration -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-folder-link"></i> Configuring Shared Paths</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Shared files symlinked into release dir
+set('shared_files', [
+    '.env',
+    'config/secrets.json',
+]);
+
+// Shared directories (uploads, logs, storage)
+set('shared_dirs', [
+    'storage',
+    'public/uploads',
+]);
+
+// Directories web-server user must write to
+set('writable_dirs', [
+    'bootstrap/cache',
+    'storage',
+]);</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Shared paths are stored once under <code class="text-emerald-300">/var/www/app/shared/</code>.</p>
+        </div>
+
+        <!-- The File Cache Isolation Trap -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-bug"></i> The Shared Cache Contamination Trap</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed mb-2">
+              <strong>Official Warning:</strong> Sharing compiled file caches (like route caches or file store paths) across releases causes critical runtime crashes!
+            </p>
+            <p class="text-xs text-slate-400 leading-relaxed mb-3">
+              Because absolute paths in cached code point to a specific release directory (<code class="text-purple-300">/releases/42/...</code>), sharing the cache folder leads to broken class imports when users hit new code.
+            </p>
+
+            <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs font-mono text-emerald-300">
+              <i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Best Practice: Keep application file cache INSIDE the release folder so each deployment builds its own isolated cache!
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://deployer.org" target="_blank" class="text-sky-400 hover:underline">deployer.org</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Task Flow, Hooks & Rollbacks -->
+    <div class="slide-wrapper flex-col" data-category="Deployer" data-doc="deployer.org/docs/8.x/basics">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Task Flow, Lifecycle Hooks & Atomic Rollbacks</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Constructing robust execution pipelines that gracefully handle failures and instant rollbacks.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Pipeline Hooks -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-gears"></i> Custom Lifecycle Hooks</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Execute DB migrations before symlink swap
+before('deploy:symlink', 'database:migrate');
+
+// Reload PHP-FPM OPcache after successful swap
+after('deploy:symlink', 'fpm:reload');
+
+// In case of error during deploy
+fail('deploy', 'deploy:unlock');
+
+task('fpm:reload', function () {
+    run('sudo systemctl reload php8.3-fpm');
+});</code></pre>
+          </div>
+        </div>
+
+        <!-- Rollback Mechanics -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-rotate-left"></i> Instant Rollback Command (`dep rollback`)</span>
+            </div>
+            <pre><code class="language-bash">$ dep rollback
+
+# Deployer atomically points `current` 
+# back to previous release directory:
+# releases/42 -> current</code></pre>
+
+            <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 mt-3 space-y-1">
+              <div class="text-purple-400 font-bold"><i class="fa-solid fa-clock-rotate-left"></i> Why Rollbacks are Instant:</div>
+              <p class="text-[11px] text-slate-400">
+                Deployer keeps old release folders on disk (<code class="text-sky-300">keep_releases</code> setting, e.g., 5). Rolling back simply executes a single atomic symlink swap back to the previous release directory!
+              </p>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://deployer.org/docs/8.x/basics" target="_blank" class="text-sky-400 hover:underline">deployer.org/docs/8.x/basics</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: OPcache Optimization & Production Invalidation -->
+    <div class="slide-wrapper flex-col" data-category="OPcache" data-doc="php.net/manual/en/opcache.preloading.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">OPcache Preloading & Production Invalidation</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Compiling PHP opcodes directly into persistent shared memory for max execution throughput.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- OPcache Preload Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-bolt"></i> OPcache Preload Script (`preload.php`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// In php.ini: opcache.preload=/app/preload.php
+// opcache.preload_user=www-data
+
+$files = require __DIR__ . '/vendor/composer/autoload_classmap.php';
+
+foreach ($files as $file) {
+    // Compiles files permanently into RAM
+    opcache_compile_file($file);
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Preloading requires PHP-FPM / web server restart to reload preloaded code.</p>
+        </div>
+
+        <!-- Invalidation during Symlink Swap -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-fire-burner"></i> OPcache Cache Invalidation Strategies</span>
+            </div>
+            
+            <div class="space-y-2 text-xs font-mono">
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span class="text-emerald-400 font-bold">1. Reload PHP-FPM Service</span>
+                <p class="text-slate-400 text-[11px] mt-0.5"><code class="text-sky-300">systemctl reload php8.3-fpm</code> gracefully reloads worker processes, clearing OPcache without dropping connections.</p>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span class="text-purple-400 font-bold">2. Programmatic `opcache_reset()`</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Calling <code class="text-purple-300">opcache_reset()</code> via HTTP endpoint flushes opcode cache in shared memory.</p>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <span class="text-amber-400 font-bold">3. Set `opcache.revalidate_path=1`</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Forces OPcache to resolve symlinks (<code class="text-amber-300">current</code>) for realpath keying during lookups.</p>
+              </div>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/opcache.preloading.php" target="_blank" class="text-sky-400 hover:underline">php.net/opcache.preloading</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Interactive Deployment Lifecycle Stepper -->
+    <div class="slide-wrapper flex-col" data-category="Deployment" data-doc="deployer.org/docs/8.x/basics">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Deployment Lifecycle Stepper</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Step through the full execution pipeline of a production deployment task.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Stepper Simulation Controls -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-indigo-400 font-bold text-sm"><i class="fa-solid fa-play"></i> Deployment Execution Stepper</span>
+              <button onclick="stepDeploymentPipeline()" class="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs transition">
+                <i class="fa-solid fa-forward mr-1"></i> Run Next Task
+              </button>
+            </div>
+
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs my-2 space-y-1">
+              <div id="pipe-line-1" class="text-slate-400">task('deploy:prepare'); // Create release folder</div>
+              <div id="pipe-line-2" class="text-slate-400">task('deploy:shared'); // Symlink shared .env & storage</div>
+              <div id="pipe-line-3" class="text-slate-400">task('deploy:vendors'); // composer install --no-dev</div>
+              <div id="pipe-line-4" class="text-slate-400">task('deploy:symlink'); // Atomic swap (mv -T)</div>
+              <div id="pipe-line-5" class="text-slate-400">task('fpm:reload'); // Reset OPcache memory</div>
+            </div>
+          </div>
+
+          <div>
+            <span class="text-slate-400 text-xs font-mono">SSH Remote Terminal Output:</span>
+            <div id="deploy-stepper-log" class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-sky-400 text-xs h-24 overflow-y-auto mt-1">
+              Click "Run Next Task" to trigger deployment pipeline...
+            </div>
+          </div>
+        </div>
+
+        <!-- Task Flow Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-purple-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Deployment Task Graph</span>
+          <div class="mermaid">
+            graph TD
+              A[deploy:prepare] --> B[deploy:shared]
+              B --> C[deploy:vendors]
+              C --> D[deploy:symlink]
+              D --> E[fpm:reload]
+              D --> F[deploy:cleanup]
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: CLI, FPM & Process Management -->
+    <div class="slide-wrapper flex-col" data-category="Environment" data-doc="php.net/manual/en/features.commandline.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">CLI vs PHP-FPM Environments & Worker Restart Strategies</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Managing persistent background queue workers and scheduled cron tasks across deployment releases.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Worker Restarting -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-rotate"></i> Queue Worker Graceful Restart</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// In Deployer recipe: Restart long-running CLI workers!
+task('workers:restart', function () {
+    // Signals supervisor / worker processes to gracefully exit
+    // after completing current job so systemd restarts them in NEW release path!
+    run('cd {{current_path}} && php artisan queue:restart');
+});
+
+after('deploy:symlink', 'workers:restart');</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Long-running CLI processes keep old memory in RAM until explicitly restarted!</p>
+        </div>
+
+        <!-- Systemd Supervisor Unit -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-terminal"></i> Systemd Service Configuration</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-ini">[Unit]
+Description=PHP Queue Worker
+After=network.target
+
+[Service]
+User=www-data
+# Points directly to current symlink!
+WorkingDirectory=/var/www/app/current
+ExecStart=/usr/bin/php artisan queue:work
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Points <code class="text-sky-300">WorkingDirectory</code> to <code class="text-sky-300">/current</code> so restarts load latest code.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Interactive Deployment Playground -->
+    <div class="slide-wrapper flex-col" data-category="Playground" data-doc="deployer.org/docs/8.x/basics">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Programmatic Deployment Playground</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select code templates, edit deployment configurations, and simulate execution logs verified against specs.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Controls Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-purple-400 font-bold">Select Template:</span>
+            <select id="sim-preset-select" onchange="loadSimulatorPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-purple-200 focus:outline-none">
+              <option value="deploy_recipe">Deployer Recipe DSL Syntax</option>
+              <option value="env_config">PHP Programmatic INI & ENV Config</option>
+              <option value="shared_paths">Shared Files & Directory Setup</option>
+              <option value="atomic_swap">Atomic Symlink POSIX Swap Emulator</option>
+            </select>
+          </div>
+
+          <button onclick="resetSimulatorCode()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Template
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> Deployment Script Snippet</span>
+            <textarea id="sim-editor" oninput="runSimulatedCode()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Simulated Terminal / Engine Output</span>
+            <div id="sim-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Knowledge Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="deployer.org/docs/8.x/basics">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Knowledge Assessment Quiz</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your comprehension of PHP Deployment and Environment rules strictly grounded in official documentation.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-purple-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Official Resources & Summary -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="deployer.org">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Documentation Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every statement, rule, edge case, and deploy script in this presentation is derived directly from the official PHP Manual at php.net and Deployer docs at deployer.org.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://deployer.org/docs/8.x/basics" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Deployer Core Basics</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Complete guide to hosts, tasks, CLI selectors and recipes.</p>
+          </a>
+
+          <a href="https://deployer.org/blog/atomic-symlinks" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Atomic Symlink Specs</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Deep dive into Linux kernel rename(2) and mv -T atomic swaps.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/opcache.preloading.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">PHP OPcache Preloading</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">OPcache preloading directives and shared memory compilation.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/configuration.file.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">PHP Runtime Configuration</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">php.ini directives for production and development environments.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Control Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-purple-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://deployer.org" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">deployer.org & php.net</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Slide Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-purple-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search deployment keywords (e.g., symlink, host, opcache, task)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i> Presentation Slide Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ini.min.js"></script>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Questions Dataset (Strictly grounded in deployer.org & php.net)
+    const quizData = [
+      {
+        question: "How does Deployer guarantee zero-downtime during the symlink swap process?",
+        options: [
+          "It uses `ln -sf` to force overwrite the symlink directly.",
+          "It creates a side-channel symlink (`release`) and uses POSIX `rename(2)` (`mv -T release current`) for an indivisible kernel swap.",
+          "It stops Nginx for 1 second while deleting the old folder.",
+          "It copies all files directly into the production directory."
+        ],
+        correct: 1,
+        explanation: "Official Spec (deployer.org/blog/atomic-symlinks): ln -sf performs an unlink followed by symlink, creating a microsecond downtime window. Deployer uses an intermediate release link and mv -T (rename(2) syscall) to guarantee an indivisible kernel-level swap."
+      },
+      {
+        question: "Which PHP configuration setting must be set in php.ini to specify a script that preloads bytecode into shared memory on server startup?",
+        options: [
+          "opcache.preload=preload.php",
+          "opcache.enable_cli=1",
+          "opcache.revalidate_freq=0",
+          "opcache.fast_shutdown=1"
+        ],
+        correct: 0,
+        explanation: "Official Manual (php.net/opcache.preloading): Preloading is configured in php.ini using opcache.preload=preload.php, which runs once on server startup (PHP-FPM) to compile files into persistent memory."
+      },
+      {
+        question: "What Deployer CLI command targets all hosts that have both label `stage=prod` and `role=web`?",
+        options: [
+          "dep deploy stage=prod,role=web",
+          "dep deploy stage=prod&role=web",
+          "dep deploy prod-web",
+          "dep deploy --stage=prod --role=web"
+        ],
+        correct: 1,
+        explanation: "Official Docs (deployer.org/docs/8.x/hosts): In Deployer host selector expressions, the '&' character performs an AND condition on host labels, whereas ',' acts as an OR."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Playground Presets
+    const simulatorPresets = {
+      deploy_recipe: `<?php\nnamespace Deployer;\n\nrequire 'recipe/common.php';\n\nhost('prod.example.com')\n    ->setDeployPath('/var/www/app')\n    ->setLabels(['stage' => 'prod']);\n\ntask('custom:build', function () {\n    run('cd {{release_path}} && npm run build');\n});\n\nafter('deploy:symlink', 'custom:build');`,
+      env_config: `<?php\n// Programmatic Environment Configuration\n$env = getenv('APP_ENV') ?: 'production';\n\nif ($env === 'production') {\n    ini_set('display_errors', '0');\n    ini_set('opcache.preload', '/app/preload.php');\n    echo "Production INI configured safely.";\n}`,
+      shared_paths: `<?php\n// Deployer Shared Paths Definition\nset('shared_files', ['.env', 'config/secrets.json']);\nset('shared_dirs', ['storage', 'public/uploads']);\nset('writable_dirs', ['storage', 'bootstrap/cache']);\n\necho "Shared state mapped to /var/www/app/shared";`,
+      atomic_swap: `<?php\n// POSIX Atomic Symlink Swap Simulation\n$releasePath = '/var/www/app/releases/43';\n$currentSymlink = '/var/www/app/current';\n\n// 1. ln -s releases/43 release\n// 2. mv -T release current (rename(2) POSIX syscall)\necho "Atomic swap completed with zero downtime window.";`
+    };
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const activeSlide = slides[currentSlide];
+      const category = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'deployer.org';
+
+      document.getElementById('slide-category-badge').textContent = category;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').textContent = doc;
+      document.getElementById('footer-source-link').href = doc.startsWith('http') ? doc : `https://${doc}`;
+
+      const progressBar = document.getElementById('progress-bar');
+      const progressPercent = ((currentSlide + 1) / totalSlides) * 100;
+      progressBar.style.width = `${progressPercent}%`;
+
+      updateNavDots();
+
+      // Trigger Mermaid rendering if present
+      setTimeout(() => {
+        try {
+          mermaid.contentLoaded();
+        } catch (e) {}
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function updateNavDots() {
+      const dotsContainer = document.getElementById('nav-dots');
+      dotsContainer.innerHTML = '';
+      slides.forEach((_, idx) => {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${idx === currentSlide ? 'bg-purple-400 w-5' : 'bg-slate-700 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(idx);
+        dotsContainer.appendChild(dot);
+      });
+    }
+
+    // Theme Switcher
+    function toggleTheme() {
+      document.documentElement.classList.toggle('light');
+      document.documentElement.classList.toggle('dark');
+    }
+
+    // Fullscreen Toggle
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = 'fa-solid fa-compress';
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = 'fa-solid fa-expand';
+        }
+      }
+    }
+
+    // Modals Logic
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateSlideIndex();
+      }
+    }
+
+    function populateSlideIndex() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((slide, idx) => {
+        const titleEl = slide.querySelector('h1, h2');
+        const title = titleEl ? titleEl.innerText.replace('\n', ' ') : `Slide ${idx + 1}`;
+        const cat = slide.getAttribute('data-category') || 'General';
+
+        const item = document.createElement('div');
+        item.className = `p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${idx === currentSlide ? 'bg-purple-900/40 border-purple-500 text-white' : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800'}`;
+        item.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        item.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="font-mono text-xs px-2 py-0.5 rounded bg-slate-800 text-purple-300">${idx + 1}</span>
+            <span class="font-semibold text-xs truncate max-w-md">${title}</span>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-sky-400">${cat}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query.trim()) {
+        resultsContainer.innerHTML = '<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>';
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((slide, idx) => {
+        const text = slide.innerText.toLowerCase();
+        if (text.includes(query)) {
+          matches++;
+          const titleEl = slide.querySelector('h1, h2');
+          const title = titleEl ? titleEl.innerText.replace('\n', ' ') : `Slide ${idx + 1}`;
+
+          const item = document.createElement('div');
+          item.className = 'p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-purple-500/50 cursor-pointer text-xs flex items-center justify-between';
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          item.innerHTML = `
+            <span class="text-purple-300 font-semibold">${idx + 1}. ${title}</span>
+            <span class="text-[10px] text-slate-500">Jump to slide &rarr;</span>
+          `;
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = '<p class="text-slate-500 text-center py-4">No matching slides found.</p>';
+      }
+    }
+
+    // Keyboard Navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        prevSlide();
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      }
+    });
+
+    // Copy Code Utility
+    function copyCode(btn) {
+      const pre = btn.closest('.glass-card').querySelector('pre code');
+      if (pre) {
+        navigator.clipboard.writeText(pre.innerText).then(() => {
+          btn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> Copied!';
+          setTimeout(() => {
+            btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy';
+          }, 2000);
+        });
+      }
+    }
+
+    // Interactive Symlink Swap Simulator Logic
+    function runSymlinkSim(step) {
+      const treeView = document.getElementById('symlink-tree-view');
+      const httpLog = document.getElementById('symlink-http-log');
+      const badge = document.getElementById('symlink-status-badge');
+
+      document.querySelectorAll('.sym-step-btn').forEach((b, i) => {
+        if (i + 1 === step) {
+          b.className = 'sym-step-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono';
+        } else {
+          b.className = 'sym-step-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono';
+        }
+      });
+
+      if (step === 1) {
+        treeView.innerHTML = `
+/var/www/app
+├── <span class="text-emerald-400">current -> releases/42</span> (Serving Web Traffic)
+├── shared/ (.env, storage/)
+└── releases/
+    ├── 41/
+    ├── 42/
+    └── <span class="text-amber-400">43/ (Cloning git repository...)</span>`;
+        httpLog.innerHTML = `[GET /index.php] 200 OK -> Executing code in /releases/42/public/index.php`;
+        badge.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Preparing Release 43 directory...`;
+      } else if (step === 2) {
+        treeView.innerHTML = `
+/var/www/app
+├── <span class="text-emerald-400">current -> releases/42</span>
+├── shared/ (.env, storage/)
+└── releases/
+    ├── 42/
+    └── 43/
+        ├── <span class="text-sky-400">.env -> /var/www/app/shared/.env</span>
+        └── <span class="text-sky-400">storage -> /var/www/app/shared/storage</span>`;
+        httpLog.innerHTML = `[GET /api/users] 200 OK -> Executing code in /releases/42/public/index.php`;
+        badge.innerHTML = `<i class="fa-solid fa-link"></i> Symlinked persistent shared files & directories.`;
+      } else if (step === 3) {
+        treeView.innerHTML = `
+/var/www/app
+├── <span class="text-emerald-400">current -> releases/42</span>
+└── releases/
+    └── 43/
+        ├── vendor/ (composer install --no-dev)
+        └── public/ (npm run build assets)`;
+        httpLog.innerHTML = `[GET /dashboard] 200 OK -> Executing code in /releases/42/public/index.php`;
+        badge.innerHTML = `<i class="fa-solid fa-gears"></i> Compiled assets and installed vendors in background.`;
+      } else if (step === 4) {
+        treeView.innerHTML = `
+/var/www/app
+├── <span class="text-purple-400">release -> releases/43</span> (Temporary side-channel link)
+├── <span class="text-emerald-400">current -> releases/43</span> <span class="text-xs text-amber-400">(Swapped via mv -T release current!)</span>
+└── releases/
+    ├── 42/ (Old release)
+    └── 43/ <span class="text-emerald-400">(ACTIVE RELEASE)</span>`;
+        httpLog.innerHTML = `<span class="text-emerald-400">[GET /index.php] 200 OK -> Executing code in /releases/43/public/index.php (ZERO DOWNTIME SWAP!)</span>`;
+        badge.innerHTML = `<i class="fa-solid fa-atom"></i> Atomic POSIX rename(2) completed! Traffic seamlessly switched to Release 43.`;
+      } else if (step === 5) {
+        treeView.innerHTML = `
+/var/www/app
+├── <span class="text-emerald-400">current -> releases/43</span>
+└── releases/
+    └── 43/ (Active)
+    <span class="text-slate-600 font-strike">(Removed old release 41 & 42 based on keep_releases=5)</span>`;
+        httpLog.innerHTML = `[GET /index.php] 200 OK -> Executing code in /releases/43/public/index.php`;
+        badge.innerHTML = `<i class="fa-solid fa-trash text-emerald-400"></i> Old release directories cleaned up cleanly.`;
+      }
+    }
+
+    // Host Selector Inspector Logic
+    function inspectHostSelector(mode) {
+      const matchCount = document.getElementById('host-match-count');
+      const list = document.getElementById('host-matched-list');
+      const cliOut = document.getElementById('host-selector-cli-output');
+
+      document.querySelectorAll('.host-btn').forEach(b => {
+        b.className = 'host-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono';
+      });
+
+      if (mode === 'prod_web') {
+        event.target.className = 'host-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono';
+        matchCount.textContent = '2 Hosts Matched';
+        list.innerHTML = `
+          <div class="p-2 rounded bg-slate-900 border border-slate-800">
+            <span class="text-purple-300 font-bold">web-1.prod.com</span> <span class="text-slate-500">(stage=prod, role=web)</span>
+          </div>
+          <div class="p-2 rounded bg-slate-900 border border-slate-800">
+            <span class="text-purple-300 font-bold">web-2.prod.com</span> <span class="text-slate-500">(stage=prod, role=web)</span>
+          </div>`;
+        cliOut.textContent = `$ dep deploy stage=prod&role=web\nExecuting task deploy on [web-1.prod.com, web-2.prod.com]...`;
+      } else if (mode === 'staging') {
+        event.target.className = 'host-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono';
+        matchCount.textContent = '1 Host Matched';
+        list.innerHTML = `
+          <div class="p-2 rounded bg-slate-900 border border-slate-800">
+            <span class="text-sky-300 font-bold">stage.internal.com</span> <span class="text-slate-500">(stage=staging, role=web)</span>
+          </div>`;
+        cliOut.textContent = `$ dep deploy stage=staging\nExecuting task deploy on [stage.internal.com]...`;
+      } else if (mode === 'all') {
+        event.target.className = 'host-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono';
+        matchCount.textContent = '3 Hosts Matched';
+        list.innerHTML = `
+          <div class="p-2 rounded bg-slate-900 border border-slate-800"><span class="text-purple-300 font-bold">web-1.prod.com</span></div>
+          <div class="p-2 rounded bg-slate-900 border border-slate-800"><span class="text-purple-300 font-bold">web-2.prod.com</span></div>
+          <div class="p-2 rounded bg-slate-900 border border-slate-800"><span class="text-sky-300 font-bold">stage.internal.com</span></div>`;
+        cliOut.textContent = `$ dep deploy all\nExecuting task deploy on all 3 inventory hosts...`;
+      }
+    }
+
+    // Stepper for Deployment Pipeline
+    let currentPipelineStep = 0;
+    function stepDeploymentPipeline() {
+      currentPipelineStep = (currentPipelineStep % 5) + 1;
+      const log = document.getElementById('deploy-stepper-log');
+
+      for (let i = 1; i <= 5; i++) {
+        const line = document.getElementById(`pipe-line-${i}`);
+        if (i === currentPipelineStep) {
+          line.className = 'text-purple-300 bg-purple-950/80 p-1 rounded font-bold';
+        } else {
+          line.className = 'text-slate-400 p-1';
+        }
+      }
+
+      const tasks = [
+        "[deploy:prepare] Creating release folder /var/www/app/releases/43...",
+        "[deploy:shared] Creating symlinks for shared files (.env, storage)...",
+        "[deploy:vendors] Executing: composer install --no-dev --optimize-autoloader...",
+        "[deploy:symlink] Executing POSIX atomic swap: mv -T release current...",
+        "[fpm:reload] Executing: sudo systemctl reload php8.3-fpm (OPcache cleared!)"
+      ];
+
+      log.innerHTML += `<div>${tasks[currentPipelineStep - 1]}</div>`;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Playground Simulation
+    function loadSimulatorPreset(key) {
+      const code = simulatorPresets[key] || '';
+      document.getElementById('sim-editor').value = code;
+      runSimulatedCode();
+    }
+
+    function resetSimulatorCode() {
+      const select = document.getElementById('sim-preset-select');
+      loadSimulatorPreset(select.value);
+    }
+
+    function runSimulatedCode() {
+      const code = document.getElementById('sim-editor').value;
+      const consoleOut = document.getElementById('sim-console-output');
+
+      if (code.includes('host(') || code.includes('task(')) {
+        consoleOut.textContent = "✔ Deployer Recipe Syntax Validated\n[info] Tasks compiled successfully for remote SSH execution.";
+      } else if (code.includes('ini_set')) {
+        consoleOut.textContent = "✔ PHP Configuration Parsed\n[display_errors]: Off\n[opcache.preload]: Enabled\n[status]: Runtime safe for production deployment.";
+      } else if (code.includes('shared_files')) {
+        consoleOut.textContent = "✔ Persistent Storage Mapped\n[symlink]: .env -> /var/www/app/shared/.env\n[symlink]: storage -> /var/www/app/shared/storage";
+      } else {
+        consoleOut.textContent = "Executing PHP code simulation...\nOutput: Operation executed with 0 errors.";
+      }
+    }
+
+    // Quiz Functions
+    function loadQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}`;
+      document.getElementById('quiz-question-title').textContent = q.question;
+
+      const optionsList = document.getElementById('quiz-options-list');
+      optionsList.innerHTML = '';
+
+      document.getElementById('quiz-feedback').className = 'hidden';
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-mono transition flex items-center justify-between';
+        btn.onclick = () => selectQuizOption(idx);
+        btn.innerHTML = `<span>${String.fromCharCode(65 + idx)}. ${opt}</span>`;
+        optionsList.appendChild(btn);
+      });
+    }
+
+    function selectQuizOption(selectedIdx) {
+      const q = quizData[currentQuizIndex];
+      const feedback = document.getElementById('quiz-feedback');
+      const optionsButtons = document.querySelectorAll('#quiz-options-list button');
+
+      optionsButtons.forEach((b) => b.disabled = true);
+
+      if (selectedIdx === q.correct) {
+        quizScore++;
+        optionsButtons[selectedIdx].classList.add('border-emerald-500', 'bg-emerald-950/50', 'text-emerald-300');
+        feedback.className = 'p-3 rounded-xl border border-emerald-800 bg-emerald-950/60 text-emerald-300 text-xs font-mono mb-4 block';
+        feedback.innerHTML = `<strong class="text-emerald-400"><i class="fa-solid fa-circle-check"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        optionsButtons[selectedIdx].classList.add('border-rose-500', 'bg-rose-950/50', 'text-rose-300');
+        optionsButtons[q.correct].classList.add('border-emerald-500', 'bg-emerald-950/50', 'text-emerald-300');
+        feedback.className = 'p-3 rounded-xl border border-rose-800 bg-rose-950/60 text-rose-300 text-xs font-mono mb-4 block';
+        feedback.innerHTML = `<strong class="text-rose-400"><i class="fa-solid fa-circle-xmark"></i> Incorrect!</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}`;
+      document.getElementById('quiz-next-btn').classList.remove('hidden');
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        loadQuizQuestion();
+      } else {
+        document.getElementById('quiz-container').innerHTML = `
+          <div class="text-center py-8">
+            <div class="w-16 h-16 bg-purple-600/20 text-purple-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+              <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">Quiz Complete!</h3>
+            <p class="text-slate-400 text-xs font-mono mb-6">Your final score: <strong class="text-purple-400">${quizScore} / ${quizData.length}</strong></p>
+            <button onclick="currentQuizIndex=0;quizScore=0;loadQuizQuestion();" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs font-mono transition">
+              <i class="fa-solid fa-rotate-left mr-1"></i> Retake Quiz
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    // Initialize Presentation on Load
+    window.onload = () => {
+      updateSlideView();
+      runSymlinkSim(1);
+      inspectHostSelector('prod_web');
+      resetSimulatorCode();
+      loadQuizQuestion();
+    };
+  </script>
+</body>
+</html>

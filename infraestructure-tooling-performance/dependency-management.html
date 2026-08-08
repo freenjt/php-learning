@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Programmatic Dependency Management in PHP - Composer Guide</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            composer: {
+              light: '#8892bf',
+              DEFAULT: '#00529B',
+              dark: '#1c2541',
+              accent: '#38bdf8',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              gold: '#eab308'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Presentation Styles -->
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.82rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(56, 189, 248, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Dependency Flow Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#00529B',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#38bdf8',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-sky-500 selection:text-white transition-colors duration-200">
+
+  <!-- Header Navigation -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-boxes-packing text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Dependency Management <span class="text-xs px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 light:text-sky-700 border border-sky-500/30">getcomposer.org</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-sky-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-sky-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-sky-500 via-indigo-500 to-emerald-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slides Frame -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-sky-950/50 light:bg-sky-100 border border-sky-500/30 text-sky-300 light:text-sky-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Source: Official Composer Documentation: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">getcomposer.org/doc</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="getcomposer.org/doc/00-intro.md">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-sky-600 via-indigo-600 to-emerald-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-sky-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-solid fa-cube text-6xl text-sky-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Programmatic Dependency Management <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-sky-400 via-indigo-400 to-emerald-400">in PHP with Composer</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-3xl mx-auto mb-8 font-light leading-relaxed">
+        A comprehensive, rigorous exploration of programmatic dependency resolution, PSR-4 autoloading mechanisms, version constraint algorithms, lock file determinism, and internal APIs derived strictly from <strong>getcomposer.org</strong>.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Strict getcomposer.org Compliance
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-sky-400"></i> Interactive Constraint Solver & Path Resolvers
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-code text-indigo-400"></i> Composer Programmatic API Stepper
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-sky-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Begin Architecture Exploration</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Structural Landscape -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="getcomposer.org/doc/01-basic-usage.md">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Composer Ecosystem Architecture</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Composer is an application-level package manager that manages libraries per-project rather than globally.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-file-code"></i></div>
+            Declarative Spec (`composer.json`)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Defines project metadata, dependencies, constraints, autoload rules, and configuration settings.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-sky-300">require</code> & <code class="text-sky-300">require-dev</code></li>
+            <li>• <code class="text-sky-300">autoload</code> (PSR-4 / Classmap / Files)</li>
+            <li>• <code class="text-sky-300">repositories</code> & <code class="text-sky-300">config</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-lock"></i></div>
+            Lock State (`composer.lock`)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Locks exact resolved version commit hashes and package checksums for reproducible builds.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Guaranteed team environment parity</li>
+            <li>• <code class="text-emerald-300">content-hash</code> validation</li>
+            <li>• Bypasses solver during <code class="text-emerald-300">composer install</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-bolt"></i></div>
+            PHP ClassLoader API
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Generates optimized runtime autoloader at <code class="text-indigo-300">vendor/autoload.php</code> for instant class loading.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Registers <code class="text-indigo-300">spl_autoload_register</code></li>
+            <li>• Efficient namespace prefix matching</li>
+            <li>• Authoritative classmap optimization</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-calculator"></i></div>
+            SAT Solver Engine
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Boolean Satisfiability (SAT) solver resolves transitive graph constraints and flags conflicts.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Semver parser & range validation</li>
+            <li>• Circular dependency handling</li>
+            <li>• Conflict & replace rules (<code class="text-amber-300">conflict</code>)</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-plug"></i></div>
+            Plugin & Event System
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Hooks into lifecycle execution events programmatically via <code class="text-rose-300">PluginInterface</code>.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-rose-300">PRE_AUTOLOAD_DUMP</code></li>
+            <li>• Custom command injection</li>
+            <li>• Capability & installer customization</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-gold-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center"><i class="fa-solid fa-server"></i></div>
+            Repository Managers
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Metadata providers ranging from Packagist REST endpoints to VCS, Path, and Artifact sources.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Packagist v2 API (p2/ metadata)</li>
+            <li>• Monorepo path linking</li>
+            <li>• Custom private mirrors</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: composer.json Schema Anatomy -->
+    <div class="slide-wrapper flex-col" data-category="Configuration" data-doc="getcomposer.org/doc/04-schema.md">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">`composer.json` Schema & Structural Anatomy</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Every Composer-managed project relies on a strictly structured JSON configuration file validated against the official JSON Schema.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- JSON Spec Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Standard `composer.json` Manifest</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-json">{
+  "name": "acme/payment-gateway",
+  "description": "Programmatic Payment Processing Engine",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php": "^8.2",
+    "guzzlehttp/guzzle": "^7.8",
+    "psr/log": "^3.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Acme\\Payment\\": "src/"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true,
+    "allow-plugins": {
+      "phpstan/extension-installer": true
+    }
+  }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Reference: <a href="https://getcomposer.org/doc/04-schema.md" target="_blank" class="text-sky-400 hover:underline">getcomposer.org/doc/04-schema.md</a></p>
+        </div>
+
+        <!-- Section Explanations -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-indigo-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-list-check"></i> Essential Schema Definitions</span>
+            
+            <div class="space-y-3 text-xs">
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <strong class="text-sky-400 font-mono">name</strong>: <span class="text-slate-300">`vendor/package-name` formatted identifier required for published packages.</span>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <strong class="text-emerald-400 font-mono">require / require-dev</strong>: <span class="text-slate-300">Map of package names to version constraint expressions. `require-dev` is skipped with `--no-dev`.</span>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <strong class="text-amber-400 font-mono">autoload</strong>: <span class="text-slate-300">Mapping rules for PHP classes. Tells `ClassLoader` where namespaces map physically on disk.</span>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <strong class="text-purple-400 font-mono">config</strong>: <span class="text-slate-300">Overrides Composer defaults (e.g. `vendor-dir`, `platform`, `allow-plugins`).</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 p-2.5 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-amber-300">
+            <i class="fa-solid fa-lightbulb"></i> <strong>Pro Tip:</strong> Run <code class="text-sky-300">composer validate</code> programmatically or via CLI to lint `composer.json` against strict schema rules!
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Semantic Versioning & Constraint Engine -->
+    <div class="slide-wrapper flex-col" data-category="SemVer" data-doc="getcomposer.org/doc/articles/versions.md">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Version Constraint Engine & SemVer Matching</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Composer uses semantic versioning operators (`^`, `~`, wildcard, ranges) to evaluate package compatibility.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Constraint Operators -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-code-compare"></i> Core Version Operators</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Operator</th>
+                    <th class="p-2">Example</th>
+                    <th class="p-2">Equivalent Interval</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold text-purple-400">Caret (`^`)</td>
+                    <td class="p-2"><code class="text-sky-300">^1.2.3</code></td>
+                    <td class="p-2"><code class="text-emerald-400 font-bold">&gt;=1.2.3 &lt;2.0.0</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-400">Caret Zero (`^0.2.3`)</td>
+                    <td class="p-2"><code class="text-sky-300">^0.2.3</code></td>
+                    <td class="p-2"><code class="text-emerald-400 font-bold">&gt;=0.2.3 &lt;0.3.0</code> (Pre-1.0 BC safety)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-sky-400">Tilde (`~`)</td>
+                    <td class="p-2"><code class="text-sky-300">~1.2.3</code></td>
+                    <td class="p-2"><code class="text-emerald-400 font-bold">&gt;=1.2.3 &lt;1.3.0</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-sky-400">Tilde 2-Digit</td>
+                    <td class="p-2"><code class="text-sky-300">~1.2</code></td>
+                    <td class="p-2"><code class="text-emerald-400 font-bold">&gt;=1.2.0 &lt;2.0.0</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-amber-400">Wildcard</td>
+                    <td class="p-2"><code class="text-sky-300">2.1.*</code></td>
+                    <td class="p-2"><code class="text-emerald-400 font-bold">&gt;=2.1.0 &lt;2.2.0</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-emerald-400">Range Union</td>
+                    <td class="p-2"><code class="text-sky-300">^1.0 || ^2.0</code></td>
+                    <td class="p-2"><code class="text-emerald-400 font-bold">Matches v1.x OR v2.x</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://getcomposer.org/doc/articles/versions.md" target="_blank" class="text-sky-400 hover:underline">getcomposer.org/doc/articles/versions.md</a></p>
+        </div>
+
+        <!-- Stability Flags & Dev Branches -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-flag"></i> Stability Flags & Development Releases</span>
+            <p class="text-xs text-slate-300 mb-3">Composer defaults to stable versions unless explicitly overridden by minimum-stability or stability flags.</p>
+
+            <pre><code class="language-json">{
+  "minimum-stability": "RC",
+  "prefer-stable": true,
+  "require": {
+    "monolog/monolog": "3.0.*@beta",
+    "doctrine/orm": "dev-main as 3.0.0"
+  }
+}</code></pre>
+            <ul class="mt-3 text-xs text-slate-300 space-y-1 font-mono">
+              <li>• <code class="text-sky-300">@dev</code>, <code class="text-sky-300">@alpha</code>, <code class="text-sky-300">@beta</code>, <code class="text-sky-300">@RC</code> stability overrides</li>
+              <li>• <code class="text-sky-300">dev-main</code> prefix targets branch heads directly</li>
+              <li>• Inline alias: <code class="text-sky-300">dev-main as 3.0.0</code> satisfies 3.x requirements</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Interactive SemVer Constraint Solver Simulator -->
+    <div class="slide-wrapper flex-col" data-category="SemVer" data-doc="getcomposer.org/doc/articles/versions.md">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Version Constraint Solver</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test a version constraint against candidate package releases to observe exact evaluation logic.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Solver Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-mono text-sky-400 mb-1">Select Preset Constraint:</label>
+            <select id="sim-constraint-select" onchange="runConstraintSolver()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 font-mono text-xs text-sky-300 focus:outline-none">
+              <option value="^1.2.3">^1.2.3 (Caret Standard)</option>
+              <option value="^0.2.3">^0.2.3 (Caret Zero Pre-1.0)</option>
+              <option value="~1.2.3">~1.2.3 (Tilde Patch Lock)</option>
+              <option value="~1.2">~1.2 (Tilde Minor Lock)</option>
+              <option value="1.2.*">1.2.* (Wildcard)</option>
+              <option value=">=1.2 <2.0">>=1.2 <2.0 (Explicit Range)</option>
+            </select>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-xs font-mono text-purple-400 mb-1">Custom Constraint String:</label>
+            <input type="text" id="sim-custom-constraint" value="^1.2.3" oninput="runConstraintSolver()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 font-mono text-xs text-emerald-300 focus:outline-none" placeholder="e.g. ^2.1 || ~3.0">
+          </div>
+        </div>
+
+        <!-- Evaluation Matrix -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Equivalent Interval Output -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <span class="text-xs font-mono text-amber-400 font-bold block mb-2"><i class="fa-solid fa-calculator"></i> Internal Interval Expression</span>
+              <div id="solver-interval-text" class="font-mono text-sm text-emerald-300 font-bold p-3 bg-slate-900 rounded-lg border border-slate-800">
+                >=1.2.3 <2.0.0-dev
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">
+              The Composer <code class="text-sky-300">VersionParser</code> normalizes constraint operators into strict numeric boundary intervals.
+            </p>
+          </div>
+
+          <!-- Candidate Version Results -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <span class="text-xs font-mono text-sky-400 font-bold block mb-2"><i class="fa-solid fa-list-check"></i> Candidate Release Evaluation</span>
+            <div id="solver-candidates-list" class="space-y-1.5 font-mono text-xs max-h-48 overflow-y-auto">
+              <!-- JS Populated -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: The Lock File & Determinism -->
+    <div class="slide-wrapper flex-col" data-category="Determinism" data-doc="getcomposer.org/doc/01-basic-usage.md#composerlock---the-lock-file">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">`composer.lock` & Deterministic Deployment</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">The lock file stores exact package checksums, git commits, and dependency graphs to ensure zero deviation across environments.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Install vs Update Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-code-compare"></i> `composer install` vs `composer update`</span>
+            <div class="mermaid">
+              flowchart TD
+                A[Run CLI Command] --> B{Command Type?}
+                B -->|composer install| C{composer.lock exists?}
+                C -->|Yes| D[Read composer.lock<br/>Skip Solver]
+                C -->|No| E[Read composer.json<br/>Run SAT Solver]
+                B -->|composer update| E
+                E --> F[Generate New composer.lock]
+                D --> G[Download Exact Commits to /vendor]
+                F --> G
+            </div>
+          </div>
+        </div>
+
+        <!-- Content Hash & Validation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-hashtag"></i> The `content-hash` Safeguard</span>
+            <p class="text-xs text-slate-300 mb-2">
+              <code class="text-sky-300">content-hash</code> is an md5 checksum generated from relevant sections of <code class="text-sky-300">composer.json</code>.
+            </p>
+            <pre><code class="language-json">{
+  "_readme": [
+    "This file locks dependencies..."
+  ],
+  "content-hash": "8f3a2b1c4e9d7f6a5b0c8d1e2f3a4b5c",
+  "packages": [
+    {
+      "name": "guzzlehttp/guzzle",
+      "version": "7.8.1",
+      "dist": {
+        "type": "zip",
+        "url": "https://api.github.com/...",
+        "reference": "b063373f42c4d23ac3e23970b",
+        "shasum": "a1b2c3d4..."
+      }
+    }
+  ]
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-amber-300 mt-2">
+            <i class="fa-solid fa-triangle-exclamation"></i> If `composer.json` is modified without running `composer update`, Composer issues a warning that the lock file is out of date!
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Programmatic API with Composer Factory -->
+    <div class="slide-wrapper flex-col" data-category="Programmatic API" data-doc="getcomposer.org/doc/03-cli.md">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Driving Composer Programmatically in PHP</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Composer can be instantiated and controlled programmatically within PHP scripts using `Composer\Factory` and `Composer\Installer`.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- PHP Script snippet -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-terminal"></i> Programmatic Installation Snippet</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+require __DIR__ . '/vendor/autoload.php';
+
+use Composer\Factory;
+use Composer\IO\BufferIO;
+use Composer\Installer;
+
+// 1. Setup Input/Output Buffer
+$io = new BufferIO();
+
+// 2. Instantiate Composer instance
+$composer = Factory::create($io, __DIR__ . '/composer.json');
+
+// 3. Create Programmatic Installer instance
+$installer = Installer::create($io, $composer);
+
+// 4. Configure & Run installation solver
+$installer->setUpdate(true)
+          ->setOptimizeAutoloader(true);
+
+$status = $installer->run(); // Returns 0 on success
+
+echo $io->getOutput(); // Read Execution Logs!</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Allows automated deployment scripts, web dashboards, and plugins to execute dependency management in-memory.</p>
+        </div>
+
+        <!-- Key Classes Breakdown -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-cubes"></i> Essential Programmatic API Classes</span>
+
+            <div class="space-y-2 text-xs">
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <code class="text-purple-400 font-bold">Composer\Factory</code>
+                <p class="text-slate-300 text-[11px] mt-0.5">Static factory method `create()` parses `composer.json` and builds the central `Composer\Composer` object graph.</p>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <code class="text-sky-400 font-bold">Composer\IO\BufferIO</code>
+                <p class="text-slate-300 text-[11px] mt-0.5">Captures terminal stdout/stderr logs into an in-memory buffer without printing directly to screen.</p>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <code class="text-emerald-400 font-bold">Composer\Installer</code>
+                <p class="text-slate-300 text-[11px] mt-0.5">Encapsulates SAT solver evaluation, package downloading, file extraction, and autoloader generation.</p>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                <code class="text-amber-400 font-bold">Composer\Console\Application</code>
+                <p class="text-slate-300 text-[11px] mt-0.5">Runs full CLI commands programmatically inside PHP via Symfony Console integration.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: The PHP Autoloading Engine & ClassLoader -->
+    <div class="slide-wrapper flex-col" data-category="Autoloading" data-doc="getcomposer.org/doc/04-schema.md#autoload">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP Runtime Autoloading Architecture</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Composer generates a high-performance `Composer\Autoload\ClassLoader` instance registered with `spl_autoload_register`.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Autoload Types -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-sitemap"></i> Supported Autoload Mechanisms</span>
+            <pre><code class="language-json">{
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/",
+      "Acme\\Domain\\": ["src/Domain/", "app/Domain/"]
+    },
+    "classmap": ["database/seeds/", "src/LegacyClass.php"],
+    "files": ["src/Kernel/helpers.php"]
+  }
+}</code></pre>
+            <ul class="mt-3 text-xs text-slate-300 space-y-1 font-mono">
+              <li>• <code class="text-sky-300">psr-4</code>: Maps namespace prefixes to directory base paths</li>
+              <li>• <code class="text-emerald-300">classmap</code>: Scans directories and generates static class-to-path arrays</li>
+              <li>• <code class="text-amber-300">files</code>: Eagerly includes helper function files on every request</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- ClassLoader Lookup Sequence -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-indigo-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-diagram-project"></i> ClassLoader Resolution Sequence</span>
+            <div class="mermaid">
+              sequenceDiagram
+                autonumber
+                participant App as Application Code
+                participant Engine as PHP Engine
+                participant Loader as Composer ClassLoader
+                participant Disk as Filesystem
+                App->>Engine: new \App\Services\PaymentService()
+                Engine->>Loader: spl_autoload_call('App\\Services\\PaymentService')
+                Loader->>Loader: Check classMap static array
+                alt Found in ClassMap
+                  Loader->>Disk: require file directly
+                else PSR-4 Lookup
+                  Loader->>Loader: Match longest prefix ('App\\') -> 'src/'
+                  Loader->>Disk: Check file_exists('src/Services/PaymentService.php')
+                  Disk-->>Loader: File Found
+                  Loader->>Disk: require 'src/Services/PaymentService.php'
+                end
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Interactive PSR-4 Path Resolver Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Autoloading" data-doc="getcomposer.org/doc/04-schema.md#psr-4">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive PSR-4 Path Resolver Simulator</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Type a fully-qualified class name (FQCN) to see how Composer's `ClassLoader` translates namespaces to disk paths.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-mono text-sky-400 mb-1">Active PSR-4 Prefix Mappings:</label>
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 space-y-1">
+              <div><code class="text-purple-400">"App\\"</code> &rarr; <code class="text-emerald-400">"src/"</code></div>
+              <div><code class="text-purple-400">"Acme\\Payment\\"</code> &rarr; <code class="text-emerald-400">"packages/payment/src/"</code></div>
+              <div><code class="text-purple-400">"Monolog\\"</code> &rarr; <code class="text-emerald-400">"vendor/monolog/monolog/src/Monolog/"</code></div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-mono text-emerald-400 mb-1">Type Test Class FQCN:</label>
+            <input type="text" id="sim-fqcn-input" value="Acme\Payment\Services\StripeGateway" oninput="resolvePsr4Path()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 font-mono text-xs text-sky-300 focus:outline-none mb-2">
+            
+            <div class="flex flex-wrap gap-1.5">
+              <button onclick="setFqcn('App\\Controllers\\UserController')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-300">App\Controllers\UserController</button>
+              <button onclick="setFqcn('Acme\\Payment\\Models\\Invoice')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-300">Acme\Payment\Models\Invoice</button>
+              <button onclick="setFqcn('Monolog\\Handler\\StreamHandler')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-300">Monolog\Handler\StreamHandler</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Path Resolver Visualization -->
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs space-y-2">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="text-slate-400">Matched Prefix:</span>
+            <span id="psr4-matched-prefix" class="text-purple-400 font-bold">Acme\Payment\</span>
+          </div>
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="text-slate-400">Sub-Namespace & Class:</span>
+            <span id="psr4-sub-class" class="text-amber-400 font-bold">Services\StripeGateway</span>
+          </div>
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="text-slate-400">Mapped Directory Base:</span>
+            <span id="psr4-mapped-dir" class="text-sky-400 font-bold">packages/payment/src/</span>
+          </div>
+          <div class="flex items-center justify-between pt-1">
+            <span class="text-emerald-400 font-bold">Final Resolved Absolute Disk Path:</span>
+            <span id="psr4-final-path" class="text-emerald-300 font-bold bg-emerald-950/60 px-3 py-1 rounded border border-emerald-800">
+              packages/payment/src/Services/StripeGateway.php
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Production Autoloader Optimizations -->
+    <div class="slide-wrapper flex-col" data-category="Performance" data-doc="getcomposer.org/doc/articles/autoloader-optimization.md">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Production Autoloader Optimization Flags</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Eliminate filesystem `file_exists` stats during request handling using authoritative classmaps and APCu caches.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Level 1 -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-gauge"></i> Level 1: Classmap Generation</span>
+            <pre><code class="language-bash">composer dump-autoload -o
+# OR --optimize</code></pre>
+            <p class="text-xs text-slate-300 mt-2">
+              Converts PSR-4 rules into a giant static array map in <code class="text-sky-300">autoload_classmap.php</code>. If a class isn't in the classmap, it falls back to PSR-4 disk check.
+            </p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">Recommended for all deployments</p>
+        </div>
+
+        <!-- Level 2 -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-shield-check"></i> Level 2: Authoritative Classmaps</span>
+            <pre><code class="language-bash">composer dump-autoload -a
+# OR --classmap-authoritative</code></pre>
+            <p class="text-xs text-slate-300 mt-2">
+              Forces <code class="text-emerald-300">ClassLoader</code> to ONLY check the classmap. If a class is missing, it returns immediately without disk checks.
+            </p>
+          </div>
+          <p class="text-[10px] text-emerald-400 font-mono mt-2">Maximum Filesystem I/O Speedup</p>
+        </div>
+
+        <!-- APCu -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-memory"></i> APCu Cache Caching</span>
+            <pre><code class="language-bash">composer dump-autoload --apcu</code></pre>
+            <p class="text-xs text-slate-300 mt-2">
+              Caches class lookup hits and missing class misses in shared memory (APCu), bypassing disk scans across PHP-FPM workers.
+            </p>
+          </div>
+          <p class="text-[10px] text-amber-400 font-mono mt-2">High Concurrency Environments</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Composer Event System & Plugin Architecture -->
+    <div class="slide-wrapper flex-col" data-category="Plugins" data-doc="getcomposer.org/doc/articles/plugins.md">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Composer Event System & Plugin Architecture</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Plugins extend Composer programmatically by implementing `PluginInterface` and subscribing to lifecycle events.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Plugin Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-plug"></i> Custom Plugin Implementation</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+namespace Acme\Composer;
+
+use Composer\Composer;
+use Composer\IO\IOInterface;
+use Composer\Plugin\PluginInterface;
+use Composer\EventDispatcher\EventSubscriberInterface;
+use Composer\Script\ScriptEvents;
+
+class CustomBuildPlugin implements PluginInterface, EventSubscriberInterface {
+    public function activate(Composer $composer, IOInterface $io): void {}
+    public function deactivate(Composer $composer, IOInterface $io): void {}
+    public function uninstall(Composer $composer, IOInterface $io): void {}
+
+    public static function getSubscribedEvents(): array {
+        return [
+            ScriptEvents::POST_AUTOLOAD_DUMP => 'onPostAutoloadDump'
+        ];
+    }
+
+    public function onPostAutoloadDump($event): void {
+        $event->getIO()->write("<info>Plugin injected post-autoload actions!</info>");
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://getcomposer.org/doc/articles/plugins.md" target="_blank" class="text-sky-400 hover:underline">getcomposer.org/doc/articles/plugins.md</a></p>
+        </div>
+
+        <!-- Event Hooks List -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-bolt"></i> Core Composer Event Hooks</span>
+
+            <div class="space-y-2 text-xs font-mono">
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <code class="text-purple-400 font-bold">PRE_COMMAND_RUN</code>
+                <p class="text-slate-300 text-[11px] font-sans mt-0.5">Fired before any Composer command executes. Used for global environment validation.</p>
+              </div>
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <code class="text-sky-400 font-bold">PRE_OPERATIONS_EXEC</code>
+                <p class="text-slate-300 text-[11px] font-sans mt-0.5">Fired before package installations, updates, or removals are written to disk.</p>
+              </div>
+              <div class="p-2 rounded bg-slate-900 border border-slate-800">
+                <code class="text-emerald-400 font-bold">POST_AUTOLOAD_DUMP</code>
+                <p class="text-slate-300 text-[11px] font-sans mt-0.5">Fired after the autoloader files are dumped to disk. Ideal for code generation.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 text-xs text-rose-300 mt-2">
+            <i class="fa-solid fa-shield-halved"></i> <strong>Security Note:</strong> Composer 2.2+ requires plugins to be explicitly allowed via <code class="text-sky-300">config.allow-plugins</code> in `composer.json`!
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Custom Repositories & Monorepo Architecture -->
+    <div class="slide-wrapper flex-col" data-category="Repositories" data-doc="getcomposer.org/doc/05-repositories.md">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Custom Repositories & Path Linking (Monorepos)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Composer supports alternative package repositories beyond Packagist.org, including Git VCS, Path, and Private repos.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Path Repository Monorepo -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-folder-tree"></i> Path Repository (Local Symlinks)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-json">{
+  "repositories": [
+    {
+      "type": "path",
+      "url": "packages/*",
+      "options": {
+        "symlink": true
+      }
+    }
+  ],
+  "require": {
+    "acme/core-domain": "*"
+  }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Symlinks local packages directly into <code class="text-sky-300">vendor/acme/core-domain</code> for instantaneous monorepo live editing.</p>
+        </div>
+
+        <!-- VCS Repository -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-code-branch"></i> Direct Git / VCS Repository</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-json">{
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "git@github.com:acme/private-logger.git"
+    }
+  ],
+  "require": {
+    "acme/private-logger": "^2.0"
+  }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Fetches tags and commits directly from private Git repositories without publishing to public indexes.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Interactive Programmatic Execution Stepper -->
+    <div class="slide-wrapper flex-col" data-category="Programmatic API" data-doc="getcomposer.org/doc/03-cli.md">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Programmatic Execution Stepper</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Step through the internal lifecycle of executing Composer programmatically inside PHP memory.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Stepper Navigation Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span id="api-step-badge" class="px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 font-mono text-xs font-bold border border-purple-500/30">
+              Step 1 / 4
+            </span>
+            <span id="api-step-title" class="font-bold text-white text-sm">Initializing Input/Output Buffers</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="prevApiStep()" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300"><i class="fa-solid fa-arrow-left"></i> Prev</button>
+            <button onclick="nextApiStep()" class="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-xs font-mono text-white">Next <i class="fa-solid fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- Step Visualizer Box -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Code highlight -->
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs">
+            <div class="text-slate-500 mb-1">// Active Internal Execution Line</div>
+            <div id="api-step-code" class="text-emerald-300 font-bold p-2 bg-slate-900 rounded border border-slate-800 overflow-x-auto">
+              $io = new \Composer\IO\BufferIO();
+            </div>
+          </div>
+
+          <!-- Log Output Simulation -->
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs flex flex-col justify-between">
+            <span class="text-slate-400 text-[11px] mb-1">Internal Memory State & Output Buffer:</span>
+            <div id="api-step-log" class="text-sky-300 font-mono text-[11px] bg-slate-900 p-2.5 rounded border border-slate-800 h-24 overflow-y-auto">
+              BufferIO initialized. Output redirection ready.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Security Auditing & Verification -->
+    <div class="slide-wrapper flex-col" data-category="Security" data-doc="getcomposer.org/doc/03-cli.md#audit">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Security Auditing & Checksum Verification</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Composer integrates vulnerability checks and cryptographic hash verification into the installation pipeline.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Composer Audit -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-shield-virus"></i> Automated Vulnerability Audit</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-bash"># Run security advisory check against lock file
+composer audit --format=json
+
+# Output snippet:
+{
+  "advisories": {
+    "vendor/package": [
+      {
+        "title": "Remote Code Execution in XML Parser",
+        "cve": "CVE-2024-12345",
+        "link": "https://packagist.org/advisories/...",
+        "affectedVersions": ">=1.0.0,<1.4.2"
+      }
+    ]
+  }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Queries Packagist Advisory Database directly during deployment pipelines.</p>
+        </div>
+
+        <!-- Checksum Verification -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-fingerprint"></i> Package Integrity Verification</span>
+            <p class="text-xs text-slate-300 mb-3">
+              When downloading archives from distribution mirrors, Composer calculates the archive's SHA256 checksum and compares it against `composer.lock`.
+            </p>
+
+            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 font-mono text-xs space-y-2">
+              <div class="text-sky-300">1. Fetch Zip archive from distribution URL</div>
+              <div class="text-purple-300">2. Compute hash: hash_file('sha256', $zipFile)</div>
+              <div class="text-amber-300">3. Verify against lock file 'shasum' key</div>
+              <div class="text-emerald-400 font-bold">4. Reject download if hashes mismatch!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Interactive Assessment & Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Assessment" data-doc="getcomposer.org/doc/">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Composer Programmatic Knowledge Assessment</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Validate your understanding of Composer internals, SemVer matching, and PSR-4 resolution.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between min-h-[380px]">
+        <div>
+          <!-- Quiz Tracker -->
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-4">
+            <span id="quiz-question-num" class="text-xs font-mono text-sky-400 font-bold">Question 1 of 3</span>
+            <span id="quiz-score" class="text-xs font-mono text-emerald-400 font-bold">Score: 0</span>
+          </div>
+
+          <!-- Question Text -->
+          <h3 id="quiz-question-text" class="text-base font-bold text-white mb-4">
+            What version range is matched by the caret constraint `^0.2.3` in Composer?
+          </h3>
+
+          <!-- Options -->
+          <div id="quiz-options-container" class="space-y-2.5 font-mono text-xs">
+            <!-- JS Populated -->
+          </div>
+        </div>
+
+        <!-- Explanation & Next Button -->
+        <div id="quiz-feedback-box" class="hidden mt-4 p-3 rounded-xl border text-xs font-mono">
+          <!-- JS Populated -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Navigation Controls Footer -->
+  <footer class="fixed bottom-0 left-0 right-0 h-16 glass-nav z-40 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="px-4 py-2 rounded-xl bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 light:hover:bg-slate-300 text-white light:text-slate-900 text-xs font-mono font-semibold border border-slate-800 light:border-slate-300 flex items-center gap-2 transition">
+        <i class="fa-solid fa-arrow-left"></i> Previous
+      </button>
+      <button onclick="nextSlide()" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-mono font-semibold flex items-center gap-2 shadow-lg shadow-sky-600/20 transition">
+        Next <i class="fa-solid fa-arrow-right"></i>
+      </button>
+    </div>
+
+    <!-- Quick Slide Selector Dropdown -->
+    <div class="hidden sm:flex items-center space-x-2">
+      <label class="text-xs font-mono text-slate-400">Jump to:</label>
+      <select id="slide-jump-select" onchange="goToSlide(parseInt(this.value))" class="bg-slate-900 light:bg-white text-sky-400 light:text-sky-700 text-xs font-mono rounded-lg border border-slate-800 light:border-slate-300 p-1.5 focus:outline-none">
+        <!-- JS Populated -->
+      </select>
+    </div>
+
+    <div class="text-xs font-mono text-slate-500 hidden md:block">
+      Use <kbd class="px-1.5 py-0.5 rounded bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-400">←</kbd> <kbd class="px-1.5 py-0.5 rounded bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-400">→</kbd> to navigate
+    </div>
+  </footer>
+
+  <!-- Search Modal -->
+  <div id="search-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-xl w-full rounded-2xl p-6 border border-slate-800 shadow-2xl relative">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-magnifying-glass text-sky-400"></i> Search Composer Presentation
+        </h3>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <input type="text" id="search-input" oninput="performSearch()" placeholder="Type to search (e.g., PSR-4, SemVer, Factory, ClassLoader)..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none mb-4 font-mono">
+
+      <div id="search-results" class="space-y-2 max-h-60 overflow-y-auto">
+        <!-- JS Populated -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide Directory Index Modal -->
+  <div id="index-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-2xl w-full rounded-2xl p-6 border border-slate-800 shadow-2xl relative">
+      <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-sky-400"></i> Slide Directory Index
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list" class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-96 overflow-y-auto font-mono text-xs">
+        <!-- JS Populated -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Presentation Logic JavaScript -->
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    document.getElementById('total-slide-num').innerText = totalSlides;
+
+    function updatePresentationState() {
+      // Toggle Active Slide
+      slides.forEach((slide, idx) => {
+        if (idx === currentSlide) {
+          slide.classList.add('active');
+        } else {
+          slide.classList.remove('active');
+        }
+      });
+
+      // Update Slide Number Tracker
+      document.getElementById('current-slide-num').innerText = currentSlide + 1;
+
+      // Update Progress Bar
+      const progressPercent = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+
+      // Update Category Badge & Documentation Chip
+      const activeSlide = slides[currentSlide];
+      const category = activeSlide.getAttribute('data-category') || 'General';
+      const doc = activeSlide.getAttribute('data-doc') || 'getcomposer.org/doc';
+
+      document.getElementById('slide-category-badge').innerText = category;
+      document.getElementById('chip-doc-topic').innerText = doc;
+
+      // Update Jump Select Dropdown
+      const jumpSelect = document.getElementById('slide-jump-select');
+      if (jumpSelect) jumpSelect.value = currentSlide;
+
+      // Re-render Mermaid Diagrams on active slide
+      setTimeout(() => {
+        try {
+          mermaid.contentLoaded();
+        } catch (e) {
+          console.debug("Mermaid render deferred", e);
+        }
+      }, 50);
+    }
+
+    function goToSlide(index) {
+      if (index >= 0 && index < totalSlides) {
+        currentSlide = index;
+        updatePresentationState();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updatePresentationState();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updatePresentationState();
+      }
+    }
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+      if (e.key === 'ArrowRight' || e.key === 'Space') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        prevSlide();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    // Theme Switcher
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+      }
+    }
+
+    // Fullscreen Toggle
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => console.debug(err));
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    // Copy Code Helper
+    function copyCode(btn) {
+      const pre = btn.closest('.glass-card').querySelector('pre');
+      if (pre) {
+        const text = pre.innerText;
+        navigator.clipboard.writeText(text).then(() => {
+          btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+          setTimeout(() => {
+            btn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
+          }, 2000);
+        });
+      }
+    }
+
+    // WIDGET 1: Constraint Solver Logic
+    function runConstraintSolver() {
+      const selectVal = document.getElementById('sim-constraint-select').value;
+      const customVal = document.getElementById('sim-custom-constraint').value;
+      const constraint = customVal.trim() || selectVal;
+
+      const candidates = [
+        { version: '0.2.3', label: 'v0.2.3 (Pre-1.0 Patch)' },
+        { version: '0.2.9', label: 'v0.2.9 (Pre-1.0 Minor)' },
+        { version: '1.2.3', label: 'v1.2.3 (Target Release)' },
+        { version: '1.2.8', label: 'v1.2.8 (Patch Release)' },
+        { version: '1.3.0', label: 'v1.3.0 (Minor Release)' },
+        { version: '2.0.0', label: 'v2.0.0 (Major Release)' },
+      ];
+
+      let intervalText = ">=1.2.3 <2.0.0";
+      if (constraint.startsWith('^0.2')) intervalText = ">=0.2.3 <0.3.0-dev";
+      else if (constraint.startsWith('~1.2.3')) intervalText = ">=1.2.3 <1.3.0-dev";
+      else if (constraint.startsWith('~1.2')) intervalText = ">=1.2.0 <2.0.0-dev";
+      else if (constraint.includes('*')) intervalText = ">=1.2.0 <1.3.0-dev";
+      else if (constraint.includes('>=')) intervalText = ">=1.2.0 <2.0.0";
+
+      document.getElementById('solver-interval-text').innerText = intervalText;
+
+      const container = document.getElementById('solver-candidates-list');
+      container.innerHTML = '';
+
+      candidates.forEach(c => {
+        let matches = false;
+        if (constraint === '^1.2.3') matches = (c.version === '1.2.3' || c.version === '1.2.8' || c.version === '1.3.0');
+        else if (constraint === '^0.2.3') matches = (c.version === '0.2.3' || c.version === '0.2.9');
+        else if (constraint === '~1.2.3') matches = (c.version === '1.2.3' || c.version === '1.2.8');
+        else if (constraint === '~1.2') matches = (c.version === '1.2.3' || c.version === '1.2.8' || c.version === '1.3.0');
+        else if (constraint === '1.2.*') matches = (c.version === '1.2.3' || c.version === '1.2.8');
+        else matches = (c.version !== '0.2.3' && c.version !== '2.0.0');
+
+        const div = document.createElement('div');
+        div.className = `p-1.5 rounded flex items-center justify-between ${matches ? 'bg-emerald-950/60 border border-emerald-800 text-emerald-300' : 'bg-slate-900 border border-slate-800 text-slate-500'}`;
+        div.innerHTML = `
+          <span>${c.label}</span>
+          <span class="font-bold">${matches ? '<i class="fa-solid fa-check text-emerald-400"></i> MATCH' : '<i class="fa-solid fa-xmark text-rose-500"></i> EXCLUDED'}</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // WIDGET 2: PSR-4 Path Resolver Logic
+    function setFqcn(fqcn) {
+      document.getElementById('sim-fqcn-input').value = fqcn;
+      resolvePsr4Path();
+    }
+
+    function resolvePsr4Path() {
+      const fqcn = document.getElementById('sim-fqcn-input').value.trim();
+      
+      let prefix = "App\\";
+      let baseDir = "src/";
+      
+      if (fqcn.startsWith("Acme\\Payment\\")) {
+        prefix = "Acme\\Payment\\";
+        baseDir = "packages/payment/src/";
+      } else if (fqcn.startsWith("Monolog\\")) {
+        prefix = "Monolog\\";
+        baseDir = "vendor/monolog/monolog/src/Monolog/";
+      }
+
+      const relativeClass = fqcn.startsWith(prefix) ? fqcn.slice(prefix.length) : fqcn;
+      const pathConverted = relativeClass.replace(/\\/g, '/') + '.php';
+      const finalPath = baseDir + pathConverted;
+
+      document.getElementById('psr4-matched-prefix').innerText = prefix;
+      document.getElementById('psr4-sub-class').innerText = relativeClass;
+      document.getElementById('psr4-mapped-dir').innerText = baseDir;
+      document.getElementById('psr4-final-path').innerText = finalPath;
+    }
+
+    // WIDGET 3: Programmatic API Stepper
+    let currentApiStep = 0;
+    const apiSteps = [
+      {
+        badge: 'Step 1 / 4',
+        title: 'Initializing Input/Output Buffers',
+        code: '$io = new \\Composer\\IO\\BufferIO();',
+        log: 'BufferIO initialized. stdout & stderr redirected to memory buffer.'
+      },
+      {
+        badge: 'Step 2 / 4',
+        title: 'Instantiating Composer Factory',
+        code: '$composer = \\Composer\\Factory::create($io, __DIR__ . "/composer.json");',
+        log: 'Factory parsed composer.json schema and initialized RepositoryManager.'
+      },
+      {
+        badge: 'Step 3 / 4',
+        title: 'Running SAT Constraint Solver',
+        code: '$installer = \\Composer\\Installer::create($io, $composer)->run();',
+        log: 'SAT Solver resolved dependencies: 12 packages selected, 0 conflicts.'
+      },
+      {
+        badge: 'Step 4 / 4',
+        title: 'Dumping Autoloader & ClassMap',
+        code: 'echo $io->getOutput();',
+        log: 'Generating vendor/autoload.php... ClassMap generated with 412 classes.'
+      }
+    ];
+
+    function updateApiStep() {
+      const step = apiSteps[currentApiStep];
+      document.getElementById('api-step-badge').innerText = step.badge;
+      document.getElementById('api-step-title').innerText = step.title;
+      document.getElementById('api-step-code').innerText = step.code;
+      document.getElementById('api-step-log').innerText = step.log;
+    }
+
+    function nextApiStep() {
+      if (currentApiStep < apiSteps.length - 1) {
+        currentApiStep++;
+        updateApiStep();
+      }
+    }
+
+    function prevApiStep() {
+      if (currentApiStep > 0) {
+        currentApiStep--;
+        updateApiStep();
+      }
+    }
+
+    // WIDGET 4: Interactive Quiz Engine
+    let currentQuizIdx = 0;
+    let quizScore = 0;
+
+    const quizQuestions = [
+      {
+        q: "What version range is matched by the caret constraint `^0.2.3` in Composer?",
+        options: [
+          ">=0.2.3 <1.0.0",
+          ">=0.2.3 <0.3.0",
+          ">=0.2.3 <=0.2.3",
+          ">=0.2.3 <2.0.0"
+        ],
+        correct: 1,
+        explanation: "In Composer, pre-1.0 versions follow strict backward compatibility safety rules. `^0.2.3` locks major/minor breaking changes and matches `>=0.2.3 <0.3.0`."
+      },
+      {
+        q: "Which Composer CLI flag enforces that class loading ONLY uses the static classmap array without disk checks?",
+        options: [
+          "--optimize (-o)",
+          "--apcu-autoloader",
+          "--classmap-authoritative (-a)",
+          "--no-dev"
+        ],
+        correct: 2,
+        explanation: "`-a` or `--classmap-authoritative` turns off fallback PSR-4 disk lookups, granting maximum performance in production."
+      },
+      {
+        q: "Which static method is used to construct a programmatic Composer object from composer.json?",
+        options: [
+          "Composer\\Factory::create($io, $jsonPath)",
+          "Composer\\Console\\Application::run()",
+          "Composer\\Installer::getInstance()",
+          "Composer\\Autoload\\ClassLoader::register()"
+        ],
+        correct: 0,
+        explanation: "Static method `Composer\\Factory::create($io, $file)` parses the JSON manifest and constructs the central `Composer\\Composer` instance."
+      }
+    ];
+
+    function renderQuizQuestion() {
+      const q = quizQuestions[currentQuizIdx];
+      document.getElementById('quiz-question-num').innerText = `Question ${currentQuizIdx + 1} of ${quizQuestions.length}`;
+      document.getElementById('quiz-score').innerText = `Score: ${quizScore}`;
+      document.getElementById('quiz-question-text').innerText = q.q;
+
+      const optsContainer = document.getElementById('quiz-options-container');
+      optsContainer.innerHTML = '';
+
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-200 transition flex items-center justify-between";
+        btn.innerHTML = `<span>${opt}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => answerQuiz(i);
+        optsContainer.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback-box').classList.add('hidden');
+    }
+
+    function answerQuiz(selectedIdx) {
+      const q = quizQuestions[currentQuizIdx];
+      const feedbackBox = document.getElementById('quiz-feedback-box');
+      feedbackBox.classList.remove('hidden');
+
+      if (selectedIdx === q.correct) {
+        quizScore++;
+        feedbackBox.className = "mt-4 p-3 rounded-xl border border-emerald-800 bg-emerald-950/60 text-emerald-300 text-xs font-mono";
+        feedbackBox.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        feedbackBox.className = "mt-4 p-3 rounded-xl border border-rose-800 bg-rose-950/60 text-rose-300 text-xs font-mono";
+        feedbackBox.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score').innerText = `Score: ${quizScore}`;
+
+      setTimeout(() => {
+        if (currentQuizIdx < quizQuestions.length - 1) {
+          currentQuizIdx++;
+          renderQuizQuestion();
+        }
+      }, 3500);
+    }
+
+    // Modal Toggles & Search
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+    }
+
+    function performSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase();
+      const resultsContainer = document.getElementById('search-results');
+      resultsContainer.innerHTML = '';
+
+      if (!query) return;
+
+      slides.forEach((slide, idx) => {
+        const text = slide.innerText.toLowerCase();
+        if (text.includes(query)) {
+          const title = slide.querySelector('h1, h2')?.innerText || `Slide ${idx + 1}`;
+          const item = document.createElement('div');
+          item.className = "p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-mono text-sky-300 cursor-pointer flex items-center justify-between";
+          item.innerHTML = `<span>Slide ${idx + 1}: ${title}</span> <i class="fa-solid fa-arrow-right"></i>`;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+    }
+
+    // Initialize Populate Dropdowns and Directory Index
+    window.onload = function() {
+      const jumpSelect = document.getElementById('slide-jump-select');
+      const indexList = document.getElementById('index-list');
+
+      slides.forEach((slide, idx) => {
+        const title = slide.querySelector('h1, h2')?.innerText.replace(/\n/g, ' ') || `Slide ${idx + 1}`;
+        
+        // Populate Dropdown Option
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.innerText = `${idx + 1}. ${title.substring(0, 30)}...`;
+        jumpSelect.appendChild(opt);
+
+        // Populate Index Modal Item
+        const indexBtn = document.createElement('button');
+        indexBtn.className = "text-left p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center justify-between";
+        indexBtn.innerHTML = `<span><strong class="text-sky-400">${idx + 1}.</strong> ${title}</span>`;
+        indexBtn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        indexList.appendChild(indexBtn);
+      });
+
+      // Run Initial Simulations
+      runConstraintSolver();
+      resolvePsr4Path();
+      updateApiStep();
+      renderQuizQuestion();
+
+      // Initial Slide Trigger
+      updatePresentationState();
+    };
+  </script>
+</body>
+</html>

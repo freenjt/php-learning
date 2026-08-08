@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PHP Attributes - Official Engine Specification & Interactive Guide</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              rose: '#f43f5e'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.9);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Prism Styling Overrides */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.83rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Slide Transition Animations */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 35px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#8b5cf6',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-tags text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Attributes <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 light:text-purple-700 border border-purple-500/30 font-mono">PHP 8.0+ Spec</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">13</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Directory Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Manual: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/language.attributes</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="php.net/language.attributes">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-brands fa-php text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Structured Metadata <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-sky-400">with PHP Attributes</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        An exhaustive, rigorous analysis of machine-readable metadata in PHP 8.0+. Sourced exclusively from official php.net specifications, featuring syntax rules, reflection reflection pipelines, target bitmasks, and engine attributes.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> 100% php.net Manual Grounding
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-calculator text-purple-400"></i> Target Bitmask Calculators
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-microchip text-sky-400"></i> Reflection Engine Steppers
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Explore Attributes Specification</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Attribute Taxonomy & Core Concepts -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="php.net/language.attributes.overview">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Attribute Architecture & Core Concepts</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Attributes provide structured, machine-readable metadata embedded directly into source declarations in PHP 8.0+.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-code"></i></div>
+            Native Syntax `#[...]`
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Replaces legacy docblock comments (`@param`, `@annotation`) with first-class tokenized engine syntax.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Tokenized as <code class="text-purple-300">T_ATTRIBUTE</code></li>
+            <li>• Validated by compiler parser</li>
+            <li>• Prevents docblock string parsing errors</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-bullseye"></i></div>
+            Declarative Targets
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Can be applied to classes, methods, functions, parameters, properties, and class constants.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-sky-300">Attribute::TARGET_CLASS</code></li>
+            <li>• <code class="text-sky-300">Attribute::TARGET_METHOD</code></li>
+            <li>• <code class="text-sky-300">Attribute::TARGET_PROPERTY</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-clock-rotate-left"></i></div>
+            Lazy Evaluation
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Attributes are parsed into AST during compile time but instantiated ONLY when queried via Reflection.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Zero execution overhead at boot</li>
+            <li>• Instantiated via <code class="text-emerald-300">->newInstance()</code></li>
+            <li>• Arguments stored as raw AST nodes</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-sliders"></i></div>
+            Positional & Named Arguments
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Supports literal values, constants, array expressions, and nested attribute instances (PHP 8.1+).</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-amber-300">#[Route('/api', method: 'GET')]</code></li>
+            <li>• Constant expressions allowed</li>
+            <li>• Enums and arrays supported</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-cubes"></i></div>
+            Class Representation
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Every custom attribute is defined as a standard PHP class decorated with the <code class="text-rose-300">#[Attribute]</code> attribute.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Constructor receives arguments</li>
+            <li>• Type safety for arguments</li>
+            <li>• Normal class inheritance applies</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-magnifying-glass font-bold"></i></div>
+            Reflection Inspection
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Retrieved via reflection objects using <code class="text-indigo-300">getAttributes()</code> returning <code class="text-indigo-300">ReflectionAttribute</code> arrays.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Filter by class name or flags</li>
+            <li>• Inspect arguments without instantiating</li>
+            <li>• Check repeatability status</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Attribute Syntax Specification -->
+    <div class="slide-wrapper flex-col" data-category="Syntax" data-doc="php.net/language.attributes.syntax">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Attribute Syntax Rules & BNF Specifications</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Attributes start with <code class="text-purple-300">#[</code> and end with <code class="text-purple-300">]</code>. Multiple attributes can be declared on one line or separated across lines.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Syntax Code Box -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Valid Attribute Syntaxes</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+// 1. Single attribute without arguments
+#[ExampleAttribute]
+class Service {}
+
+// 2. Attribute with positional and named arguments
+#[ListensTo('user.created', priority: 10)]
+function onUserCreated() {}
+
+// 3. Grouped attributes inside one #[ ... ] delimiter
+#[AttrOne, AttrTwo('config'), AttrThree(enabled: true)]
+class MultiAttributeClass {}
+
+// 4. Nested Attributes (PHP 8.1+)
+#[Assert\All([
+    new Assert\NotBlank(),
+    new Assert\Length(min: 3)
+])]
+protected array $names;</code></pre>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <strong class="text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i> Comment Backwards Compatibility Note:</strong>
+            <p class="mt-1">
+              In PHP &lt; 8.0, <code class="text-purple-300">#[</code> was parsed as a single-line comment beginning with <code class="text-purple-300">#</code>. In PHP 8.0+, <code class="text-purple-300">#[</code> is tokenized as <code class="text-purple-300">T_ATTRIBUTE</code>!
+            </p>
+          </div>
+        </div>
+
+        <!-- Valid Placement Targets -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-map-pin"></i> Allowed Syntactic Locations</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Target</th>
+                    <th class="p-2">Example Placement</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">Class / Enum / Trait</td>
+                    <td class="p-2"><code class="text-sky-400">#[Entity] class User {}</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">Property</td>
+                    <td class="p-2"><code class="text-sky-400">#[Column] public string $name;</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">Method / Function</td>
+                    <td class="p-2"><code class="text-sky-400">#[Get('/users')] public function index()</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">Parameter</td>
+                    <td class="p-2"><code class="text-sky-400">function set(#[Sensitive] $pass)</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-purple-300">Class Constant</td>
+                    <td class="p-2"><code class="text-sky-400">#[Deprecated] const MAX = 100;</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">
+            Reference: <a href="https://www.php.net/manual/en/language.attributes.syntax.php" target="_blank" class="text-sky-400 hover:underline">php.net/language.attributes.syntax</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Custom Attribute Definition & Target Flags -->
+    <div class="slide-wrapper flex-col" data-category="Classes" data-doc="php.net/language.attributes.classes">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Defining Custom Attribute Classes</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">To define a custom attribute, declare a class decorated with <code class="text-purple-300">#[Attribute]</code> and configure its target mask flags.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Attribute Declaration Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Custom Attribute Class Definition</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+
+namespace App\Attributes;
+
+use Attribute;
+
+#[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_FUNCTION | Attribute::IS_REPEATABLE)]
+class Route
+{
+    public function __construct(
+        public string $path,
+        public string $method = 'GET',
+        public int $priority = 0
+    ) {}
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Constructor promoted properties are automatically populated when <code class="text-purple-300">newInstance()</code> is invoked.</p>
+        </div>
+
+        <!-- Target Bitmask Constants Reference -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-flag"></i> `Attribute::TARGET_*` Bitmask Constants</span>
+            
+            <div class="space-y-1.5 text-xs font-mono">
+              <div class="p-2 bg-slate-950 rounded border border-slate-800 flex justify-between">
+                <span class="text-purple-300">Attribute::TARGET_CLASS</span>
+                <span class="text-slate-500">1 (Bit 0)</span>
+              </div>
+              <div class="p-2 bg-slate-950 rounded border border-slate-800 flex justify-between">
+                <span class="text-purple-300">Attribute::TARGET_FUNCTION</span>
+                <span class="text-slate-500">2 (Bit 1)</span>
+              </div>
+              <div class="p-2 bg-slate-950 rounded border border-slate-800 flex justify-between">
+                <span class="text-purple-300">Attribute::TARGET_METHOD</span>
+                <span class="text-slate-500">4 (Bit 2)</span>
+              </div>
+              <div class="p-2 bg-slate-950 rounded border border-slate-800 flex justify-between">
+                <span class="text-purple-300">Attribute::TARGET_PROPERTY</span>
+                <span class="text-slate-500">8 (Bit 3)</span>
+              </div>
+              <div class="p-2 bg-slate-950 rounded border border-slate-800 flex justify-between">
+                <span class="text-purple-300">Attribute::TARGET_PARAMETER</span>
+                <span class="text-slate-500">16 (Bit 4)</span>
+              </div>
+              <div class="p-2 bg-slate-950 rounded border border-slate-800 flex justify-between">
+                <span class="text-purple-300">Attribute::TARGET_CLASS_CONSTANT</span>
+                <span class="text-slate-500">32 (Bit 5)</span>
+              </div>
+              <div class="p-2 bg-slate-950 rounded border border-slate-800 flex justify-between">
+                <span class="text-purple-300">Attribute::TARGET_ALL</span>
+                <span class="text-slate-500">63 (Bits 0-5)</span>
+              </div>
+              <div class="p-2 bg-slate-950 rounded border border-slate-800 flex justify-between">
+                <span class="text-emerald-400">Attribute::IS_REPEATABLE</span>
+                <span class="text-slate-500">64 (Bit 6)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Interactive Target Flags Visualizer & Bitmask Inspector -->
+    <div class="slide-wrapper flex-col" data-category="Interactive" data-doc="php.net/class.attribute">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Target Bitmask Inspector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Toggle attribute target flags below to dynamically compute the combined integer bitmask and generate the PHP attribute definition.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="bitmask-checkboxes">
+          <label class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center space-x-2 cursor-pointer hover:border-purple-500/50">
+            <input type="checkbox" value="1" onchange="calculateBitmask()" class="rounded text-purple-600 focus:ring-purple-500" checked>
+            <span class="text-xs font-mono text-slate-300">TARGET_CLASS</span>
+          </label>
+          <label class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center space-x-2 cursor-pointer hover:border-purple-500/50">
+            <input type="checkbox" value="2" onchange="calculateBitmask()" class="rounded text-purple-600 focus:ring-purple-500">
+            <span class="text-xs font-mono text-slate-300">TARGET_FUNCTION</span>
+          </label>
+          <label class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center space-x-2 cursor-pointer hover:border-purple-500/50">
+            <input type="checkbox" value="4" onchange="calculateBitmask()" class="rounded text-purple-600 focus:ring-purple-500" checked>
+            <span class="text-xs font-mono text-slate-300">TARGET_METHOD</span>
+          </label>
+          <label class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center space-x-2 cursor-pointer hover:border-purple-500/50">
+            <input type="checkbox" value="8" onchange="calculateBitmask()" class="rounded text-purple-600 focus:ring-purple-500">
+            <span class="text-xs font-mono text-slate-300">TARGET_PROPERTY</span>
+          </label>
+          <label class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center space-x-2 cursor-pointer hover:border-purple-500/50">
+            <input type="checkbox" value="16" onchange="calculateBitmask()" class="rounded text-purple-600 focus:ring-purple-500">
+            <span class="text-xs font-mono text-slate-300">TARGET_PARAMETER</span>
+          </label>
+          <label class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center space-x-2 cursor-pointer hover:border-purple-500/50">
+            <input type="checkbox" value="32" onchange="calculateBitmask()" class="rounded text-purple-600 focus:ring-purple-500">
+            <span class="text-xs font-mono text-slate-300">TARGET_CLASS_CONST</span>
+          </label>
+          <label class="p-3 bg-slate-950 rounded-xl border border-purple-500/50 flex items-center space-x-2 cursor-pointer hover:border-purple-500">
+            <input type="checkbox" value="64" onchange="calculateBitmask()" class="rounded text-emerald-500 focus:ring-emerald-500" checked>
+            <span class="text-xs font-mono text-emerald-400 font-bold">IS_REPEATABLE</span>
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <span class="text-xs font-mono text-slate-400 mb-2 block">Computed Bitmask & Binary Representation:</span>
+            <div id="bitmask-total-display" class="font-mono text-xl text-purple-400 font-bold">
+              Mask Value: 69 (0b01000101)
+            </div>
+            <div id="bitmask-flags-list" class="text-xs font-mono text-slate-400 mt-2">
+              Combined: Attribute::TARGET_CLASS | Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800">
+            <span class="text-xs font-mono text-slate-400 mb-1 block">Generated Attribute Header:</span>
+            <pre class="m-0"><code id="bitmask-generated-code" class="language-php">#[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Reading Attributes with Reflection API -->
+    <div class="slide-wrapper flex-col" data-category="Reflection" data-doc="php.net/language.attributes.reflection">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Reading Attributes with Reflection API</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Attributes are accessed using <code class="text-purple-300">getAttributes()</code> on Reflection objects, returning an array of <code class="text-purple-300">ReflectionAttribute</code> instances.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Code snippet -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Querying Reflection Attributes</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+
+$reflector = new ReflectionClass(UserController::class);
+
+// 1. Fetch ALL attributes on class
+$allAttributes = $reflector->getAttributes();
+
+// 2. Filter attributes by specific class name
+$routeAttributes = $reflector->getAttributes(Route::class);
+
+// 3. Filter with inheritance check flag
+$subAttributes = $reflector->getAttributes(
+    BaseAttribute::class, 
+    ReflectionAttribute::IS_INSTANCEOF
+);
+
+foreach ($routeAttributes as $refAttr) {
+    // Instantiate actual attribute object
+    $route = $refAttr->newInstance();
+    echo $route->path; // Outputs path value
+}</code></pre>
+          </div>
+        </div>
+
+        <!-- Methods of ReflectionAttribute -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-list"></i> `ReflectionAttribute` Method Interface</span>
+            
+            <div class="space-y-2 text-xs font-mono">
+              <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <span class="text-purple-300 font-bold">getName(): string</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Returns the target attribute class name string.</p>
+              </div>
+
+              <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <span class="text-purple-300 font-bold">getArguments(): array</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Returns raw arguments passed in syntax without instantiating class.</p>
+              </div>
+
+              <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <span class="text-emerald-400 font-bold">newInstance(): object</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Instantiates attribute class, passing arguments into constructor.</p>
+              </div>
+
+              <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <span class="text-purple-300 font-bold">isRepeated(): bool</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Returns true if this attribute was repeated on target declaration.</p>
+              </div>
+
+              <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <span class="text-purple-300 font-bold">getTarget(): int</span>
+                <p class="text-slate-400 text-[11px] mt-0.5">Returns target bitmask allowed for this attribute.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Reflection Execution Pipeline -->
+    <div class="slide-wrapper flex-col" data-category="Reflection" data-doc="php.net/class.reflectionattribute">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Attribute Instantiation Execution Flow</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Sequence diagram illustrating how PHP Engine parses, stores, and lazily instantiates attributes via Reflection.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center items-center">
+        <span class="text-xs font-mono text-purple-400 mb-3"><i class="fa-solid fa-diagram-project"></i> Engine Compile-Time to Runtime Lifecycle</span>
+        <div class="mermaid">
+          sequenceDiagram
+            autonumber
+            participant Compiler as Zend Compiler
+            participant AST as AST / OpCache
+            participant Script as User Script
+            participant Refl as Reflection API
+            participant Class as Attribute Class
+            
+            Compiler->>AST: Parse #[Attr(args)] into AST Nodes
+            Note over AST: Stored in memory / OpCache
+            Script->>Refl: ReflectionClass::getAttributes()
+            Refl->>AST: Query attribute metadata AST
+            AST-->>Refl: Return array of ReflectionAttribute instances
+            Script->>Refl: $refAttr->newInstance()
+            Refl->>Class: __construct(...$args)
+            Class-->>Script: Return concrete Attribute instance
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Interactive Attribute Reflection Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Interactive" data-doc="php.net/language.attributes.reflection">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Reflection Execution Stepper</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Step through the execution pipeline to observe how `getAttributes()` and `newInstance()` operate on target classes.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Stepper Controls -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-indigo-400 font-bold text-sm"><i class="fa-solid fa-play"></i> Step-by-Step Reflection Execution</span>
+              <button onclick="stepReflectionPipeline()" class="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs transition">
+                <i class="fa-solid fa-forward mr-1"></i> Next Execution Step
+              </button>
+            </div>
+
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs my-2">
+              <div id="refl-line-1" class="text-slate-400">[Step 1] $refClass = new ReflectionClass(OrderController::class);</div>
+              <div id="refl-line-2" class="text-slate-400">[Step 2] $refMethod = $refClass->getMethod('checkout');</div>
+              <div id="refl-line-3" class="text-slate-400">[Step 3] $attrs = $refMethod->getAttributes(Route::class);</div>
+              <div id="refl-line-4" class="text-slate-400">[Step 4] $routeObj = $attrs[0]->newInstance();</div>
+            </div>
+          </div>
+
+          <div>
+            <span class="text-slate-400 text-xs font-mono">Engine Internal State Log:</span>
+            <div id="refl-stepper-log" class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-sky-400 text-xs h-28 overflow-y-auto mt-1">
+              Click "Next Execution Step" to start reflection inspection...
+            </div>
+          </div>
+        </div>
+
+        <!-- Target Target Code Under Inspection -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-code"></i> Target PHP Source Code</span>
+            <pre><code class="language-php">&lt;?php
+
+#[Attribute(Attribute::TARGET_METHOD)]
+class Route {
+    public function __construct(
+        public string $path,
+        public string $method = 'POST'
+    ) {}
+}
+
+class OrderController {
+    #[Route('/api/v1/checkout', method: 'POST')]
+    public function checkout() {
+        // Order processing logic...
+    }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Built-in Engine Attributes -->
+    <div class="slide-wrapper flex-col" data-category="Core Attributes" data-doc="php.net/manual/en/reserved.attributes.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Official Built-in Engine Attributes</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP provides core engine attributes to alter compiler checks, deprecations, and parameter security behavior.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <!-- #[Override] -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-purple-300 font-mono text-xs">#[Override]</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 font-mono">PHP 8.3+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Ensures a method with the same name exists in a parent class or interface.</p>
+          <pre class="text-[10px]"><code class="language-php">#[Override]
+public function render(): void {}</code></pre>
+        </div>
+
+        <!-- #[SensitiveParameter] -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-sky-300 font-mono text-xs">#[SensitiveParameter]</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 font-mono">PHP 8.2+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Redacts parameter value in backtraces to protect secrets.</p>
+          <pre class="text-[10px]"><code class="language-php">function login(
+  #[SensitiveParameter] $pass
+) {}</code></pre>
+        </div>
+
+        <!-- #[AllowDynamicProperties] -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-emerald-300 font-mono text-xs">#[AllowDynamicProperties]</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">PHP 8.2+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Suppresses deprecation notices for undeclared property creation.</p>
+          <pre class="text-[10px]"><code class="language-php">#[AllowDynamicProperties]
+class StdData {}</code></pre>
+        </div>
+
+        <!-- #[ReturnTypeWillChange] -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-amber-300 font-mono text-xs">#[ReturnTypeWillChange]</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 font-mono">PHP 8.1+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Suppresses return type compatibility warnings during PHP core evolution.</p>
+          <pre class="text-[10px]"><code class="language-php">#[ReturnTypeWillChange]
+public function offsetGet($o) {}</code></pre>
+        </div>
+
+        <!-- #[Deprecated] -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-rose-300 font-mono text-xs">#[Deprecated]</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 font-mono">PHP 8.4+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Triggers E_USER_DEPRECATED notice when function/method is invoked.</p>
+          <pre class="text-[10px]"><code class="language-php">#[Deprecated(
+  message: "Use v2()", 
+  since: "1.2"
+)]</code></pre>
+        </div>
+
+        <!-- #[Attribute] -->
+        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-indigo-300 font-mono text-xs">#[Attribute]</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 font-mono">PHP 8.0+</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Declares that a class can be used as an attribute.</p>
+          <pre class="text-[10px]"><code class="language-php">#[Attribute(
+  Attribute::TARGET_CLASS
+)]</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Nested Attributes & Expression Arguments -->
+    <div class="slide-wrapper flex-col" data-category="Advanced" data-doc="php.net/language.attributes.syntax">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Nested Attributes & Expression Arguments (PHP 8.1+)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Since PHP 8.1, attribute arguments can include <code class="text-purple-300">new</code> expressions allowing nested attribute instances.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Nested Attribute Construction</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+
+#[Attribute]
+class Option {
+    public function __construct(public string $name) {}
+}
+
+#[Attribute]
+class Menu {
+    public function __construct(public array $options) {}
+}
+
+// Nested attribute initialization inside argument list:
+#[Menu(options: [
+    new Option(name: 'Save'),
+    new Option(name: 'Load')
+])]
+class EditorPanel {}</code></pre>
+          </div>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-shield-cat"></i> Allowed Attribute Expression Types</span>
+            <ul class="text-xs text-slate-300 font-mono space-y-2">
+              <li class="p-2 bg-slate-950 rounded border border-slate-800">
+                <strong class="text-purple-300">Scalar Literals:</strong> Strings, integers, floats, booleans, null.
+              </li>
+              <li class="p-2 bg-slate-950 rounded border border-slate-800">
+                <strong class="text-purple-300">Class Constants & Enums:</strong> <code class="text-sky-300">MyClass::CONST</code> or <code class="text-sky-300">Status::Active</code>.
+              </li>
+              <li class="p-2 bg-slate-950 rounded border border-slate-800">
+                <strong class="text-purple-300">Array Expressions:</strong> Multi-dimensional arrays with keys/values.
+              </li>
+              <li class="p-2 bg-slate-950 rounded border border-slate-800">
+                <strong class="text-purple-300">New Expressions (PHP 8.1+):</strong> Instantiating sub-objects directly.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Interactive PHP Attribute Validator & Sandbox Playground -->
+    <div class="slide-wrapper flex-col" data-category="Playground" data-doc="php.net/language.attributes">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Attribute Validator Playground</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select attribute syntax presets to simulate compile-time parsing and target validation against php.net specs.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Selector Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-purple-400 font-bold">Select Attribute Preset:</span>
+            <select id="attr-preset-select" onchange="loadAttributePreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-purple-200 focus:outline-none">
+              <option value="route_method">#[Route] on Method (Valid)</option>
+              <option value="override_check">#[Override] Compatibility (Valid)</option>
+              <option value="sensitive_param">#[SensitiveParameter] (Valid)</option>
+              <option value="invalid_target">Target Mismatch Error (Invalid)</option>
+            </select>
+          </div>
+
+          <button onclick="resetAttributePlayground()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Preset
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> Source Code Snippet</span>
+            <textarea id="attr-editor" oninput="runAttributeValidation()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Engine Validation & Output</span>
+            <div id="attr-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- JS Populated -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Knowledge Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net/language.attributes">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Attributes Knowledge Quiz</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your comprehension of PHP Attribute mechanics, bitmasks, and reflection specifications.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-purple-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Official Resources & Summary -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net/language.attributes">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Documentation Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every attribute syntax rule, reflection method, target bitmask, and core engine attribute in this presentation is derived directly from the official PHP Manual at php.net.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php.net/manual/en/language.attributes.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Attributes Manual Overview</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Complete introduction to PHP 8.0+ attribute syntax.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/language.attributes.syntax.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Attribute Syntax Specification</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Grammar rules, placement locations, and expression rules.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/language.attributes.classes.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Custom Attribute Classes</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Target bitmasks and repeatability flag specification.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/class.reflectionattribute.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">ReflectionAttribute Class</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">API specs for querying name, args, and newInstance().</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Control Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-purple-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net/manual/en/language.attributes.php" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Slide Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-purple-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search attribute terms (e.g., Target, Reflection, Override, Bitmask)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i> Presentation Slide Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Questions Dataset (Strictly grounded in php.net)
+    const quizData = [
+      {
+        question: "What is the token name introduced in PHP 8.0 for the `#[` attribute syntax?",
+        options: [
+          "T_COMMENT",
+          "T_ATTRIBUTE",
+          "T_ANNOTATION",
+          "T_DOC_COMMENT"
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/language.attributes.syntax): Attributes are tokenized by the engine parser as T_ATTRIBUTE starting with #[."
+      },
+      {
+        question: "How do you allow an attribute to be placed multiple times on a single target declaration?",
+        options: [
+          "Add the Attribute::IS_REPEATABLE flag to the #[Attribute] definition.",
+          "Set public bool $repeatable = true inside the constructor.",
+          "Attributes are repeatable by default in PHP 8.0.",
+          "Use array syntax inside #[Attribute([...])]."
+        ],
+        correct: 0,
+        explanation: "Official Manual (php.net/language.attributes.classes): To allow an attribute to be specified multiple times, pass Attribute::IS_REPEATABLE to the #[Attribute] declaration."
+      },
+      {
+        question: "What method on `ReflectionAttribute` instantiates the actual PHP attribute class?",
+        options: [
+          "getAttributes()",
+          "getValue()",
+          "newInstance()",
+          "construct()"
+        ],
+        correct: 2,
+        explanation: "Official Manual (php.net/class.reflectionattribute): ReflectionAttribute::newInstance() creates and returns an instance of the attribute class by invoking its constructor with arguments."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Playground Presets
+    const attributePresets = {
+      route_method: `<?php\n#[Attribute(Attribute::TARGET_METHOD)]\nclass Route {\n    public function __construct(public string $path) {}\n}\n\nclass ApiController {\n    #[Route('/api/v1/users')]\n    public function getUsers() {}\n}`,
+      override_check: `<?php\nclass ParentClass {\n    public function test(): void {}\n}\n\nclass ChildClass extends ParentClass {\n    #[Override]\n    public function test(): void {}\n}`,
+      sensitive_param: `<?php\nfunction authenticate(\n    string $username,\n    #[SensitiveParameter] string $password\n): bool {\n    return true;\n}`,
+      invalid_target: `<?php\n#[Attribute(Attribute::TARGET_PROPERTY)]\nclass PropertyOnly {}\n\n// Error: Applying property-only attribute to class!\n#[PropertyOnly]\nclass User {}`
+    };
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      // Update counters
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // Update Header Chip
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      // Prism highlight
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      // Mermaid re-render
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-purple-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    // Interactive Target Bitmask Calculator
+    function calculateBitmask() {
+      const checkboxes = document.querySelectorAll('#bitmask-checkboxes input[type="checkbox"]');
+      let total = 0;
+      let names = [];
+
+      const nameMap = {
+        1: 'Attribute::TARGET_CLASS',
+        2: 'Attribute::TARGET_FUNCTION',
+        4: 'Attribute::TARGET_METHOD',
+        8: 'Attribute::TARGET_PROPERTY',
+        16: 'Attribute::TARGET_PARAMETER',
+        32: 'Attribute::TARGET_CLASS_CONSTANT',
+        64: 'Attribute::IS_REPEATABLE'
+      };
+
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          const val = parseInt(cb.value);
+          total |= val;
+          names.push(nameMap[val]);
+        }
+      });
+
+      const totalDisplay = document.getElementById('bitmask-total-display');
+      const flagsList = document.getElementById('bitmask-flags-list');
+      const codeDisplay = document.getElementById('bitmask-generated-code');
+
+      const binaryStr = '0b' + total.toString(2).padStart(8, '0');
+      totalDisplay.textContent = `Mask Value: ${total} (${binaryStr})`;
+
+      if (names.length === 0) {
+        flagsList.textContent = 'Combined: Attribute::TARGET_ALL (Default)';
+        codeDisplay.textContent = `#[Attribute]`;
+      } else {
+        flagsList.textContent = `Combined: ${names.join(' | ')}`;
+        codeDisplay.textContent = `#[Attribute(${names.join(' | ')})]`;
+      }
+
+      if (window.Prism) {
+        Prism.highlightElement(codeDisplay);
+      }
+    }
+
+    // Reflection Stepper Simulator
+    let reflStep = 0;
+    function stepReflectionPipeline() {
+      reflStep = (reflStep % 4) + 1;
+      const log = document.getElementById('refl-stepper-log');
+
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById(`refl-line-${i}`).className = "text-slate-400";
+      }
+
+      if (reflStep === 1) {
+        document.getElementById('refl-line-1').className = "text-amber-300 font-bold bg-purple-950/60 p-1 rounded";
+        log.innerHTML = `[Step 1]: Created ReflectionClass for OrderController.\nFetched class metadata AST from OpCache.`;
+      } else if (reflStep === 2) {
+        document.getElementById('refl-line-2').className = "text-amber-300 font-bold bg-purple-950/60 p-1 rounded";
+        log.innerHTML = `[Step 2]: Retained ReflectionMethod for 'checkout'.\nInspected method attribute token headers.`;
+      } else if (reflStep === 3) {
+        document.getElementById('refl-line-3').className = "text-amber-300 font-bold bg-purple-950/60 p-1 rounded";
+        log.innerHTML = `[Step 3]: getAttributes(Route::class) returned 1 ReflectionAttribute element.\nAttribute NOT yet instantiated!`;
+      } else if (reflStep === 4) {
+        document.getElementById('refl-line-4').className = "text-emerald-400 font-bold bg-purple-950/60 p-1 rounded";
+        log.innerHTML = `[Step 4]: newInstance() executed!\nInvoked Route::__construct('/api/v1/checkout', 'POST').\nReturned concrete Route instance!`;
+      }
+    }
+
+    // Playground Simulator
+    function loadAttributePreset(key) {
+      document.getElementById('attr-editor').value = attributePresets[key] || '';
+      runAttributeValidation();
+    }
+
+    function resetAttributePlayground() {
+      const key = document.getElementById('attr-preset-select').value;
+      loadAttributePreset(key);
+    }
+
+    function runAttributeValidation() {
+      const code = document.getElementById('attr-editor').value;
+      const consoleOut = document.getElementById('attr-console-output');
+
+      if (code.includes('invalid_target') || code.includes('PropertyOnly') && code.includes('class User')) {
+        consoleOut.textContent = `Fatal Error: Attribute "PropertyOnly" cannot target class (TARGET_PROPERTY specified) in /script.php:8\nCompliance Check: Failed target bitmask validation (php.net/language.attributes.classes)`;
+      } else if (code.includes('Override')) {
+        consoleOut.textContent = `[Validation Success]: #[Override] confirmed.\nParent method ParentClass::test() exists in hierarchy.\nCompliance Check: Passed (PHP 8.3 spec verified)`;
+      } else if (code.includes('SensitiveParameter')) {
+        consoleOut.textContent = `[Validation Success]: #[SensitiveParameter] active.\nBacktrace redact mask enabled for $password.\nCompliance Check: Passed (PHP 8.2 spec verified)`;
+      } else {
+        consoleOut.textContent = `[Validation Success]: Attribute AST parsed cleanly.\nTarget bitmasks match declaration targets.\nCompliance Check: Passed strictly per php.net specifications.`;
+      }
+    }
+
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-purple-950/60 border-purple-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-purple-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-purple-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_attr_presentation_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_attr_presentation_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keyboard & Touch Event Listeners
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    // Initialization
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_attr_presentation_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      calculateBitmask();
+      loadAttributePreset('route_method');
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

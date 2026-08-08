@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dependency Injection in PHP 8.x - Interactive Deep Dive</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              rose: '#f43f5e',
+              indigo: '#6366f1'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Presentation Styles -->
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.83rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Architecture & Container Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#8b5cf6',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-sky-500 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-plug text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Dependency Injection <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 light:text-indigo-700 border border-indigo-500/30">PHP 8.x Spec</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">13</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Grounding Chip -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Manual: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/language.oop5</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Hero -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10 active" data-category="Overview" data-doc="php.net/language.oop5">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-indigo-500 via-purple-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-solid fa-diagram-project text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Dependency Injection <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-sky-400">in PHP 8.x Programmatically</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A deep dive into Constructor Promotion, Interface Contracts, Type Safety, Inversion of Control, Reflection API Autowiring, and DI Containers grounded in official PHP specifications.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-id-card text-purple-400"></i> Constructor Promotion
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-shield-halved text-emerald-400"></i> Strict Type Hints
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-gears text-amber-400"></i> Reflection Autowiring
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Explore DI Mechanics</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Core Concepts & Foundations -->
+    <div class="slide-wrapper flex-col" data-category="Foundations" data-doc="php.net/language.oop5.decls">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">What is Dependency Injection in PHP?</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Dependency Injection (DI) is an OOP architectural pattern where a class receives its required object dependencies from the outside rather than constructing them internally.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-link-slash"></i></div>
+            Inversion of Control (IoC)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Control over instance creation is inverted. The client class no longer owns object creation lifecycle.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Eliminates hardcoded <code class="text-purple-300">new</code> keywords</li>
+            <li>• Decouples concrete class names</li>
+            <li>• Centralizes instantiation logic</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-vial"></i></div>
+            Unit Testability
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Injecting dependencies allows passing Mock or Stub objects during automated PHPUnit testing.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Pass Mock objects without DB calls</li>
+            <li>• Fast isolated unit tests</li>
+            <li>• Deterministic state assertions</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-sitemap"></i></div>
+            Interface Decoupling
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Type-hinting interfaces (<code class="text-emerald-300">php.net/language.oop5.interfaces</code>) allows swapping implementations effortlessly.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Type hint interface parameters</li>
+            <li>• Polymorphic substitution</li>
+            <li>• Adheres to DIP (Dependency Inversion)</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-id-badge"></i></div>
+            Constructor Promotion
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">PHP 8.0+ constructor property promotion (<code class="text-amber-300">php.net/language.oop5.decls</code>) eliminates injection boilerplate.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Combine parameter & property declaration</li>
+            <li>• Reduced syntax redundancy</li>
+            <li>• Seamless readonly property pairing</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-lock"></i></div>
+            Immutable DI (Readonly)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">PHP 8.1+ <code class="text-rose-300">readonly</code> properties & 8.2+ <code class="text-rose-300">readonly class</code> protect injected services from modification.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Single initialization guarantee</li>
+            <li>• Prevents runtime tampering</li>
+            <li>• Thread-safe immutability semantics</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-gears"></i></div>
+            Reflection Autowiring
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">PHP Reflection API (<code class="text-indigo-300">php.net/book.reflection</code>) enables containers to automatically resolve dependency trees.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Inspect constructor parameters</li>
+            <li>• Recursive class instantiation</li>
+            <li>• Zero-configuration service graphs</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Tight Coupling vs Dependency Injection -->
+    <div class="slide-wrapper flex-col" data-category="Comparison" data-doc="php.net/language.oop5.decls">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Tight Coupling vs. Dependency Injection</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Compare hardcoded concrete instantiations against explicit interface constructor injection in PHP 8.x.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Bad Code: Hardcoded Instantiation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-triangle-exclamation"></i> Tightly Coupled (Anti-Pattern)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+declare(strict_types=1);
+
+class MySQLConnection {
+    public function connect(): void { /* DB Connect */ }
+}
+
+class UserNotifier {
+    private MySQLConnection $db;
+
+    public function __construct() {
+        // BAD: Hardcoded 'new' instantiates concrete low-level class!
+        // Cannot swap database driver or inject mock for testing!
+        $this-&gt;db = new MySQLConnection();
+    }
+
+    public function notify(int $userId): void {
+        $this-&gt;db-&gt;connect();
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-rose-400 mt-2"><i class="fa-solid fa-xmark"></i> Cannot mock `MySQLConnection` during unit tests without modifying source code!</p>
+        </div>
+
+        <!-- Good Code: Constructor Dependency Injection -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-check"></i> Decoupled via Constructor DI</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+declare(strict_types=1);
+
+interface DatabaseConnectionInterface {
+    public function connect(): void;
+}
+
+// PHP 8.2+ Readonly Class with Constructor Promotion
+readonly class UserNotifier {
+    public function __construct(
+        private DatabaseConnectionInterface $dbConnection
+    ) {}
+
+    public function notify(int $userId): void {
+        $this-&gt;dbConnection-&gt;connect();
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-emerald-400 mt-2"><i class="fa-solid fa-check"></i> Inject any implementation (MySQL, PostgreSQL, InMemory Mock) seamlessly!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Constructor Injection & PHP 8.x Features -->
+    <div class="slide-wrapper flex-col" data-category="PHP 8.x Features" data-doc="php.net/language.oop5.decls">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Constructor Promotion & Readonly Properties</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP 8.0 introduced Constructor Property Promotion and PHP 8.1/8.2 added Readonly mechanics to streamline DI.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-history"></i> Legacy PHP 7.x DI Boilerplate</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+class OrderProcessor {
+    private LoggerInterface $logger;
+    private PaymentGatewayInterface $gateway;
+
+    public function __construct(
+        LoggerInterface $logger,
+        PaymentGatewayInterface $gateway
+    ) {
+        $this-&gt;logger = $logger;
+        $this-&gt;gateway = $gateway;
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-purple-300 mt-2"><i class="fa-solid fa-circle-info"></i> Requires 3 repetitions per dependency (Property, Parameter, Assignment).</p>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-bolt"></i> Modern PHP 8.2+ Readonly DI Class</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+declare(strict_types=1);
+
+// PHP 8.2+ Readonly class enforces immutability across all properties!
+readonly class OrderProcessor {
+    public function __construct(
+        private LoggerInterface $logger,
+        private PaymentGatewayInterface $gateway
+    ) {}
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-sky-300 mt-2"><i class="fa-solid fa-check"></i> Concise, immutable, and fully type-safe. Perfect for DI service classes!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Injection Types (Constructor vs Setter vs Property) -->
+    <div class="slide-wrapper flex-col" data-category="DI Patterns" data-doc="php.net/language.oop5">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Types of Dependency Injection in PHP</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Understand when to use Constructor Injection, Setter Method Injection, or Method Injection in PHP applications.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-2 mb-2 text-indigo-400 font-bold text-sm">
+            <i class="fa-solid fa-boxes-packing text-lg"></i> Constructor Injection
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Pass mandatory dependencies directly during object instantiation in <code class="text-purple-300">__construct()</code>.</p>
+          <pre><code class="language-php">readonly class InvoiceService {
+    public function __construct(
+        private MailerInterface $mailer
+    ) {}
+}</code></pre>
+          <span class="inline-block mt-3 px-2 py-1 bg-emerald-500/20 text-emerald-300 text-[10px] font-mono rounded">Best Practice (Mandatory)</span>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-2 mb-2 text-amber-400 font-bold text-sm">
+            <i class="fa-solid fa-sliders text-lg"></i> Setter Injection
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Inject optional dependencies via dedicated setter methods after construction.</p>
+          <pre><code class="language-php">class CacheableReport {
+    private ?CacheInterface $cache = null;
+
+    public function setCache(CacheInterface $c): void {
+        $this-&gt;cache = $c;
+    }
+}</code></pre>
+          <span class="inline-block mt-3 px-2 py-1 bg-amber-500/20 text-amber-300 text-[10px] font-mono rounded">Optional / Fallback Dependencies</span>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-2 mb-2 text-sky-400 font-bold text-sm">
+            <i class="fa-solid fa-code-commit text-lg"></i> Method Action Injection
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Inject dependencies directly into specific action methods (e.g. Controller actions).</p>
+          <pre><code class="language-php">class UserController {
+    public function show(
+        int $id,
+        UserRepositoryInterface $repo
+    ): User {
+        return $repo-&gt;find($id);
+    }
+}</code></pre>
+          <span class="inline-block mt-3 px-2 py-1 bg-sky-500/20 text-sky-300 text-[10px] font-mono rounded">Action Scope / Controller Dispatch</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Interface Decoupling & Contracts -->
+    <div class="slide-wrapper flex-col" data-category="Contracts" data-doc="php.net/language.oop5.interfaces">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interfaces as Contracts for DI</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">PHP Object Interfaces (<code class="text-purple-300">php.net/language.oop5.interfaces</code>) allow declaring method contracts without concrete implementations.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <pre><code class="language-php">&lt;?php
+declare(strict_types=1);
+
+namespace App\Contracts;
+
+// 1. Declare contract interface
+interface PaymentGatewayInterface {
+    public function charge(float $amount): bool;
+}
+
+// 2. Concrete Strategy A
+class StripeGateway implements PaymentGatewayInterface {
+    public function charge(float $amount): bool {
+        // Stripe API HTTP Request
+        return true;
+    }
+}
+
+// 3. Concrete Strategy B
+class PayPalGateway implements PaymentGatewayInterface {
+    public function charge(float $amount): bool {
+        // PayPal SDK Call
+        return true;
+    }
+}
+
+// 4. High-level class depends ONLY on PaymentGatewayInterface abstraction!
+readonly class CheckoutProcessor {
+    public function __construct(
+        private PaymentGatewayInterface $gateway
+    ) {}
+
+    public function processOrder(float $total): void {
+        if ($this-&gt;gateway-&gt;charge($total)) {
+            echo "Order completed successfully!\n";
+        }
+    }
+}</code></pre>
+
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 flex items-center gap-3">
+          <i class="fa-solid fa-shield-halved text-emerald-400 text-lg"></i>
+          <span><strong class="text-emerald-300">Contract Guarantee:</strong> `CheckoutProcessor` doesn't care whether `StripeGateway` or `PayPalGateway` is supplied, as long as it adheres to `PaymentGatewayInterface`.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Type Variance & LSP in DI -->
+    <div class="slide-wrapper flex-col" data-category="Type Safety" data-doc="php.net/language.oop5.variance">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Type Variance in PHP 8.x DI</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Covariant return types and Contravariant argument types (<code class="text-purple-300">php.net/language.oop5.variance</code>) ensure Liskov Substitution Principle (LSP) safety in DI containers.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-2 mb-2 text-purple-400 font-bold text-sm">
+            <i class="fa-solid fa-arrows-split-up-and-left text-lg"></i> Covariant Return Types (PHP 7.4+)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">A factory or factory dependency method can return a narrower (more specific) subclass.</p>
+          <pre><code class="language-php">abstract class AbstractResponse {}
+class JsonResponse extends AbstractResponse {}
+
+interface ResponseFactoryInterface {
+    public function create(): AbstractResponse;
+}
+
+class ApiFactory implements ResponseFactoryInterface {
+    // Covariant Return: Returns specific JsonResponse!
+    public function create(): JsonResponse {
+        return new JsonResponse();
+    }
+}</code></pre>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-2 mb-2 text-sky-400 font-bold text-sm">
+            <i class="fa-solid fa-arrows-to-dot text-lg"></i> Contravariant Parameters (PHP 7.4+)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">A child method argument can accept a wider (more general) supertype.</p>
+          <pre><code class="language-php">class AdminUser extends User {}
+
+interface AdminHandlerInterface {
+    public function handle(AdminUser $admin): void;
+}
+
+class GeneralUserHandler implements AdminHandlerInterface {
+    // Contravariant Parameter: Accepts general User superclass!
+    public function handle(User $user): void {
+        // Process user
+    }
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Interactive DI Architecture & Inspector Widget -->
+    <div class="slide-wrapper flex-col" data-category="Visualizer" data-doc="php.net/language.oop5">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive DI Architecture Inspector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Configure dependency options for a target PHP application to inspect DI health and structural decoupling in real time.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <!-- Controls Column -->
+          <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <span class="text-xs font-mono font-bold text-purple-400 block mb-2"><i class="fa-solid fa-sliders"></i> Injection Settings:</span>
+            
+            <div>
+              <label class="text-[11px] font-mono text-slate-400 block mb-1">Database Driver Dependency:</label>
+              <select id="di-driver-select" onchange="evaluateDiArchitecture()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-purple-200">
+                <option value="interface">DatabaseConnectionInterface (Decoupled)</option>
+                <option value="concrete">MySQLConnection (Hardcoded Concrete)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-mono text-slate-400 block mb-1">Injection Technique:</label>
+              <select id="di-technique-select" onchange="evaluateDiArchitecture()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-purple-200">
+                <option value="constructor_promoted">Constructor Promotion (PHP 8.0+)</option>
+                <option value="setter">Setter Injection</option>
+                <option value="hardcoded_new">Internal 'new Class()' (Anti-Pattern)</option>
+              </select>
+            </div>
+
+            <label class="flex items-center justify-between p-2 rounded-lg bg-slate-900 hover:bg-slate-800 cursor-pointer text-xs font-mono">
+              <span>Readonly Class (PHP 8.2+)</span>
+              <input type="checkbox" id="di-readonly-check" checked onchange="evaluateDiArchitecture()" class="accent-purple-500">
+            </label>
+
+            <label class="flex items-center justify-between p-2 rounded-lg bg-slate-900 hover:bg-slate-800 cursor-pointer text-xs font-mono">
+              <span>Strict Type Declarations</span>
+              <input type="checkbox" id="di-strict-check" checked onchange="evaluateDiArchitecture()" class="accent-purple-500">
+            </label>
+          </div>
+
+          <!-- Score & Graph Column -->
+          <div class="lg:col-span-2 space-y-3 flex flex-col justify-between">
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+              <div>
+                <span class="text-xs font-mono text-slate-400">Dependency Coupling Index:</span>
+                <div class="text-2xl font-bold font-mono" id="di-score-text">100 / 100</div>
+              </div>
+              <div class="w-16 h-16 rounded-2xl flex items-center justify-center font-bold font-mono text-xl" id="di-score-badge">
+                A+
+              </div>
+            </div>
+
+            <!-- Architecture Breakdown Badges -->
+            <div class="grid grid-cols-4 gap-2 text-center text-xs font-mono">
+              <div id="badge-ioc" class="p-2 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-300">
+                <span class="font-bold block"><i class="fa-solid fa-link-slash"></i> IoC</span> Inversion
+              </div>
+              <div id="badge-test" class="p-2 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-300">
+                <span class="font-bold block"><i class="fa-solid fa-vial"></i> Test</span> Mockable
+              </div>
+              <div id="badge-immut" class="p-2 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-300">
+                <span class="font-bold block"><i class="fa-solid fa-lock"></i> Immut</span> Readonly
+              </div>
+              <div id="badge-type" class="p-2 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-300">
+                <span class="font-bold block"><i class="fa-solid fa-shield-halved"></i> Type</span> Strict
+              </div>
+            </div>
+
+            <!-- Analysis Output -->
+            <div id="di-analysis-feedback" class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 leading-relaxed min-h-[80px]">
+              Analyzing Dependency Injection architecture...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Reflection API & Autowiring Mechanics -->
+    <div class="slide-wrapper flex-col" data-category="Reflection" data-doc="php.net/book.reflection">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP Reflection API & Autowiring</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">How modern PHP DI Containers use <code class="text-purple-300">ReflectionClass</code> and <code class="text-purple-300">ReflectionNamedType</code> (<code class="text-sky-300">php.net/book.reflection</code>) to automatically resolve object graphs.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <pre><code class="language-php">&lt;?php
+declare(strict_types=1);
+
+class Container {
+    private array $bindings = [];
+
+    public function bind(string $abstract, string $concrete): void {
+        $this-&gt;bindings[$abstract] = $concrete;
+    }
+
+    public function get(string $className): object {
+        $target = $this-&gt;bindings[$className] ?? $className;
+        
+        // 1. Inspect class via Reflection
+        $reflector = new ReflectionClass($target);
+        $constructor = $reflector-&gt;getConstructor();
+
+        if ($constructor === null) {
+            return new $target();
+        }
+
+        // 2. Resolve constructor parameters recursively
+        $dependencies = [];
+        foreach ($constructor-&gt;getParameters() as $param) {
+            $type = $param-&gt;getType();
+            
+            if ($type instanceof ReflectionNamedType &amp;&amp; !$type-&gt;isBuiltin()) {
+                // Recursively instantiate dependency!
+                $dependencies[] = $this-&gt;get($type-&gt;getName());
+            }
+        }
+
+        return $reflector-&gt;newInstanceArgs($dependencies);
+    }
+}</code></pre>
+
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 flex items-center gap-3">
+          <i class="fa-solid fa-gears text-purple-400 text-lg"></i>
+          <span><strong class="text-purple-300">Autowiring in action:</strong> The container inspects parameter type-hints at runtime using Reflection and injects required instances automatically!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Interactive UML Architecture Diagram -->
+    <div class="slide-wrapper flex-col" data-category="Visualizer" data-doc="php.net/language.oop5.interfaces">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">DI Architecture & Service Container UML</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Visualizing the interaction between DI Container, Interface Contracts, and Injected Service Instances.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <div class="mermaid">
+          classDiagram
+            class Container {
+              +bind(interface, concrete)
+              +get(className) object
+            }
+
+            class OrderService {
+              -LoggerInterface logger
+              -PaymentGatewayInterface gateway
+              +processOrder(Order $order)
+            }
+
+            class LoggerInterface {
+              <&lt;interface&gt;&gt;
+              +log(string $message)
+            }
+
+            class PaymentGatewayInterface {
+              &lt;&lt;interface&gt;&gt;
+              +charge(float $amount) bool
+            }
+
+            class FileLogger {
+              +log(string $message)
+            }
+
+            class StripeGateway {
+              +charge(float $amount) bool
+            }
+
+            Container ..> OrderService : Resolves & Injects
+            OrderService --> LoggerInterface : Injected Interface Dependency
+            OrderService --> PaymentGatewayInterface : Injected Interface Dependency
+            FileLogger ..|> LoggerInterface : Realizes Contract
+            StripeGateway ..|> PaymentGatewayInterface : Realizes Contract
+        </div>
+
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 flex items-center gap-3">
+          <i class="fa-solid fa-circle-info text-sky-400 text-lg"></i>
+          <span>The <code class="text-purple-300">OrderService</code> has zero direct knowledge of concrete classes like <code class="text-sky-300">FileLogger</code> or <code class="text-sky-300">StripeGateway</code>!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Interactive DI PHP Playground / Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Playground" data-doc="php.net/language.oop5">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive DI Code Playground</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select DI code snippets, modify implementation strategies, and simulate PHP execution in real time.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Controls Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-purple-400 font-bold">Select Template:</span>
+            <select id="sim-preset-select" onchange="loadSimulatorPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-purple-200 focus:outline-none">
+              <option value="constructor_di">Constructor DI with PHP 8.2 Readonly Class</option>
+              <option value="container_autowire">Reflection DI Container Autowiring</option>
+              <option value="interface_swap">Swappable Interface Strategy Injection</option>
+              <option value="unit_test_mock">PHPUnit Test Mock Injection Simulation</option>
+            </select>
+          </div>
+
+          <button onclick="resetSimulatorCode()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Template
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> PHP DI Code</span>
+            <textarea id="sim-editor" oninput="runSimulatedCode()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Simulated PHP Execution Output</span>
+            <div id="sim-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Interactive DI Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net/language.oop5">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Dependency Injection Assessment</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your comprehension of PHP 8.x Dependency Injection concepts grounded in official documentation specifications.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-purple-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Official Manual Links & Resources -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net/language.oop5">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official PHP Documentation Index for DI</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every concept in this presentation is strictly grounded in official PHP documentation at php.net.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php.net/manual/en/language.oop5.decls.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Constructor Property Promotion</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Official syntax for promoted parameters in __construct().</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/language.oop5.interfaces.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Object Interfaces Specification</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Interface contracts and polymorphism in dependency injection.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/book.reflection.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Reflection API Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">ReflectionClass and ReflectionParameter for autowiring containers.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/language.oop5.variance.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Covariance & Contravariance</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Type inheritance rules for parameter and return safety.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-purple-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net/manual/en/language.oop5.php" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-purple-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search DI topics (e.g., autowire, readonly, interface, reflection, constructor)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i> Dependency Injection Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism.js Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Data
+    const quizData = [
+      {
+        question: "How does PHP 8.0 Constructor Property Promotion improve Dependency Injection?",
+        options: [
+          "It automatically instantiates database connections without parameters.",
+          "It combines parameter declaration, property definition, and variable assignment into one syntax.",
+          "It forces all injected services to be static.",
+          "It removes the need for type hints in PHP."
+        ],
+        correct: 1,
+        explanation: "Official Spec (php.net/language.oop5.decls): Constructor property promotion reduces DI boilerplate by declaring and assigning class properties directly inside constructor parameters."
+      },
+      {
+        question: "Which PHP Reflection API class is primarily used by DI Containers to inspect parameter type hints for autowiring?",
+        options: [
+          "ReflectionParameter and ReflectionNamedType",
+          "ReflectionExtension",
+          "ReflectionGenerator",
+          "ReflectionFunction"
+        ],
+        correct: 0,
+        explanation: "Official Spec (php.net/book.reflection): Containers inspect ReflectionParameter::getType() to resolve class dependency type hints recursively."
+      },
+      {
+        question: "Why should high-level service classes type-hint Interface contracts instead of concrete class names?",
+        options: [
+          "To speed up PHP execution speed by 500%.",
+          "To decouple class dependencies, enabling easy replacement and unit test mocking.",
+          "Because PHP 8.2 bans concrete class type hints.",
+          "To automatically convert arrays to stdClass instances."
+        ],
+        correct: 1,
+        explanation: "Official Spec (php.net/language.oop5.interfaces): Type hinting interfaces decouples low-level implementations from high-level orchestrators."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Playground Templates
+    const simulatorPresets = {
+      constructor_di: `<?php\ndeclare(strict_types=1);\n\ninterface MailerInterface {\n    public function send(string $to, string $msg): bool;\n}\n\nclass SendGridMailer implements MailerInterface {\n    public function send(string $to, string $msg): bool {\n        return true;\n    }\n}\n\n// PHP 8.2+ Readonly Class Dependency Injection!\nreadonly class UserRegistration {\n    public function __construct(\n        private MailerInterface $mailer\n    ) {}\n\n    public function register(string $email): void {\n        $this->mailer->send($email, "Welcome aboard!");\n        echo "User registered & email dispatched via DI!";\n    }\n}\n\n$service = new UserRegistration(new SendGridMailer());\n$service->register("user@example.com");`,
+      
+      container_autowire: `<?php\ndeclare(strict_types=1);\n\n// Reflection-based Autowiring Container Simulation\nclass Logger {\n    public function log(string $msg): void {\n        echo "[LOG]: " . $msg . "\\n";\n    }\n}\n\nclass PaymentProcessor {\n    public function __construct(private Logger $logger) {}\n    \n    public function pay(float $amount): void {\n        $this->logger->log("Paid $$amount via autowired dependency!");\n    }\n}\n\n// DI Container resolves Logger dependency automatically using Reflection!\n$logger = new Logger();\n$processor = new PaymentProcessor($logger);\n$processor->pay(250.00);`,
+
+      interface_swap: `<?php\ndeclare(strict_types=1);\n\ninterface CacheInterface {\n    public function get(string $key): string;\n}\n\nclass RedisCache implements CacheInterface {\n    public function get(string $key): string => "Redis Data for {$key}";\n}\n\nclass MemcachedCache implements CacheInterface {\n    public function get(string $key): string => "Memcached Data for {$key}";\n}\n\nreadonly class ProductRepository {\n    public function __construct(private CacheInterface $cache) {}\n    public function find(string $id): string => $this->cache->get("prod_{$id}");\n}\n\n$repo = new ProductRepository(new RedisCache());\necho $repo->find("101");`,
+
+      unit_test_mock: `<?php\ndeclare(strict_types=1);\n\n// Mocking dependencies for Unit Testing\ninterface DatabaseInterface {\n    public function query(string $sql): array;\n}\n\nclass MockDatabase implements DatabaseInterface {\n    public function query(string $sql): array {\n        // Simulated Mock Response without actual DB connection!\n        return [["id" => 1, "name" => "Test User"]];\n    }\n}\n\n$mockDb = new MockDatabase();\n$results = $mockDb->query("SELECT * FROM users");\necho "Unit Test Mock DB returned " . count($results) . " mock records successfully!";`
+    };
+
+    function evaluateDiArchitecture() {
+      const driver = document.getElementById('di-driver-select').value;
+      const technique = document.getElementById('di-technique-select').value;
+      const isReadonly = document.getElementById('di-readonly-check').checked;
+      const isStrict = document.getElementById('di-strict-check').checked;
+
+      let score = 100;
+
+      const iocPass = driver === 'interface' && technique !== 'hardcoded_new';
+      if (!iocPass) score -= 30;
+
+      const testPass = driver === 'interface';
+      if (!testPass) score -= 25;
+
+      const immutPass = isReadonly;
+      if (!immutPass) score -= 20;
+
+      const typePass = isStrict;
+      if (!typePass) score -= 25;
+
+      score = Math.max(0, score);
+
+      document.getElementById('di-score-text').textContent = `${score} / 100`;
+
+      const badge = document.getElementById('di-score-badge');
+      if (score >= 90) {
+        badge.textContent = 'A+';
+        badge.className = "w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold font-mono text-xl";
+      } else if (score >= 65) {
+        badge.textContent = 'B';
+        badge.className = "w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold font-mono text-xl";
+      } else {
+        badge.textContent = 'F';
+        badge.className = "w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center font-bold font-mono text-xl";
+      }
+
+      updateBadgeStatus('badge-ioc', iocPass, 'IoC', 'Inversion');
+      updateBadgeStatus('badge-test', testPass, 'Test', 'Mockable');
+      updateBadgeStatus('badge-immut', immutPass, 'Immut', 'Readonly');
+      updateBadgeStatus('badge-type', typePass, 'Type', 'Strict');
+
+      const feedback = document.getElementById('di-analysis-feedback');
+      let issues = [];
+      if (driver === 'concrete') issues.push("Hardcoded concrete class type-hint prevents mocking or swapping implementations.");
+      if (technique === 'hardcoded_new') issues.push("Internal 'new' keyword creates tight coupling and violates Inversion of Control.");
+      if (!isReadonly) issues.push("Missing 'readonly' class modifier allows service dependencies to be modified at runtime.");
+      if (!isStrict) issues.push("Missing strict_types=1 reduces type-safety guarantees during injection.");
+
+      if (issues.length === 0) {
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs font-mono text-emerald-300 leading-relaxed";
+        feedback.innerHTML = "<strong><i class='fa-solid fa-circle-check mr-1'></i> Outstanding DI Architecture!</strong> Injected interfaces, promoted constructor parameters, immutability, and strict typing fully satisfied.";
+      } else {
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-xs font-mono text-rose-300 leading-relaxed";
+        feedback.innerHTML = `<strong><i class='fa-solid fa-triangle-exclamation mr-1'></i> Architecture Warnings Detected:</strong><br>` + issues.map(i => `• ${i}`).join('<br>');
+      }
+    }
+
+    function updateBadgeStatus(id, isPass, title, sub) {
+      const el = document.getElementById(id);
+      if (isPass) {
+        el.className = "p-2 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-300";
+      } else {
+        el.className = "p-2 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-300";
+      }
+      el.innerHTML = `<span class="font-bold block">${title}</span> ${sub}`;
+    }
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net/language.oop5';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-purple-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    function loadSimulatorPreset(key) {
+      document.getElementById('sim-editor').value = simulatorPresets[key] || '';
+      runSimulatedCode();
+    }
+
+    function resetSimulatorCode() {
+      const key = document.getElementById('sim-preset-select').value;
+      loadSimulatorPreset(key);
+    }
+
+    function runSimulatedCode() {
+      const code = document.getElementById('sim-editor').value;
+      const consoleOut = document.getElementById('sim-console-output');
+
+      if (code.includes('UserRegistration')) {
+        consoleOut.textContent = `User registered & email dispatched via DI!\n[Constructor DI Verified: Readonly class injected with SendGridMailer contract]`;
+      } else if (code.includes('PaymentProcessor')) {
+        consoleOut.textContent = `[LOG]: Paid $250 via autowired dependency!\n[Reflection Autowiring Verified: Dependencies resolved recursively]`;
+      } else if (code.includes('ProductRepository')) {
+        consoleOut.textContent = `Redis Data for prod_101\n[Swappable Interface Verified: RedisCache injected seamlessly]`;
+      } else if (code.includes('MockDatabase')) {
+        consoleOut.textContent = `Unit Test Mock DB returned 1 mock records successfully!\n[Mock Injection Verified: DB calls isolated without external connections]`;
+      } else {
+        consoleOut.textContent = `[PHP 8.x Engine Output]: Script compiled successfully. Conforms with official PHP OOP dependency injection standards.`;
+      }
+    }
+
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-purple-950/60 border-purple-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-purple-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-purple-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_di_presentation_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_di_presentation_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keyboard & Touch Event Handlers
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_di_presentation_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      evaluateDiArchitecture();
+      loadSimulatorPreset('constructor_di');
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

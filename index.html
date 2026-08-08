@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHP Master Hub - Centro de Aprendizaje e Índice Interactivo</title>
+
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        php: {
+                            light: '#8892bf',
+                            DEFAULT: '#4f5b93',
+                            dark: '#2d334a',
+                            accent: '#7A86B8'
+                        },
+                        neon: {
+                            purple: '#A855F7',
+                            cyan: '#06B6D4',
+                            emerald: '#10B981',
+                            pink: '#EC4899',
+                            amber: '#F59E0B',
+                            indigo: '#6366F1'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glow': 'glow 3s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 15px rgba(168, 85, 247, 0.3)' },
+                            '100%': { boxShadow: '0 0 30px rgba(6, 182, 212, 0.6)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Base scrollbar customization */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .light ::-webkit-scrollbar-track {
+            background: rgba(241, 245, 249, 0.8);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.5);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8B5CF6;
+        }
+
+        /* Glassmorphism utility classes */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .light .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        /* Ambient background canvas container */
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Animated gradient text effect */
+        .text-gradient {
+            background: linear-gradient(135deg, #A855F7 0%, #06B6D4 50%, #10B981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Topic Card Hover glow and zoom transition */
+        .topic-card {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .topic-card:hover {
+            transform: translateY(-5px) scale(1.01);
+        }
+
+        /* Custom Dropdown animation */
+        .dropdown-menu {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+            pointer-events: none;
+            transition: all 0.2s ease-out;
+        }
+        .dropdown-menu.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col transition-colors duration-300 antialiased selection:bg-purple-500 selection:text-white light:bg-slate-50 light:text-slate-800">
+
+<!-- Interactive Ambient Canvas Background -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- Top Learning Progress Bar -->
+<div class="fixed top-0 left-0 w-full h-1 bg-slate-800 z-50">
+    <div id="progressBar" class="h-full bg-gradient-to-r from-purple-500 via-cyan-400 to-emerald-400 w-0 transition-all duration-500 shadow-[0_0_10px_#A855F7]"></div>
+</div>
+
+<header class="sticky top-0 z-40 w-full glass-panel border-b border-slate-800/80 transition-all duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+
+        <!-- Brand Logo -->
+        <a href="#" class="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-xl p-1">
+            <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-purple-600 via-cyan-500 to-emerald-400 p-[2px] shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-all">
+                <div class="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center light:bg-white">
+                    <i class="fa-brands fa-php text-2xl text-purple-400 group-hover:scale-110 transition-transform"></i>
+                </div>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xl font-extrabold tracking-tight text-white light:text-slate-900">PHP<span class="text-gradient">Hub</span></span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">v8.3+</span>
+                </div>
+                <p class="text-xs text-slate-400 light:text-slate-500 font-medium hidden sm:block">Índice Interactivo & Guía Completa</p>
+            </div>
+        </a>
+
+        <!-- Desktop Category Nav Dropdowns -->
+        <nav class="hidden xl:flex items-center gap-1 font-medium text-xs">
+
+            <!-- Category 1 Dropdown: Core & Sintaxis -->
+            <div class="relative dropdown-container">
+                <button class="dropdown-btn px-2.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors flex items-center gap-1 light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100">
+                    <i class="fa-solid fa-code text-xs text-purple-400"></i>Core & Sintaxis
+                    <i class="fa-solid fa-chevron-down text-[10px] opacity-60"></i>
+                </button>
+                <div class="dropdown-menu absolute top-full left-0 mt-2 w-72 glass-panel rounded-xl shadow-2xl p-2 z-50 border border-slate-700/50 light:bg-white light:border-slate-200">
+                    <a href="#cat-core" class="filter-category-btn block px-3 py-1.5 rounded-lg text-xs font-semibold text-purple-300 hover:bg-purple-600/20 light:hover:bg-purple-50" data-cat="core">
+                        <i class="fa-solid fa-layer-group mr-1.5"></i>Ver Módulo Completo
+                    </a>
+                    <div class="h-px bg-slate-800 my-1 light:bg-slate-100"></div>
+                    <a href="#tema-modern-syntax" onclick="hubApp.openTopic('core-language-modern-features/modern-php-syntax-presentation.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Modern PHP Syntax</a>
+                    <a href="#tema-type-system" onclick="hubApp.openTopic('core-language-modern-features/type-system.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Type System & Strict Types</a>
+                    <a href="#tema-control-flow" onclick="hubApp.openTopic('core-language-modern-features/advanced-control-flow.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Advanced Control Flow</a>
+                    <a href="#tema-attributes" onclick="hubApp.openTopic('core-language-modern-features/attributes.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">PHP 8 Attributes</a>
+                </div>
+            </div>
+
+            <!-- Category 2 Dropdown: Paradigmas -->
+            <div class="relative dropdown-container">
+                <button class="dropdown-btn px-2.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors flex items-center gap-1 light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100">
+                    <i class="fa-solid fa-cubes text-xs text-cyan-400"></i>Paradigmas
+                    <i class="fa-solid fa-chevron-down text-[10px] opacity-60"></i>
+                </button>
+                <div class="dropdown-menu absolute top-full left-0 mt-2 w-72 glass-panel rounded-xl shadow-2xl p-2 z-50 border border-slate-700/50 light:bg-white light:border-slate-200">
+                    <a href="#cat-paradigms" class="filter-category-btn block px-3 py-1.5 rounded-lg text-xs font-semibold text-cyan-300 hover:bg-cyan-600/20 light:hover:bg-cyan-50" data-cat="paradigms">
+                        <i class="fa-solid fa-layer-group mr-1.5"></i>Ver Módulo Completo
+                    </a>
+                    <div class="h-px bg-slate-800 my-1 light:bg-slate-100"></div>
+                    <a href="#tema-advanced-oop" onclick="hubApp.openTopic('programming-paradigms/advanced-oop.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Advanced OOP</a>
+                    <a href="#tema-functional" onclick="hubApp.openTopic('programming-paradigms/functional-programming.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Functional Programming</a>
+                    <a href="#tema-metaprogramming" onclick="hubApp.openTopic('programming-paradigms/metaprogramming.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Metaprogramming & Reflection</a>
+                </div>
+            </div>
+
+            <!-- Category 3 Dropdown: Arquitectura -->
+            <div class="relative dropdown-container">
+                <button class="dropdown-btn px-2.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors flex items-center gap-1 light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100">
+                    <i class="fa-solid fa-sitemap text-xs text-indigo-400"></i>Arquitectura
+                    <i class="fa-solid fa-chevron-down text-[10px] opacity-60"></i>
+                </button>
+                <div class="dropdown-menu absolute top-full left-0 mt-2 w-72 glass-panel rounded-xl shadow-2xl p-2 z-50 border border-slate-700/50 light:bg-white light:border-slate-200">
+                    <a href="#cat-architecture" class="filter-category-btn block px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-300 hover:bg-indigo-600/20 light:hover:bg-indigo-50" data-cat="architecture">
+                        <i class="fa-solid fa-layer-group mr-1.5"></i>Ver Módulo Completo
+                    </a>
+                    <div class="h-px bg-slate-800 my-1 light:bg-slate-100"></div>
+                    <a href="#tema-mvc" onclick="hubApp.openTopic('architecture-design-patterns/mvc-separation-concerns.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">MVC & Separation of Concerns</a>
+                    <a href="#tema-solid" onclick="hubApp.openTopic('architecture-design-patterns/solid-principles.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">SOLID Principles</a>
+                    <a href="#tema-di" onclick="hubApp.openTopic('architecture-design-patterns/dependency-injection.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Dependency Injection</a>
+                </div>
+            </div>
+
+            <!-- Category 4 Dropdown: Seguridad -->
+            <div class="relative dropdown-container">
+                <button class="dropdown-btn px-2.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors flex items-center gap-1 light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100">
+                    <i class="fa-solid fa-shield-halved text-xs text-emerald-400"></i>Seguridad
+                    <i class="fa-solid fa-chevron-down text-[10px] opacity-60"></i>
+                </button>
+                <div class="dropdown-menu absolute top-full left-0 mt-2 w-72 glass-panel rounded-xl shadow-2xl p-2 z-50 border border-slate-700/50 light:bg-white light:border-slate-200">
+                    <a href="#cat-security" class="filter-category-btn block px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 hover:bg-emerald-600/20 light:hover:bg-emerald-50" data-cat="security">
+                        <i class="fa-solid fa-layer-group mr-1.5"></i>Ver Módulo Completo
+                    </a>
+                    <div class="h-px bg-slate-800 my-1 light:bg-slate-100"></div>
+                    <a href="#tema-security" onclick="hubApp.openTopic('security-data-integrity/security.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Web Security Essentials</a>
+                    <a href="#tema-defensive" onclick="hubApp.openTopic('security-data-integrity/defensive-coding.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Defensive Coding</a>
+                    <a href="#tema-crypto" onclick="hubApp.openTopic('security-data-integrity/cryptography.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Cryptography & Hashing</a>
+                </div>
+            </div>
+
+            <!-- Category 5 Dropdown: Quality & Testing -->
+            <div class="relative dropdown-container">
+                <button class="dropdown-btn px-2.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors flex items-center gap-1 light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100">
+                    <i class="fa-solid fa-vial-circle-check text-xs text-amber-400"></i>Testing
+                    <i class="fa-solid fa-chevron-down text-[10px] opacity-60"></i>
+                </button>
+                <div class="dropdown-menu absolute top-full right-0 mt-2 w-72 glass-panel rounded-xl shadow-2xl p-2 z-50 border border-slate-700/50 light:bg-white light:border-slate-200">
+                    <a href="#cat-testing" class="filter-category-btn block px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-300 hover:bg-amber-600/20 light:hover:bg-amber-50" data-cat="testing">
+                        <i class="fa-solid fa-layer-group mr-1.5"></i>Ver Módulo Completo
+                    </a>
+                    <div class="h-px bg-slate-800 my-1 light:bg-slate-100"></div>
+                    <a href="#tema-phpfig" onclick="hubApp.openTopic('testing-quality-standards/phpfig-standards.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">PHP-FIG Standards (PSR)</a>
+                    <a href="#tema-static-analysis" onclick="hubApp.openTopic('testing-quality-standards/static-analysis.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Static Analysis Tools</a>
+                    <a href="#tema-automated-testing" onclick="hubApp.openTopic('testing-quality-standards/automated-testing.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Automated Testing</a>
+                </div>
+            </div>
+
+            <!-- Category 6 & 7 Dropdown: Infra & Docs -->
+            <div class="relative dropdown-container">
+                <button class="dropdown-btn px-2.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors flex items-center gap-1 light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100">
+                    <i class="fa-solid fa-gears text-xs text-pink-400"></i>Infra & Docs
+                    <i class="fa-solid fa-chevron-down text-[10px] opacity-60"></i>
+                </button>
+                <div class="dropdown-menu absolute top-full right-0 mt-2 w-72 glass-panel rounded-xl shadow-2xl p-2 z-50 border border-slate-700/50 light:bg-white light:border-slate-200">
+                    <a href="#cat-infra" class="filter-category-btn block px-3 py-1 rounded-lg text-xs font-semibold text-pink-300 hover:bg-pink-600/20 light:hover:bg-pink-50" data-cat="infra">
+                        <i class="fa-solid fa-layer-group mr-1.5"></i>Infraestructura & Performance
+                    </a>
+                    <a href="#cat-community" class="filter-category-btn block px-3 py-1 rounded-lg text-xs font-semibold text-teal-300 hover:bg-teal-600/20 light:hover:bg-teal-50" data-cat="community">
+                        <i class="fa-solid fa-book-bookmark mr-1.5"></i>Documentación & Comunidad
+                    </a>
+                    <div class="h-px bg-slate-800 my-1 light:bg-slate-100"></div>
+                    <a href="#tema-composer" onclick="hubApp.openTopic('infraestructure-tooling-performance/dependency-management.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Dependency Management</a>
+                    <a href="#tema-perf" onclick="hubApp.openTopic('infraestructure-tooling-performance/performance-optimization.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Performance Optimization</a>
+                    <a href="#tema-observability" onclick="hubApp.openTopic('infraestructure-tooling-performance/observability.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Observability & Logging</a>
+                    <a href="#tema-deploy" onclick="hubApp.openTopic('infraestructure-tooling-performance/deployment-environments.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">Deployment Environments</a>
+                    <a href="#tema-phpdoc" onclick="hubApp.openTopic('documentation-community/phpdoc.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">PHPDoc & Standard Documentation</a>
+                    <a href="#tema-lifecycle" onclick="hubApp.openTopic('documentation-community/lifecycle-management.html')" class="block px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50 light:hover:bg-slate-100">PHP Lifecycle & Versioning</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Actions Right Area -->
+        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Theme Toggle Button -->
+            <button id="themeToggleBtn" aria-label="Cambiar tema claro u oscuro" class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 hover:text-amber-300 hover:bg-slate-800 transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 light:bg-slate-100 light:border-slate-200 light:text-slate-700">
+                <i class="fa-solid fa-sun text-lg dark:block hidden"></i>
+                <i class="fa-solid fa-moon text-lg dark:hidden block"></i>
+            </button>
+
+            <!-- Mobile Hamburger Button -->
+            <button id="mobileMenuBtn" aria-label="Abrir menú de navegación" class="xl:hidden p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition-all light:bg-slate-100 light:border-slate-200 light:text-slate-700">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="mobileDrawer" class="xl:hidden hidden fixed inset-0 top-20 bg-slate-950/95 backdrop-blur-xl z-50 p-6 flex-col overflow-y-auto border-t border-slate-800 transition-all light:bg-slate-50/95">
+        <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800 light:border-slate-200">
+            <span class="text-xs font-mono text-purple-400 font-bold uppercase tracking-wider">Módulos PHP (22 Temas)</span>
+            <span class="text-xs text-slate-400 font-medium" id="mobileProgressCount">0 / 22 Vistos</span>
+        </div>
+
+        <div class="space-y-5 pb-8">
+            <!-- Module 1 Mobile -->
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-purple-400 mb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-code"></i> Core & Sintaxis Moderna
+                </h4>
+                <div class="space-y-1 pl-3 border-l-2 border-purple-500/30">
+                    <a href="#tema-modern-syntax" onclick="hubApp.openTopic('core-language-modern-features/modern-php-syntax-presentation.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Modern PHP Syntax</a>
+                    <a href="#tema-type-system" onclick="hubApp.openTopic('core-language-modern-features/type-system.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Type System & Strict Types</a>
+                    <a href="#tema-control-flow" onclick="hubApp.openTopic('core-language-modern-features/advanced-control-flow.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Advanced Control Flow</a>
+                    <a href="#tema-attributes" onclick="hubApp.openTopic('core-language-modern-features/attributes.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">PHP 8 Attributes</a>
+                </div>
+            </div>
+
+            <!-- Module 2 Mobile -->
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-cubes"></i> Paradigmas de Programación
+                </h4>
+                <div class="space-y-1 pl-3 border-l-2 border-cyan-500/30">
+                    <a href="#tema-advanced-oop" onclick="hubApp.openTopic('programming-paradigms/advanced-oop.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Advanced OOP</a>
+                    <a href="#tema-functional" onclick="hubApp.openTopic('programming-paradigms/functional-programming.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Functional Programming</a>
+                    <a href="#tema-metaprogramming" onclick="hubApp.openTopic('programming-paradigms/metaprogramming.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Metaprogramming & Reflection</a>
+                </div>
+            </div>
+
+            <!-- Module 3 Mobile -->
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-sitemap"></i> Arquitectura & Patrones
+                </h4>
+                <div class="space-y-1 pl-3 border-l-2 border-indigo-500/30">
+                    <a href="#tema-mvc" onclick="hubApp.openTopic('architecture-design-patterns/mvc-separation-concerns.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">MVC & Separation of Concerns</a>
+                    <a href="#tema-solid" onclick="hubApp.openTopic('architecture-design-patterns/solid-principles.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">SOLID Principles</a>
+                    <a href="#tema-di" onclick="hubApp.openTopic('architecture-design-patterns/dependency-injection.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Dependency Injection</a>
+                </div>
+            </div>
+
+            <!-- Module 4 Mobile -->
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved"></i> Seguridad & Datos
+                </h4>
+                <div class="space-y-1 pl-3 border-l-2 border-emerald-500/30">
+                    <a href="#tema-security" onclick="hubApp.openTopic('security-data-integrity/security.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Web Security Essentials</a>
+                    <a href="#tema-defensive" onclick="hubApp.openTopic('security-data-integrity/defensive-coding.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Defensive Coding</a>
+                    <a href="#tema-crypto" onclick="hubApp.openTopic('security-data-integrity/cryptography.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Cryptography & Hashing</a>
+                </div>
+            </div>
+
+            <!-- Module 5 Mobile -->
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-vial-circle-check"></i> Testing & Estándares
+                </h4>
+                <div class="space-y-1 pl-3 border-l-2 border-amber-500/30">
+                    <a href="#tema-phpfig" onclick="hubApp.openTopic('testing-quality-standards/phpfig-standards.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">PHP-FIG Standards (PSR)</a>
+                    <a href="#tema-static-analysis" onclick="hubApp.openTopic('testing-quality-standards/static-analysis.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Static Analysis Tools</a>
+                    <a href="#tema-automated-testing" onclick="hubApp.openTopic('testing-quality-standards/automated-testing.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Automated Testing</a>
+                </div>
+            </div>
+
+            <!-- Module 6 & 7 Mobile -->
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-pink-400 mb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-gears"></i> Infraestructura & Docs
+                </h4>
+                <div class="space-y-1 pl-3 border-l-2 border-pink-500/30">
+                    <a href="#tema-composer" onclick="hubApp.openTopic('infraestructure-tooling-performance/dependency-management.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Dependency Management</a>
+                    <a href="#tema-perf" onclick="hubApp.openTopic('infraestructure-tooling-performance/performance-optimization.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Performance Optimization</a>
+                    <a href="#tema-observability" onclick="hubApp.openTopic('infraestructure-tooling-performance/observability.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Observability & Logging</a>
+                    <a href="#tema-deploy" onclick="hubApp.openTopic('infraestructure-tooling-performance/deployment-environments.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">Deployment Environments</a>
+                    <a href="#tema-phpdoc" onclick="hubApp.openTopic('documentation-community/phpdoc.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">PHPDoc & Standard Documentation</a>
+                    <a href="#tema-lifecycle" onclick="hubApp.openTopic('documentation-community/lifecycle-management.html'); hubApp.toggleMobileMenu()" class="block py-1 text-xs text-slate-300 hover:text-white">PHP Lifecycle & Versioning</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="relative z-10 flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <!-- Hero Welcome Header -->
+    <section class="text-center max-w-3xl mx-auto mb-10 sm:mb-12">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-semibold mb-6 animate-pulse-slow">
+            <i class="fa-solid fa-sparkles text-amber-400"></i>
+            <span>PHP Learning Ecosystem • 22 Módulos Especializados</span>
+        </div>
+
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-4 light:text-slate-900 leading-tight">
+            Mastering <span class="text-gradient">Modern PHP</span>
+        </h1>
+
+        <p class="text-slate-400 text-base sm:text-lg mb-8 light:text-slate-600 font-normal">
+            Explora el ecosistema completo de PHP 8.3+: desde sintaxis avanzada y POO hasta arquitectura MVC, seguridad defensiva, pruebas automatizadas y despliegue.
+        </p>
+
+        <!-- Real-Time Search Bar -->
+        <div class="relative max-w-2xl mx-auto group">
+            <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-600 via-cyan-500 to-emerald-400 opacity-20 blur-lg group-hover:opacity-40 transition-opacity"></div>
+            <div class="relative flex items-center glass-panel rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl focus-within:border-purple-500 transition-colors light:bg-white light:border-slate-300">
+                <i class="fa-solid fa-magnifying-glass text-slate-400 text-lg ml-4 mr-3"></i>
+                <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="Buscar temas (ej: Attributes, MVC, SOLID, Composer, Testing, Crypto)..."
+                    class="w-full bg-transparent py-4 pr-12 text-slate-100 placeholder-slate-500 focus:outline-none text-sm sm:text-base light:text-slate-800"
+                    autocomplete="off"
+                >
+                <button id="clearSearchBtn" aria-label="Limpiar búsqueda" class="hidden absolute right-12 text-slate-400 hover:text-white p-2">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <kbd class="hidden sm:inline-block mr-4 text-[10px] font-mono px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 light:bg-slate-100 light:border-slate-300">Ctrl + K</kbd>
+            </div>
+        </div>
+
+        <!-- Stats & Quick Category Filter Tabs -->
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-2" id="categoryFilterContainer">
+            <button class="filter-pill active px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-purple-600 text-white shadow-lg shadow-purple-600/30" data-cat="all">
+                Todos (<span id="totalTopicCount">22</span>)
+            </button>
+            <button class="filter-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:bg-slate-800 light:bg-white light:border-slate-200 light:text-slate-600" data-cat="core">
+                <i class="fa-solid fa-code text-purple-400 mr-1"></i>Core
+            </button>
+            <button class="filter-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:bg-slate-800 light:bg-white light:border-slate-200 light:text-slate-600" data-cat="paradigms">
+                <i class="fa-solid fa-cubes text-cyan-400 mr-1"></i>Paradigmas
+            </button>
+            <button class="filter-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:bg-slate-800 light:bg-white light:border-slate-200 light:text-slate-600" data-cat="architecture">
+                <i class="fa-solid fa-sitemap text-indigo-400 mr-1"></i>Arquitectura
+            </button>
+            <button class="filter-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:bg-slate-800 light:bg-white light:border-slate-200 light:text-slate-600" data-cat="security">
+                <i class="fa-solid fa-shield-halved text-emerald-400 mr-1"></i>Seguridad
+            </button>
+            <button class="filter-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:bg-slate-800 light:bg-white light:border-slate-200 light:text-slate-600" data-cat="testing">
+                <i class="fa-solid fa-vial-circle-check text-amber-400 mr-1"></i>Testing
+            </button>
+            <button class="filter-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:bg-slate-800 light:bg-white light:border-slate-200 light:text-slate-600" data-cat="infra">
+                <i class="fa-solid fa-gears text-pink-400 mr-1"></i>Infra & Performance
+            </button>
+            <button class="filter-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:bg-slate-800 light:bg-white light:border-slate-200 light:text-slate-600" data-cat="community">
+                <i class="fa-solid fa-book-bookmark text-teal-400 mr-1"></i>Docs
+            </button>
+        </div>
+    </section>
+
+    <!-- Search Status Bar -->
+    <div id="searchStats" class="flex justify-between items-center mb-6 px-2 text-xs font-mono text-slate-400">
+        <span id="resultsCount">Mostrando 22 temas de PHP</span>
+        <button id="resetFiltersBtn" class="hidden text-purple-400 hover:underline">Reiniciar filtros</button>
+    </div>
+
+    <div id="topicsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- MODULE 1: CORE & MODERN SYNTAX -->
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-purple-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="modern-syntax"
+                 data-cat="core"
+                 data-file="core-language-modern-features/modern-php-syntax-presentation.html"
+                 data-keywords="syntax modern php8 match readonly named arguments match expression nullsafe arrow functions fn">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                            Core Language
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-code text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Modern PHP Syntax Presentation</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Explora la sintaxis de PHP 8.x+: Expresiones <code>match</code>, parámetros nombrados, operador nullsafe <code>?-&gt;</code> y propiedades <code>readonly</code>.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>core-language</span>
+                <a href="core-language-modern-features/modern-php-syntax-presentation.html" onclick="event.preventDefault(); hubApp.openTopic('core-language-modern-features/modern-php-syntax-presentation.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-purple-300 hover:bg-purple-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-purple-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-purple-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="type-system"
+                 data-cat="core"
+                 data-file="core-language-modern-features/type-system.html"
+                 data-keywords="type system strict_types declare union types intersection types scalar return type hinting">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                            Core Language
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-font text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Type System & Strict Types</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    El sistema de tipos estricto en PHP: Union Types, Intersection Types, DNF Types, <code>declare(strict_types=1)</code> y type casting.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>core-language</span>
+                <a href="core-language-modern-features/type-system.html" onclick="event.preventDefault(); hubApp.openTopic('core-language-modern-features/type-system.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-purple-300 hover:bg-purple-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-purple-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-purple-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="control-flow"
+                 data-cat="core"
+                 data-file="core-language-modern-features/advanced-control-flow.html"
+                 data-keywords="control flow loops match switch generators yield break continue iteration">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                            Core Language
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-diagram-project text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Advanced Control Flow</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Control de flujo avanzado, iteradores eficientes, generadores con <code>yield</code> y estructuras condicionales optimizadas.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>core-language</span>
+                <a href="core-language-modern-features/advanced-control-flow.html" onclick="event.preventDefault(); hubApp.openTopic('core-language-modern-features/advanced-control-flow.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-purple-300 hover:bg-purple-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-purple-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-purple-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="attributes"
+                 data-cat="core"
+                 data-file="core-language-modern-features/attributes.html"
+                 data-keywords="attributes anotaciones metadata reflection php8 attribute target reflectionattribute">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                            Core Language
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-at text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">PHP 8 Attributes</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Uso de atributos nativos <code>#[Attribute]</code> para metadatos estructurados en lugar de comentarios DocBlock.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>core-language</span>
+                <a href="core-language-modern-features/attributes.html" onclick="event.preventDefault(); hubApp.openTopic('core-language-modern-features/attributes.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-purple-300 hover:bg-purple-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-purple-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <!-- MODULE 2: PROGRAMMING PARADIGMS -->
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-cyan-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="advanced-oop"
+                 data-cat="paradigms"
+                 data-file="programming-paradigms/advanced-oop.html"
+                 data-keywords="oop poo classes inheritance traits interfaces abstract classes enums polymorphism readonly classes">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                            Paradigmas
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-cubes text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Advanced Object-Oriented Programming</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    POO Avanzado: Enums respaldados (Backed Enums), Traits, Interfaces compuestas, clases <code>readonly</code> y polimorfismo.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>paradigms</span>
+                <a href="programming-paradigms/advanced-oop.html" onclick="event.preventDefault(); hubApp.openTopic('programming-paradigms/advanced-oop.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-cyan-300 hover:bg-cyan-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-cyan-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-cyan-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="functional"
+                 data-cat="paradigms"
+                 data-file="programming-paradigms/functional-programming.html"
+                 data-keywords="functional closure arrow functions fn array_map array_filter array_reduce immutability pure functions">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                            Paradigmas
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-infinity text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Functional Programming in PHP</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Programación Funcional: Cláusulas <code>fn()</code>, immutabilidad, colecciones funcionales, <code>Closure::bind</code> y currying.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>paradigms</span>
+                <a href="programming-paradigms/functional-programming.html" onclick="event.preventDefault(); hubApp.openTopic('programming-paradigms/functional-programming.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-cyan-300 hover:bg-cyan-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-cyan-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-cyan-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="metaprogramming"
+                 data-cat="paradigms"
+                 data-file="programming-paradigms/metaprogramming.html"
+                 data-keywords="metaprogramming reflection reflectionclass __call __get magic methods dynamic proxy">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                            Paradigmas
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Metaprogramming & Reflection API</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Introspección dinámica con Reflection API, métodos mágicos (<code>__call</code>, <code>__get</code>) y proxificación de clases.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>paradigms</span>
+                <a href="programming-paradigms/metaprogramming.html" onclick="event.preventDefault(); hubApp.openTopic('programming-paradigms/metaprogramming.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-cyan-300 hover:bg-cyan-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-cyan-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <!-- MODULE 3: ARCHITECTURE & DESIGN PATTERNS -->
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-indigo-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="mvc"
+                 data-cat="architecture"
+                 data-file="architecture-design-patterns/mvc-separation-concerns.html"
+                 data-keywords="mvc model view controller separation of concerns design patterns routing architecture">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                            Arquitectura
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-sitemap text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">MVC & Separation of Concerns</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Patrón Modelo-Vista-Controlador: Separación de la capa de datos, lógica de negocio y presentación de la interfaz.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>architecture</span>
+                <a href="architecture-design-patterns/mvc-separation-concerns.html" onclick="event.preventDefault(); hubApp.openTopic('architecture-design-patterns/mvc-separation-concerns.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-indigo-300 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-indigo-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-indigo-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="solid"
+                 data-cat="architecture"
+                 data-file="architecture-design-patterns/solid-principles.html"
+                 data-keywords="solid srp ocp lsp isp dip clean code design principles refactoring architecture">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                            Arquitectura
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-cube text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">SOLID Principles in PHP</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Los 5 principios SOLID explicados con código PHP práctico para crear sistemas mantenibles y desacoplados.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>architecture</span>
+                <a href="architecture-design-patterns/solid-principles.html" onclick="event.preventDefault(); hubApp.openTopic('architecture-design-patterns/solid-principles.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-indigo-300 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-indigo-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-indigo-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="di"
+                 data-cat="architecture"
+                 data-file="architecture-design-patterns/dependency-injection.html"
+                 data-keywords="dependency injection di container psr-11 inversion of control ioc service locator autowiring">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                            Arquitectura
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-plug text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Dependency Injection & DI Containers</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Inyección de dependencias, autowiring, Contenedores Inversión de Control (IoC) y cumplimiento de PSR-11.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>architecture</span>
+                <a href="architecture-design-patterns/dependency-injection.html" onclick="event.preventDefault(); hubApp.openTopic('architecture-design-patterns/dependency-injection.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-indigo-300 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-indigo-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <!-- MODULE 4: SECURITY & DATA INTEGRITY -->
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-emerald-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="security"
+                 data-cat="security"
+                 data-file="security-data-integrity/security.html"
+                 data-keywords="security xss csrf sql injection prepared statements htmlspecialchars sanitization owasp">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                            Seguridad
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-shield-halved text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Web Security Essentials</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Mitigación de vulnerabilidades comunes: Prevención de SQL Injection, Cross-Site Scripting (XSS) y CSRF.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>security</span>
+                <a href="security-data-integrity/security.html" onclick="event.preventDefault(); hubApp.openTopic('security-data-integrity/security.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-emerald-300 hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-emerald-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-emerald-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="defensive"
+                 data-cat="security"
+                 data-file="security-data-integrity/defensive-coding.html"
+                 data-keywords="defensive coding validation filter_input error handling fail safe fail fast input sanitization">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                            Seguridad
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-user-shield text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Defensive Coding Practices</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Programación defensiva: Principio "Fail-Fast", validación mediante `filter_var`, guard clauses y desinfectado estricto.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>security</span>
+                <a href="security-data-integrity/defensive-coding.html" onclick="event.preventDefault(); hubApp.openTopic('security-data-integrity/defensive-coding.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-emerald-300 hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-emerald-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-emerald-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="crypto"
+                 data-cat="security"
+                 data-file="security-data-integrity/cryptography.html"
+                 data-keywords="cryptography hashing password_hash password_verify sodium AES-256-GCM encryption tokens HMAC">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                            Seguridad
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-key text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Cryptography & Password Hashing</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Criptografía moderna: Hashing seguro con `password_hash()` (Bcrypt/Argon2id), Libsodium y cifrado simétrico AES.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>security</span>
+                <a href="security-data-integrity/cryptography.html" onclick="event.preventDefault(); hubApp.openTopic('security-data-integrity/cryptography.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-emerald-300 hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-emerald-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <!-- MODULE 5: TESTING & QUALITY STANDARDS -->
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-amber-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="phpfig"
+                 data-cat="testing"
+                 data-file="testing-quality-standards/phpfig-standards.html"
+                 data-keywords="phpfig psr psr-1 psr-12 psr-4 autoloader psr-7 psr-11 standards formatting cs fixer">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                            Quality & Testing
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-award text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">PHP-FIG Standards (PSR-1 to PSR-12)</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Estándares de interoperabilidad PHP-FIG: Autoloading (PSR-4), Code Style (PSR-12), HTTP Messages (PSR-7) y Caching.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>testing-quality</span>
+                <a href="testing-quality-standards/phpfig-standards.html" onclick="event.preventDefault(); hubApp.openTopic('testing-quality-standards/phpfig-standards.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-amber-300 hover:bg-amber-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-amber-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-amber-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="static-analysis"
+                 data-cat="testing"
+                 data-file="testing-quality-standards/static-analysis.html"
+                 data-keywords="static analysis phpstan psalm php_codesniffer linting type safety level 9 code quality">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                            Quality & Testing
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-magnifying-glass-chart text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Static Analysis Tools</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Análisis estático de código sin ejecutarlo: Configuración de PHPStan, Psalm y PHP_CodeSniffer en nivel de rigor máximo.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>testing-quality</span>
+                <a href="testing-quality-standards/static-analysis.html" onclick="event.preventDefault(); hubApp.openTopic('testing-quality-standards/static-analysis.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-amber-300 hover:bg-amber-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-amber-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-amber-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="automated-testing"
+                 data-cat="testing"
+                 data-file="testing-quality-standards/automated-testing.html"
+                 data-keywords="testing phpunit pest unit testing integration testing mocks stubs code coverage assertions">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                            Quality & Testing
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-vial-circle-check text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Automated Testing (PHPUnit & Pest)</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Pruebas unitarias e integración con PHPUnit y Pest PHP: Mocks, Stubs, Cobertura de código y TDD.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>testing-quality</span>
+                <a href="testing-quality-standards/automated-testing.html" onclick="event.preventDefault(); hubApp.openTopic('testing-quality-standards/automated-testing.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-amber-300 hover:bg-amber-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-amber-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <!-- MODULE 6: INFRASTRUCTURE, TOOLING & PERFORMANCE -->
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-pink-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="composer"
+                 data-cat="infra"
+                 data-file="infraestructure-tooling-performance/dependency-management.html"
+                 data-keywords="composer dependency management composer.json autoload packagist semver vendor lock">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-pink-500/10 text-pink-300 border border-pink-500/20">
+                            Infraestructura
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-box-archive text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Dependency Management with Composer</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Gestión de paquetes con Composer: Archivos `composer.json`, versionado semántico (SemVer) y optimización del autoload.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>infraestructure</span>
+                <a href="infraestructure-tooling-performance/dependency-management.html" onclick="event.preventDefault(); hubApp.openTopic('infraestructure-tooling-performance/dependency-management.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-pink-300 hover:bg-pink-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-pink-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-pink-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="perf"
+                 data-cat="infra"
+                 data-file="infraestructure-tooling-performance/performance-optimization.html"
+                 data-keywords="performance opcache jit memory benchmarking caching redis profiling blackfire xdebug">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-pink-500/10 text-pink-300 border border-pink-500/20">
+                            Infraestructura
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-gauge-high text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Performance Optimization & OPcache</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Aceleración de aplicaciones PHP: OPcache, compilación JIT (Just-In-Time), reducción de footprint de memoria y caché Redis.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>infraestructure</span>
+                <a href="infraestructure-tooling-performance/performance-optimization.html" onclick="event.preventDefault(); hubApp.openTopic('infraestructure-tooling-performance/performance-optimization.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-pink-300 hover:bg-pink-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-pink-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-pink-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="observability"
+                 data-cat="infra"
+                 data-file="infraestructure-tooling-performance/observability.html"
+                 data-keywords="observability logging monolog metrics tracing telemetry opentelemetry Sentry error tracking psr-3">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-pink-500/10 text-pink-300 border border-pink-500/20">
+                            Infraestructura
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-chart-line text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Observability, Logging & Monitoring</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Telemetría en producción: Monolog (PSR-3), OpenTelemetry, tracing distribuido y rastreo de errores en tiempo real.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>infraestructure</span>
+                <a href="infraestructure-tooling-performance/observability.html" onclick="event.preventDefault(); hubApp.openTopic('infraestructure-tooling-performance/observability.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-pink-300 hover:bg-pink-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-pink-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-pink-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="deploy"
+                 data-cat="infra"
+                 data-file="infraestructure-tooling-performance/deployment-environments.html"
+                 data-keywords="deployment docker php-fpm nginx frankenphp roadrunner containers ci/cd kubernetes serverless">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-pink-500/10 text-pink-300 border border-pink-500/20">
+                            Infraestructura
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-server text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">Deployment & Server Environments</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Entornos de ejecución: PHP-FPM Nginx vs Servidores Asíncronos (FrankenPHP / RoadRunner) y Dockerización.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>infraestructure</span>
+                <a href="infraestructure-tooling-performance/deployment-environments.html" onclick="event.preventDefault(); hubApp.openTopic('infraestructure-tooling-performance/deployment-environments.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-pink-300 hover:bg-pink-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-pink-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <!-- MODULE 7: DOCUMENTATION & COMMUNITY -->
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-teal-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="phpdoc"
+                 data-cat="community"
+                 data-file="documentation-community/phpdoc.html"
+                 data-keywords="phpdoc docblock comments documentation annotations @param @return @throws generics">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                            Docs & Comunidad
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-book text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">PHPDoc & Standard Documentation</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Documentación estandarizada con PHPDoc: Etiquetas `@param`, `@return`, `@throws` y anotaciones de genéricos para IDEs.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>docs-community</span>
+                <a href="documentation-community/phpdoc.html" onclick="event.preventDefault(); hubApp.openTopic('documentation-community/phpdoc.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-teal-300 hover:bg-teal-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-teal-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="topic-card glass-panel rounded-2xl p-6 relative flex flex-col justify-between border border-slate-800/80 hover:border-teal-500/50 light:bg-white light:border-slate-200"
+                 data-topic-id="lifecycle"
+                 data-cat="community"
+                 data-file="documentation-community/lifecycle-management.html"
+                 data-keywords="php lifecycle release cycle eol deprecation rfc voting security support migration upgrade">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                            Docs & Comunidad
+                        </span>
+                    <button class="toggle-visited-btn p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors" title="Marcar como visto">
+                        <i class="fa-regular fa-circle-check text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-rotate text-lg"></i>
+                    </div>
+                    <h3 class="topic-title text-base font-bold text-slate-100 light:text-slate-900">PHP Lifecycle & Version Management</h3>
+                </div>
+                <p class="topic-desc text-xs text-slate-400 light:text-slate-600 mb-6 leading-relaxed">
+                    Ciclo de vida de versiones de PHP: RFCs de la comunidad, periodos de soporte de seguridad, EOL y guías de migración.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 light:border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500 font-mono"><i class="fa-regular fa-folder mr-1"></i>docs-community</span>
+                <a href="documentation-community/lifecycle-management.html" onclick="event.preventDefault(); hubApp.openTopic('documentation-community/lifecycle-management.html')" class="topic-action-link px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-teal-300 hover:bg-teal-600 hover:text-white transition-all flex items-center gap-1.5 light:bg-slate-100 light:hover:bg-teal-600">
+                    <span>Ver Tema</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </article>
+
+    </div>
+
+    <!-- Empty Search Result State -->
+    <div id="noResultsState" class="hidden text-center py-16 glass-panel rounded-3xl border border-slate-800 my-8">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 text-2xl">
+            <i class="fa-solid fa-folder-open"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-200 light:text-slate-800 mb-1">No se encontraron temas coincidentes</h3>
+        <p class="text-sm text-slate-400 max-w-sm mx-auto mb-6">Prueba consultando otros términos como "MVC", "Attributes", "Composer", "Testing" o limpia la búsqueda.</p>
+        <button id="clearSearchBtnAlt" class="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-semibold hover:bg-purple-500 transition-colors">
+            Limpiar Búsqueda
+        </button>
+    </div>
+</main>
+
+<div id="topicModal" class="fixed inset-0 z-50 hidden bg-slate-950/85 backdrop-blur-md flex flex-col transition-all duration-300">
+
+    <!-- Reader Toolbar -->
+    <div class="h-16 glass-panel border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between gap-4 shrink-0">
+        <div class="flex items-center gap-3 overflow-hidden">
+            <button onclick="hubApp.closeTopicModal()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm transition-colors" title="Cerrar (Esc)">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <div class="overflow-hidden">
+                <span id="modalCategoryBadge" class="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider block">Módulo PHP</span>
+                <h2 id="modalTopicTitle" class="text-sm sm:text-base font-bold text-white truncate light:text-slate-900">Título del Tema</h2>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+            <a id="modalExternalLink" href="#" target="_blank" class="p-2.5 rounded-xl bg-slate-800 hover:bg-purple-600 text-slate-300 hover:text-white text-xs transition-colors hidden sm:flex items-center gap-1.5" title="Abrir en pestaña independiente">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                <span class="hidden md:inline">Nueva Pestaña</span>
+            </a>
+            <button onclick="hubApp.markCurrentAsCompleted()" class="px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-check"></i>
+                <span>Completar</span>
+            </button>
+            <button onclick="hubApp.closeTopicModal()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white text-sm transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Iframe Viewer Frame -->
+    <div class="flex-grow w-full relative bg-slate-900 light:bg-white">
+        <div id="iframeLoader" class="absolute inset-0 flex items-center justify-center bg-slate-950/90 z-10 text-purple-400 font-mono text-sm gap-3">
+            <i class="fa-solid fa-circle-notch fa-spin text-2xl"></i>
+            <span>Cargando tema...</span>
+        </div>
+        <iframe id="topicIframe" class="w-full h-full border-none" title="Contenido del tema de PHP seleccionado"></iframe>
+    </div>
+</div>
+
+<footer class="relative z-10 glass-panel border-t border-slate-800/80 mt-16 py-8 light:bg-slate-100 light:border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400 light:text-slate-600">
+        <div class="flex items-center gap-2">
+            <i class="fa-brands fa-php text-xl text-purple-400"></i>
+            <span>PHP Learning Ecosystem &copy; 2026 - Guía del Estudiante</span>
+        </div>
+        <div class="flex items-center gap-6">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-bolt text-amber-400"></i> 22 Temas Estructurados en Subdirectorios</span>
+            <span class="hidden sm:inline text-slate-600">|</span>
+            <a href="#topicsGrid" onclick="window.scrollTo({top: 0, behavior: 'smooth'}); return false;" class="hover:text-purple-400 transition-colors">Volver arriba <i class="fa-solid fa-arrow-up ml-1"></i></a>
+        </div>
+    </div>
+</footer>
+
+<script>
+    /**
+     * PHP Master Hub Application Logic
+     */
+    const hubApp = (() => {
+        // State
+        const state = {
+            theme: localStorage.getItem('php_hub_theme') || 'dark',
+            visitedTopics: new Set(JSON.parse(localStorage.getItem('php_hub_visited') || '[]')),
+            useIframeViewer: localStorage.getItem('php_hub_iframe_mode') !== 'false', // Default true
+            currentCategory: 'all',
+            searchQuery: '',
+            activeTopicFile: null
+        };
+
+        // DOM Elements
+        const DOM = {
+            html: document.documentElement,
+            bgCanvas: document.getElementById('bgCanvas'),
+            searchInput: document.getElementById('searchInput'),
+            clearSearchBtn: document.getElementById('clearSearchBtn'),
+            clearSearchBtnAlt: document.getElementById('clearSearchBtnAlt'),
+            topicsGrid: document.getElementById('topicsGrid'),
+            topicCards: document.querySelectorAll('.topic-card'),
+            categoryPills: document.querySelectorAll('.filter-pill'),
+            filterCategoryBtns: document.querySelectorAll('.filter-category-btn'),
+            themeToggleBtn: document.getElementById('themeToggleBtn'),
+            iframeModeLabel: document.getElementById('iframeModeLabel'),
+            progressBar: document.getElementById('progressBar'),
+            resultsCount: document.getElementById('resultsCount'),
+            noResultsState: document.getElementById('noResultsState'),
+            resetFiltersBtn: document.getElementById('resetFiltersBtn'),
+            mobileMenuBtn: document.getElementById('mobileMenuBtn'),
+            mobileDrawer: document.getElementById('mobileDrawer'),
+            mobileProgressCount: document.getElementById('mobileProgressCount'),
+            topicModal: document.getElementById('topicModal'),
+            topicIframe: document.getElementById('topicIframe'),
+            iframeLoader: document.getElementById('iframeLoader'),
+            modalTopicTitle: document.getElementById('modalTopicTitle'),
+            modalCategoryBadge: document.getElementById('modalCategoryBadge'),
+            modalExternalLink: document.getElementById('modalExternalLink'),
+            dropdownContainers: document.querySelectorAll('.dropdown-container')
+        };
+
+        // Init App
+        const init = () => {
+            setupTheme();
+            setupBackgroundAnimation();
+            setupDropdowns();
+            setupEventListeners();
+            updateVisitedStateUI();
+            filterTopics();
+            checkUrlHashTopic();
+        };
+
+        // Dark/Light Theme Switching
+        const setupTheme = () => {
+            if (state.theme === 'light') {
+                DOM.html.classList.remove('dark');
+                DOM.html.classList.add('light');
+            } else {
+                DOM.html.classList.remove('light');
+                DOM.html.classList.add('dark');
+            }
+        };
+
+        const toggleTheme = () => {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('php_hub_theme', state.theme);
+            setupTheme();
+        };
+
+        // Visited/Completed Topics Progress Management
+        const toggleVisitedTopic = (topicId) => {
+            if (state.visitedTopics.has(topicId)) {
+                state.visitedTopics.delete(topicId);
+            } else {
+                state.visitedTopics.add(topicId);
+            }
+            localStorage.setItem('php_hub_visited', JSON.stringify(Array.from(state.visitedTopics)));
+            updateVisitedStateUI();
+        };
+
+        const updateVisitedStateUI = () => {
+            const total = DOM.topicCards.length;
+            const visitedCount = state.visitedTopics.size;
+            const percentage = Math.round((visitedCount / total) * 100);
+
+            // Progress Bar
+            DOM.progressBar.style.width = `${percentage}%`;
+
+            if (DOM.mobileProgressCount) {
+                DOM.mobileProgressCount.textContent = `${visitedCount} / ${total} Vistos (${percentage}%)`;
+            }
+
+            // Update cards UI
+            DOM.topicCards.forEach(card => {
+                const id = card.dataset.topicId;
+                const btn = card.querySelector('.toggle-visited-btn');
+                if (state.visitedTopics.has(id)) {
+                    card.classList.add('border-emerald-500/40', 'bg-emerald-950/10');
+                    if (btn) {
+                        btn.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>';
+                        btn.title = 'Marcar como no visto';
+                    }
+                } else {
+                    card.classList.remove('border-emerald-500/40', 'bg-emerald-950/10');
+                    if (btn) {
+                        btn.innerHTML = '<i class="fa-regular fa-circle-check text-lg"></i>';
+                        btn.title = 'Marcar como visto';
+                    }
+                }
+            });
+        };
+
+        // Interactive Dropdown Logic
+        const setupDropdowns = () => {
+            DOM.dropdownContainers.forEach(container => {
+                const btn = container.querySelector('.dropdown-btn');
+                const menu = container.querySelector('.dropdown-menu');
+
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Close other menus
+                    document.querySelectorAll('.dropdown-menu').forEach(m => {
+                        if (m !== menu) m.classList.remove('open');
+                    });
+                    menu.classList.toggle('open');
+                });
+            });
+
+            document.addEventListener('click', () => {
+                document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
+            });
+        };
+
+        // Filter Topics Real-Time Engine
+        const filterTopics = () => {
+            const query = state.searchQuery.toLowerCase().trim();
+            let visibleCount = 0;
+
+            DOM.topicCards.forEach(card => {
+                const category = card.dataset.cat;
+                const title = card.querySelector('.topic-title').textContent.toLowerCase();
+                const desc = card.querySelector('.topic-desc').textContent.toLowerCase();
+                const keywords = card.dataset.keywords.toLowerCase();
+
+                const matchesCat = (state.currentCategory === 'all' || category === state.currentCategory);
+                const matchesQuery = !query || title.includes(query) || desc.includes(query) || keywords.includes(query);
+
+                if (matchesCat && matchesQuery) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Update Counter Text
+            DOM.resultsCount.textContent = `Mostrando ${visibleCount} de ${DOM.topicCards.length} temas de PHP`;
+
+            if (visibleCount === 0) {
+                DOM.noResultsState.classList.remove('hidden');
+            } else {
+                DOM.noResultsState.classList.add('hidden');
+            }
+
+            if (query || state.currentCategory !== 'all') {
+                DOM.resetFiltersBtn.classList.remove('hidden');
+            } else {
+                DOM.resetFiltersBtn.classList.add('hidden');
+            }
+        };
+
+        // Open Topic Handler (Direct vs Iframe Modal)
+        const openTopic = (filePath) => {
+            state.activeTopicFile = filePath;
+
+            // Find card info
+            const card = Array.from(DOM.topicCards).find(c => c.dataset.file === filePath);
+            const id = card ? card.dataset.topicId : '';
+
+            // Automatically mark as visited on click
+            if (id) state.visitedTopics.add(id);
+            localStorage.setItem('php_hub_visited', JSON.stringify(Array.from(state.visitedTopics)));
+            updateVisitedStateUI();
+
+            if (state.useIframeViewer) {
+                // Open in Embedded Modal
+                const title = card ? card.querySelector('.topic-title').textContent : filePath;
+                const catName = card ? card.dataset.cat : 'PHP';
+
+                DOM.modalTopicTitle.textContent = title;
+                DOM.modalCategoryBadge.textContent = `MÓDULO: ${catName.toUpperCase()}`;
+                DOM.modalExternalLink.href = filePath;
+
+                DOM.iframeLoader.classList.remove('hidden');
+                DOM.topicIframe.src = filePath;
+
+                DOM.topicIframe.onload = () => {
+                    DOM.iframeLoader.classList.add('hidden');
+                };
+
+                DOM.topicModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                window.location.hash = `tema-${id}`;
+                document.title = `${title} - PHP Master Hub`;
+            } else {
+                // Direct Page Redirect Navigation
+                window.location.href = filePath;
+            }
+        };
+
+        const closeTopicModal = () => {
+            DOM.topicModal.classList.add('hidden');
+            DOM.topicIframe.src = 'about:blank';
+            document.body.style.overflow = '';
+            document.title = 'PHP Master Hub - Centro de Aprendizaje e Índice Interactivo';
+            history.replaceState(null, null, ' ');
+        };
+
+        const markCurrentAsCompleted = () => {
+            if (state.activeTopicFile) {
+                const card = Array.from(DOM.topicCards).find(c => c.dataset.file === state.activeTopicFile);
+                if (card) {
+                    const id = card.dataset.topicId;
+                    state.visitedTopics.add(id);
+                    localStorage.setItem('php_hub_visited', JSON.stringify(Array.from(state.visitedTopics)));
+                    updateVisitedStateUI();
+                }
+            }
+            closeTopicModal();
+        };
+
+        const toggleMobileMenu = () => {
+            DOM.mobileDrawer.classList.toggle('hidden');
+            DOM.mobileDrawer.classList.toggle('flex');
+        };
+
+        // Event Listeners Registration
+        const setupEventListeners = () => {
+            // Theme Toggle
+            DOM.themeToggleBtn.addEventListener('click', toggleTheme);
+
+            // Search Input Events
+            DOM.searchInput.addEventListener('input', (e) => {
+                state.searchQuery = e.target.value;
+                DOM.clearSearchBtn.classList.toggle('hidden', !state.searchQuery);
+                filterTopics();
+            });
+
+            DOM.clearSearchBtn.addEventListener('click', () => {
+                DOM.searchInput.value = '';
+                state.searchQuery = '';
+                DOM.clearSearchBtn.classList.add('hidden');
+                filterTopics();
+            });
+
+            DOM.clearSearchBtnAlt.addEventListener('click', () => {
+                DOM.searchInput.value = '';
+                state.searchQuery = '';
+                state.currentCategory = 'all';
+                DOM.clearSearchBtn.classList.add('hidden');
+                updateCategoryPillsUI();
+                filterTopics();
+            });
+
+            DOM.resetFiltersBtn.addEventListener('click', () => {
+                DOM.searchInput.value = '';
+                state.searchQuery = '';
+                state.currentCategory = 'all';
+                DOM.clearSearchBtn.classList.add('hidden');
+                updateCategoryPillsUI();
+                filterTopics();
+            });
+
+            // Category Filter Pills
+            DOM.categoryPills.forEach(pill => {
+                pill.addEventListener('click', () => {
+                    state.currentCategory = pill.dataset.cat;
+                    updateCategoryPillsUI();
+                    filterTopics();
+                });
+            });
+
+            DOM.filterCategoryBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    state.currentCategory = btn.dataset.cat;
+                    updateCategoryPillsUI();
+                    filterTopics();
+                });
+            });
+
+            // Toggle Visited Buttons inside cards
+            DOM.topicCards.forEach(card => {
+                const btn = card.querySelector('.toggle-visited-btn');
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleVisitedTopic(card.dataset.topicId);
+                });
+            });
+
+            // Mobile Navigation
+            DOM.mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+
+            // Keyboard Shortcuts (Ctrl + K to search, Esc to close modal)
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    DOM.searchInput.focus();
+                }
+                if (e.key === 'Escape' && !DOM.topicModal.classList.contains('hidden')) {
+                    closeTopicModal();
+                }
+            });
+        };
+
+        const updateCategoryPillsUI = () => {
+            DOM.categoryPills.forEach(pill => {
+                if (pill.dataset.cat === state.currentCategory) {
+                    pill.className = 'filter-pill active px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-purple-600 text-white shadow-lg shadow-purple-600/30';
+                } else {
+                    pill.className = 'filter-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:bg-slate-800 light:bg-white light:border-slate-200 light:text-slate-600';
+                }
+            });
+        };
+
+        const checkUrlHashTopic = () => {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#tema-')) {
+                const id = hash.replace('#tema-', '');
+                const card = Array.from(DOM.topicCards).find(c => c.dataset.topicId === id);
+                if (card) {
+                    openTopic(card.dataset.file);
+                }
+            }
+        };
+
+        // Ambient Lightweight Particle Canvas Background
+        const setupBackgroundAnimation = () => {
+            const canvas = DOM.bgCanvas;
+            const ctx = canvas.getContext('2d');
+            let width = canvas.width = window.innerWidth;
+            let height = canvas.height = window.innerHeight;
+
+            const particles = [];
+            const particleCount = Math.min(Math.floor(width / 25), 45);
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.4,
+                    vy: (Math.random() - 0.5) * 0.4,
+                    radius: Math.random() * 2 + 1,
+                    color: ['#8B5CF6', '#06B6D4', '#10B981', '#EC4899', '#6366F1'][Math.floor(Math.random() * 5)]
+                });
+            }
+
+            window.addEventListener('resize', () => {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            });
+
+            const animate = () => {
+                ctx.clearRect(0, 0, width, height);
+
+                const isDark = DOM.html.classList.contains('dark');
+                const linkColor = isDark ? 'rgba(139, 92, 246, 0.08)' : 'rgba(100, 116, 139, 0.08)';
+
+                // Draw connections
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < 140) {
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.strokeStyle = linkColor;
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                // Update & Render Particles
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x < 0 || p.x > width) p.vx *= -1;
+                    if (p.y < 0 || p.y > height) p.vy *= -1;
+
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = isDark ? 0.35 : 0.2;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                });
+
+                requestAnimationFrame(animate);
+            };
+
+            animate();
+        };
+
+        return {
+            init,
+            openTopic,
+            closeTopicModal,
+            markCurrentAsCompleted,
+            toggleMobileMenu
+        };
+    })();
+
+    window.addEventListener('DOMContentLoaded', hubApp.init);
+</script>
+</body>
+</html>

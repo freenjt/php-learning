@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MVC & Separation of Concerns in PHP - Deep Dive</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7',
+              teal: '#14b8a6'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Presentation Styles -->
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.82rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Architecture Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#8b5cf6',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <!-- Header Navigation -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 via-indigo-600 to-sky-500 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-cubes text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP MVC & SoC <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 light:text-purple-700 border border-purple-500/30">php.net Spec</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slides Frame -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Document Chip -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Manual: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/manual/en/language.oop5.php</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="php.net/manual/en/language.oop5.php">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-brands fa-php text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Model-View-Controller & <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-sky-400">Separation of Concerns in PHP</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A rigorous, programmatic exploration of architectural decoupling, Front Controllers, PDO domain models, native PHP template buffering, autoloading, and dependency injection derived strictly from php.net.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Strict php.net Standard
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-diagram-project text-purple-400"></i> Request Steppers & Diagrams
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-code text-amber-400"></i> Live Interactive MVC Simulator
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Begin Architecture Exploration</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Architectural Landscape -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="php.net/manual/en/language.oop5.basic.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP MVC Taxonomy & Separation of Concerns</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Separation of Concerns (SoC) isolates application logic into distinct modules, avoiding spaghetti code and mixed HTML/SQL payloads.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-sitemap"></i></div>
+            Front Controller & Router
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Centralized entry point (`index.php`) that parses HTTP requests and routes to handlers.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-purple-300">$_SERVER['REQUEST_URI']</code> parsing</li>
+            <li>• Single point of bootstrap & config</li>
+            <li>• Uniform response dispatching</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-database"></i></div>
+            The Model Layer (Domain)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Manages data persistence, business logic, validation, and database operations via PDO.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-sky-300">PDO</code> & Prepared Statements</li>
+            <li>• Entities, DTOs & Repositories</li>
+            <li>• Zero HTML or HTTP knowledge</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-display"></i></div>
+            The View Layer (Presentation)
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Renders presentation markup using native PHP output control and sanitized variables.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Output Buffering (<code class="text-emerald-300">ob_start</code>)</li>
+            <li>• Templating with <code class="text-emerald-300">extract()</code></li>
+            <li>• Sanitization with <code class="text-emerald-300">htmlspecialchars()</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-sliders"></i></div>
+            The Controller Layer
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Mediates between HTTP requests, invoking Model methods and selecting View responses.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Consumes <code class="text-amber-300">$_GET</code>, <code class="text-amber-300">$_POST</code></li>
+            <li>• Delegates business ops to Model</li>
+            <li>• Passes clean data to View</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-folder-tree"></i></div>
+            Autoloading & Namespaces
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Automates class loading according to directory structures without manual requires.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-rose-300">spl_autoload_register()</code></li>
+            <li>• Declarative <code class="text-rose-300">namespace</code> scopes</li>
+            <li>• PSR-4 filesystem mapping</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-gears"></i></div>
+            Dependency Injection
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Passes dependencies explicitly via constructor parameters rather than hardcoding concrete classes.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• Type Hinting with <code class="text-indigo-300">interface</code></li>
+            <li>• Loose coupling & mock testing</li>
+            <li>• Inversion of Control (IoC)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Front Controller Pattern -->
+    <div class="slide-wrapper flex-col" data-category="Front Controller" data-doc="php.net/manual/en/language.variables.superglobals.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Single Point of Entry: Front Controller & HTTP Parsing</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Every HTTP request hits `public/index.php`. Superglobals inspect request methods and URIs before dispatching to Controllers.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Front Controller Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code"></i> `public/index.php` (Front Controller)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+declare(strict_types=1);
+
+// 1. Register Autoloader
+spl_autoload_register(function (string $class) {
+    $file = __DIR__ . '/../' . str_replace('\\', '/', $class) . '.php';
+    if (file_exists($file)) require $file;
+});
+
+// 2. Parse HTTP Request URI using official php.net functions
+$requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+// 3. Simple Router Dispatch
+$router = new App\Core\Router();
+$router->add('GET', '/users', [App\Controller\UserController::class, 'index']);
+$router->dispatch($requestMethod, $requestUri);</code></pre>
+          </div>
+
+          <div class="mt-2 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <strong class="text-sky-400"><i class="fa-solid fa-circle-info"></i> php.net Standard:</strong>
+            <p class="mt-0.5">
+              Superglobals like <code class="text-purple-300">$_SERVER</code>, <code class="text-purple-300">$_GET</code>, and <code class="text-purple-300">$_POST</code> are auto-globals provided by Zend Engine for request metadata.
+            </p>
+          </div>
+        </div>
+
+        <!-- Flow Diagram -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-sky-400 mb-2"><i class="fa-solid fa-diagram-project"></i> HTTP Request Routing Pipeline</span>
+          <div class="mermaid">
+            sequenceDiagram
+              autonumber
+              participant Client as Browser (HTTP)
+              participant FC as Front Controller (index.php)
+              participant Router as Router Instance
+              participant Ctrl as Controller
+              Client->>FC: GET /users
+              FC->>FC: Autoload Classes & Setup Environment
+              FC->>Router: dispatch('GET', '/users')
+              Router->>Ctrl: Instantiates & Calls index()
+              Ctrl-->>FC: Returns HTTP Response
+              FC-->>Client: Outputs HTML Payload
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: The Model Layer -->
+    <div class="slide-wrapper flex-col" data-category="Model" data-doc="php.net/manual/en/book.pdo.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">The Model Layer: Encapsulating Business Domain & Data (PDO)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Models isolate database interactions and domain rules. They know nothing about HTML, HTTP status codes, or superglobals.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Entity & Repository Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-database"></i> Domain Model Repository (PDO)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+namespace App\Model;
+
+use PDO;
+
+class UserRepository {
+    public function __construct(private PDO $db) {}
+
+    /** @return User[] */
+    public function findAll(): array {
+        $stmt = $this->db->query('SELECT id, name, email FROM users');
+        // Fetch strictly as typed objects or associative arrays
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function findById(int $id): ?array {
+        $stmt = $this->db->prepare('SELECT * FROM users WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $user ?: null;
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/book.pdo.php" target="_blank" class="text-sky-400 hover:underline">php.net/book.pdo</a></p>
+        </div>
+
+        <!-- Principles Card -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-list-check"></i> Model Layer Core Responsibilities</span>
+            
+            <div class="space-y-3 text-xs text-slate-300">
+              <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <strong class="text-emerald-400 block mb-1">1. Pure Persistence Independence</strong>
+                <p>Models use PDO prepared statements to execute queries without leaking database connection concerns into views or controllers.</p>
+              </div>
+
+              <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <strong class="text-purple-400 block mb-1">2. Business Logic Enforcement</strong>
+                <p>Rules like "email uniqueness" or "account balance validation" reside exclusively inside domain models or service classes.</p>
+              </div>
+
+              <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <strong class="text-amber-400 block mb-1">3. Portable & Unit Testable</strong>
+                <p>Because Models do not use <code class="text-amber-300">echo</code> or HTTP headers, they can be unit-tested in isolation using PHPUnit.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: The View Layer -->
+    <div class="slide-wrapper flex-col" data-category="View" data-doc="php.net/manual/en/ref.outcontrol.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">The View Layer: Output Buffering & Dynamic Templating</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Views consume sanitized data payloads and generate HTML. Output control functions (`ob_start`, `ob_get_clean`) prevent accidental early header sends.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- View Engine Class -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-box-archive"></i> Native View Renderer (`ob_start`)</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+namespace App\View;
+
+class View {
+    public static function render(string $template, array $data = []): string {
+        // Extract array keys into local variable scope
+        extract($data);
+
+        // Turn on output buffering (php.net/ob_start)
+        ob_start();
+
+        $templatePath = __DIR__ . "/../../views/{$template}.php";
+        if (file_exists($templatePath)) {
+            require $templatePath;
+        }
+
+        // Capture buffer contents and clean buffer
+        return ob_get_clean();
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/function.ob-get-clean.php" target="_blank" class="text-sky-400 hover:underline">php.net/function.ob-get-clean</a></p>
+        </div>
+
+        <!-- Template File Example -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-file-code"></i> `views/users/index.php` Template</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;!-- Uses Alternative Syntax for Clean Separation --&gt;
+&lt;h1&gt;&lt;?= htmlspecialchars($title) ?&gt;&lt;/h1&gt;
+
+&lt;ul class="user-list"&gt;
+    &lt;?php foreach ($users as $user): ?&gt;
+        &lt;li&gt;
+            &lt;strong&gt;&lt;?= htmlspecialchars($user['name']) ?&gt;&lt;/strong&gt; 
+            (&lt;?= htmlspecialchars($user['email']) ?&gt;)
+        &lt;/li&gt;
+    &lt;?php endforeach; ?&gt;
+&lt;/ul&gt;</code></pre>
+          </div>
+
+          <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 mt-2">
+            <strong class="text-amber-400"><i class="fa-solid fa-shield"></i> Security Mandatory Rule:</strong>
+            <p class="mt-0.5">
+              Views MUST always sanitize raw dynamic output via <code class="text-purple-300">htmlspecialchars($var, ENT_QUOTES, 'UTF-8')</code> to prevent Cross-Site Scripting (XSS).
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: The Controller Layer -->
+    <div class="slide-wrapper flex-col" data-category="Controller" data-doc="php.net/manual/en/language.oop5.basic.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">The Controller Layer: Orchestrating Requests into Responses</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Controllers connect HTTP input with domain operations and output generation, maintaining a slim orchestration footprint.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Controller Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-sliders"></i> `UserController.php`</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+namespace App\Controller;
+
+use App\Model\UserRepository;
+use App\View\View;
+
+class UserController {
+    public function __construct(private UserRepository $userRepo) {}
+
+    public function index(): string {
+        // 1. Fetch data from domain Model
+        $users = $this->userRepo->findAll();
+
+        // 2. Pass sanitized payload into View
+        return View::render('users/index', [
+            'title' => 'User Directory',
+            'users' => $users
+        ]);
+    }
+}</code></pre>
+          </div>
+        </div>
+
+        <!-- Controller Duties comparison -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-scale-balanced"></i> Controller "Thin Rules"</span>
+
+            <div class="space-y-2 font-mono text-xs">
+              <div class="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-emerald-300">
+                <strong><i class="fa-solid fa-check"></i> WHAT CONTROLLERS SHOULD DO:</strong>
+                <ul class="list-disc list-inside mt-1 space-y-1 text-[11px] text-emerald-200">
+                  <li>Read HTTP payload parameters (<code class="text-white">$_GET</code>, <code class="text-white">$_POST</code>)</li>
+                  <li>Invoke Model/Repository operations</li>
+                  <li>Return HTTP status codes (<code class="text-white">http_response_code()</code>)</li>
+                  <li>Delegate rendering to View engines</li>
+                </ul>
+              </div>
+
+              <div class="p-3 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300">
+                <strong><i class="fa-solid fa-xmark"></i> WHAT CONTROLLERS MUST NEVER DO:</strong>
+                <ul class="list-disc list-inside mt-1 space-y-1 text-[11px] text-rose-200">
+                  <li>Execute SQL queries directly</li>
+                  <li>Echo HTML markup directly</li>
+                  <li>Contain core business algorithms</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Interactive Request Flow Inspector -->
+    <div class="slide-wrapper flex-col" data-category="Interactive Flow" data-doc="php.net/manual/en/language.oop5.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Request/Response Pipeline Stepper</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Step through how a single HTTP request cascades through Front Controller, Router, Controller, Model, and View.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Execution Stepper -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-forward"></i> Pipeline Execution Stepper</span>
+              <button onclick="stepMvcPipeline()" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs transition">
+                <i class="fa-solid fa-play mr-1"></i> Next Pipeline Step
+              </button>
+            </div>
+
+            <div class="space-y-2 font-mono text-xs my-2">
+              <div id="step-box-1" class="p-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400">
+                1. Front Controller Bootstrap (`index.php`)
+              </div>
+              <div id="step-box-2" class="p-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400">
+                2. Router Matching (`parse_url($_SERVER['REQUEST_URI'])`)
+              </div>
+              <div id="step-box-3" class="p-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400">
+                3. Controller Action Dispatch (`UserController->index()`)
+              </div>
+              <div id="step-box-4" class="p-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400">
+                4. Model Data Retrieval (`UserRepository->findAll()`)
+              </div>
+              <div id="step-box-5" class="p-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400">
+                5. View Rendering & Output Control (`ob_get_clean()`)
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <span class="text-slate-400 text-xs font-mono">Engine Inspector Output:</span>
+            <div id="mvc-stepper-log" class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-sky-400 text-xs h-24 overflow-y-auto mt-1">
+              Click "Next Pipeline Step" to trace execution...
+            </div>
+          </div>
+        </div>
+
+        <!-- Output Buffer Inspector -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-memory"></i> Output Buffer Inspector Simulator</span>
+            
+            <div class="space-y-3">
+              <div>
+                <label class="block font-mono text-xs text-slate-300 mb-1">Set Template Variable `$username`:</label>
+                <input type="text" id="inspect-user-input" oninput="updateBufferInspector()" value="<script>alert('xss')</script> Alice" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 font-mono text-xs text-purple-300 focus:outline-none">
+              </div>
+
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px]">
+                <span class="text-slate-500">// Buffer State inside ob_start() block</span>
+                <div id="inspect-raw-code" class="text-amber-300 mt-1">Raw: &lt;h1&gt;&lt;?= $username ?&gt;&lt;/h1&gt;</div>
+                <div id="inspect-sanitized-code" class="text-emerald-400 mt-1">Safe: &lt;h1&gt;&lt;?= htmlspecialchars($username) ?&gt;&lt;/h1&gt;</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300">
+            <span class="text-purple-400 font-bold">Escaped Output Preview:</span>
+            <div id="inspect-rendered-preview" class="mt-1 p-2 bg-slate-950 rounded border border-slate-800 text-emerald-300">
+              <!-- JS rendered -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Autoloading & Namespaces -->
+    <div class="slide-wrapper flex-col" data-category="Autoloading" data-doc="php.net/manual/en/function.spl-autoload-register.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Autoloading & Namespaces (`spl_autoload_register`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Eliminate repetitive `require_once` calls by registering automated PSR-4 compliant namespace loaders.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Autoloader Implementation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-gears"></i> Programmatic PSR-4 Autoloader</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+declare(strict_types=1);
+
+spl_autoload_register(function (string $class) {
+    // Prefix mapping: App\ => src/
+    $prefix = 'App\\';
+    $baseDir = __DIR__ . '/src/';
+
+    $len = strlen($prefix);
+    if (strncmp($prefix, $class, $len) !== 0) {
+        return; // Not in App namespace
+    }
+
+    $relativeClass = substr($class, $len);
+    $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
+
+    if (file_exists($file)) {
+        require $file;
+    }
+});</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/function.spl-autoload-register.php" target="_blank" class="text-sky-400 hover:underline">php.net/spl_autoload_register</a></p>
+        </div>
+
+        <!-- Filesystem Mapping Visualizer -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-folder-tree"></i> PSR-4 Namespace to Path Mapping</span>
+
+            <div class="space-y-2 font-mono text-xs">
+              <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <span class="text-purple-300 font-bold">Class Qualified Name:</span>
+                <div class="text-amber-300 mt-0.5">App\Controller\UserController</div>
+                <div class="text-slate-500 text-[11px] mt-1">↓ Maps directly to filesystem</div>
+                <div class="text-emerald-400">src/Controller/UserController.php</div>
+              </div>
+
+              <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <span class="text-purple-300 font-bold">Class Qualified Name:</span>
+                <div class="text-amber-300 mt-0.5">App\Model\UserRepository</div>
+                <div class="text-slate-500 text-[11px] mt-1">↓ Maps directly to filesystem</div>
+                <div class="text-emerald-400">src/Model/UserRepository.php</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 mt-2">
+            <strong class="text-purple-400"><i class="fa-solid fa-lightbulb"></i> Separation Benefit:</strong>
+            <p class="mt-0.5 text-[11px]">Strict namespaces isolate class names across independent modules, preventing global function or class collisions.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Dependency Injection & Interfaces -->
+    <div class="slide-wrapper flex-col" data-category="Dependency Injection" data-doc="php.net/manual/en/language.oop5.interfaces.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Dependency Injection & Inversion of Control</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Decouple components by injecting interface dependencies via constructors rather than hardcoding concrete instances inside classes.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Interfaces & Constructor Injection -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Interface Constructor Injection</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+namespace App\Model;
+
+// 1. Contract Definition
+interface UserRepositoryInterface {
+    public function findAll(): array;
+}
+
+// 2. Concrete Implementation
+class PdoUserRepository implements UserRepositoryInterface {
+    public function __construct(private \PDO $pdo) {}
+    public function findAll(): array { /* PDO query */ return []; }
+}
+
+// 3. Dependent Controller
+class UserController {
+    // Accepts Interface, NOT concrete class!
+    public function __construct(private UserRepositoryInterface $repo) {}
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/language.oop5.interfaces.php" target="_blank" class="text-sky-400 hover:underline">php.net/language.oop5.interfaces</a></p>
+        </div>
+
+        <!-- Benefits Comparison -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-layer-group"></i> Tight Coupling vs. Dependency Injection</span>
+
+            <div class="space-y-3 text-xs font-mono">
+              <div class="p-3 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300">
+                <strong>BAD: Hardcoded Dependency Inside Class</strong>
+                <pre><code class="language-php">class UserController {
+    public function __construct() {
+        // Tightly coupled! Impossible to mock or change DB
+        $this->repo = new PdoUserRepository(new PDO(...));
+    }
+}</code></pre>
+              </div>
+
+              <div class="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-emerald-300">
+                <strong>GOOD: Injected Interface Dependency</strong>
+                <pre><code class="language-php">// Flexible! Allows passing MockUserRepository in tests
+$controller = new UserController(new PdoUserRepository($pdo));</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Security & Data Filtering -->
+    <div class="slide-wrapper flex-col" data-category="Security" data-doc="php.net/manual/en/book.filter.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Security & Data Filtering across MVC Layers</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Separation of Concerns ensures input validation happens at Controller entry, SQL binding in Model, and XSS escaping in View.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Controller Input Filter -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-filter"></i> 1. Controller Input Filtering</span>
+            <pre><code class="language-php">// Sanitize input at HTTP entry
+$email = filter_input(
+    INPUT_POST, 
+    'email', 
+    FILTER_VALIDATE_EMAIL
+);
+
+if (!$email) {
+    http_response_code(422);
+    return View::render('error');
+}</code></pre>
+            <p class="text-xs text-slate-300 mt-2">Uses <code class="text-purple-300">filter_input()</code> to reject invalid incoming HTTP data early.</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">php.net/book.filter</p>
+        </div>
+
+        <!-- Model SQL Parameterization -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-shield-halved"></i> 2. Model SQL Parameterization</span>
+            <pre><code class="language-php">// Prevents SQL Injection
+$stmt = $db->prepare(
+    'SELECT * FROM users 
+     WHERE email = :email'
+);
+$stmt->execute(['email' => $email]);</code></pre>
+            <p class="text-xs text-slate-300 mt-2">PDO parameter binding prevents raw string concatenation in SQL queries.</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">php.net/pdostatement.execute</p>
+        </div>
+
+        <!-- View XSS Escaping -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-code"></i> 3. View XSS Escaping</span>
+            <pre><code class="language-php">&lt;!-- Escapes HTML entity characters --&gt;
+&lt;span class="user-email"&gt;
+  &lt;?= htmlspecialchars(
+      $email, 
+      ENT_QUOTES, 
+      'UTF-8'
+  ) ?&gt;
+&lt;/span&gt;</code></pre>
+            <p class="text-xs text-slate-300 mt-2">Escapes special HTML characters before writing to client body stream.</p>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono mt-2">php.net/htmlspecialchars</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Interactive Dynamic MVC Engine Simulator -->
+    <div class="slide-wrapper flex-col" data-category="Simulator" data-doc="php.net/manual/en/language.oop5.php">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Programmatic MVC Simulator</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select architectural code templates, edit PHP structures, and observe simulated Zend Engine execution output.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Controls Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-purple-400 font-bold">Select MVC Template:</span>
+            <select id="sim-preset-select" onchange="loadSimulatorPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-purple-200 focus:outline-none">
+              <option value="front_controller">Front Controller & Router</option>
+              <option value="model_pdo">PDO Domain Model & Entity</option>
+              <option value="view_buffer">View Output Buffer (`ob_start`)</option>
+              <option value="dependency_injection">Constructor Dependency Injection</option>
+            </select>
+          </div>
+
+          <button onclick="resetSimulatorCode()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Template
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> PHP Architecture Code</span>
+            <textarea id="sim-editor" oninput="runSimulatedCode()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Simulated Output</span>
+            <div id="sim-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: HTTP Response & Headers -->
+    <div class="slide-wrapper flex-col" data-category="HTTP Response" data-doc="php.net/manual/en/function.http-response-code.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Encapsulating HTTP Responses & Status Codes</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Strict separation of HTTP header management (`header()`, `http_response_code()`) into dedicated Response objects.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Response Wrapper Class -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-paper-plane"></i> Object-Oriented Response Wrapper</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+namespace App\Http;
+
+class Response {
+    public function __construct(
+        private string $content = '',
+        private int $statusCode = 200,
+        private array $headers = []
+    ) {}
+
+    public function send(): void {
+        // Set HTTP status code (php.net/http_response_code)
+        http_response_code($this->statusCode);
+
+        // Send custom headers
+        foreach ($this->headers as $name => $value) {
+            header("{$name}: {$value}");
+        }
+
+        // Output content body
+        echo $this->content;
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/function.http-response-code.php" target="_blank" class="text-sky-400 hover:underline">php.net/function.http-response-code</a></p>
+        </div>
+
+        <!-- Controller JSON or HTML dispatching -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code text-purple-400"></i> Controller Response Dispatching</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Returning JSON API Response from Controller
+public function apiIndex(): Response {
+    $data = $this->repo->findAll();
+    
+    return new Response(
+        json_encode($data),
+        200,
+        ['Content-Type' => 'application/json']
+    );
+}
+
+// Returning HTML Response from Controller
+public function htmlIndex(): Response {
+    $html = View::render('users/index', ['title' => 'Users']);
+    
+    return new Response($html, 200, ['Content-Type' => 'text/html']);
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Ensures controllers return testable Response objects instead of executing `echo` directly.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Request State & Session Isolation -->
+    <div class="slide-wrapper flex-col" data-category="State Management" data-doc="php.net/manual/en/book.session.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Request State & Session Isolation</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Abstracting session state (`$_SESSION`) away from views and business models to prevent direct superglobal coupling.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Session Wrapper -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-user-lock"></i> Encapsulated Session Class</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">&lt;?php
+namespace App\Http;
+
+class Session {
+    public function start(): void {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+    }
+
+    public function set(string $key, mixed $value): void {
+        $_SESSION[$key] = $value;
+    }
+
+    public function get(string $key, mixed $default = null): mixed {
+        return $_SESSION[$key] ?? $default;
+    }
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/function.session-start.php" target="_blank" class="text-sky-400 hover:underline">php.net/function.session-start</a></p>
+        </div>
+
+        <!-- Benefits breakdown -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-list-check"></i> State Isolation Architecture Benefits</span>
+
+            <div class="space-y-3 text-xs text-slate-300">
+              <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <strong class="text-sky-400 block mb-1">1. Mocking & Session Testing</strong>
+                <p>Injecting a Session service wrapper allows unit tests to simulate authenticated users without actual session files on disk.</p>
+              </div>
+
+              <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <strong class="text-emerald-400 block mb-1">2. Zero View Coupling</strong>
+                <p>Views receive extracted data arguments rather than reading <code class="text-emerald-300">$_SESSION</code> globals directly.</p>
+              </div>
+
+              <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <strong class="text-amber-400 block mb-1">3. Shared Request Lifecycle</strong>
+                <p>Every HTTP request runs independently, preventing state leakage across requests in PHP's shared-nothing execution model.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Knowledge Assessment Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net/manual/en/language.oop5.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Knowledge Assessment Quiz</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your understanding of PHP MVC & Separation of Concerns strictly based on official php.net specifications.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-purple-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Official Resources & Summary -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net/manual/en/language.oop5.php">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Documentation Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every programmatic pattern, autoloading rule, output control mechanism, and PDO standard in this presentation is derived directly from the official PHP manual at php.net.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php.net/manual/en/language.oop5.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">OOP & Class Architecture</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Class specifications, namespaces, interfaces, and inheritance.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/function.spl-autoload-register.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Autoloading Reference</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Standard PHP Library (SPL) autoloader specification.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/ref.outcontrol.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Output Control Functions</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Output buffering using ob_start and ob_get_clean for views.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/book.pdo.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">PDO Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">PHP Data Objects manual for parameter binding and data models.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Control Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-purple-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net/manual/en/language.oop5.php" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Slide Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-purple-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search MVC concepts (e.g., Controller, PDO, View, Autoload)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i> Presentation Slide Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <!-- Interactive JavaScript Application Logic -->
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Questions Dataset (Strictly grounded in php.net MVC principles)
+    const quizData = [
+      {
+        question: "In PHP MVC architecture, why is output buffering (`ob_start()`) used inside View rendering?",
+        options: [
+          "To automatically run SQL queries inside HTML template files.",
+          "To capture rendered template output into memory without immediately sending dynamic HTML to stdout or triggering header errors.",
+          "To speed up execution by caching queries in Redis.",
+          "To prevent autoloaders from throwing ClassNotFoundExceptions."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/ref.outcontrol): Output buffering stores output in an internal buffer so headers or template data can be captured and processed safely before being output."
+      },
+      {
+        question: "What is the primary role of `spl_autoload_register()` in a modern PHP MVC framework?",
+        options: [
+          "It automatically compiles raw PHP files into JavaScript.",
+          "It registers custom callback functions to dynamically load undefined classes when referenced, enabling PSR-4 namespace mapping.",
+          "It handles database connection pooling for PDO.",
+          "It sanitizes all incoming $_GET variables."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/spl_autoload_register): spl_autoload_register() registers functions with the SPL autoloader queue to automatically load class files when instantiated."
+      },
+      {
+        question: "Why should Controllers depend on Interfaces rather than concrete Model classes (Dependency Injection)?",
+        options: [
+          "It reduces memory consumption by 90%.",
+          "It allows swapping out concrete implementations (e.g., PDO vs Mock repositories for testing) without altering Controller logic.",
+          "It forces PHP to bypass type checking.",
+          "It enables native async multi-threading."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/language.oop5.interfaces): Object interfaces specify what methods a class must implement, enabling polymorphic dependency injection and loose coupling."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Simulator Presets for MVC
+    const simulatorPresets = {
+      front_controller: `<?php\n// public/index.php - Front Controller\n$uri = parse_url($_SERVER['REQUEST_URI'] ?? '/users', PHP_URL_PATH);\n$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';\n\necho "Front Controller Bootstrapped!\\n";\necho "Parsed Method: " . $method . "\\n";\necho "Parsed Route URI: " . $uri;`,
+      model_pdo: `<?php\nnamespace App\\Model;\n\nclass UserRepository {\n    public function findUser(int $id): array {\n        // Simulated PDO Prepared Query\n        return [\n            'id' => $id,\n            'name' => 'Alice Developer',\n            'role' => 'Software Architect'\n        ];\n    }\n}\n\n$repo = new UserRepository();\nprint_r($repo->findUser(101));`,
+      view_buffer: `<?php\n$data = ['title' => 'Dashboard', 'status' => 'Active'];\n\nob_start();\nextract($data);\n\necho "<h1>" . htmlspecialchars($title) . "</h1>\\n";\necho "<p>Status: " . htmlspecialchars($status) . "</p>";\n\n$renderedHtml = ob_get_clean();\necho $renderedHtml;`,
+      dependency_injection: `<?php\ninterface LoggerInterface {\n    public function log(string $msg): void;\n}\n\nclass FileLogger implements LoggerInterface {\n    public function log(string $msg): void { echo "[FILE LOG]: " . $msg; }\n}\n\nclass OrderController {\n    public function __construct(private LoggerInterface $logger) {}\n    public function checkout(): void { $this->logger->log("Order processed"); }\n}\n\n$controller = new OrderController(new FileLogger());\n$controller->checkout();`
+    };
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      // Update counters
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // Update Header Chip
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      // Prism highlight
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      // Mermaid re-render
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-purple-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    // MVC Pipeline Stepper
+    let currentPipelineStep = 0;
+    function stepMvcPipeline() {
+      currentPipelineStep = (currentPipelineStep % 5) + 1;
+      const log = document.getElementById('mvc-stepper-log');
+
+      for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById(`step-box-${i}`);
+        el.className = "p-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 font-mono text-xs";
+      }
+
+      const activeEl = document.getElementById(`step-box-${currentPipelineStep}`);
+      activeEl.className = "p-2.5 rounded-xl border border-purple-500 bg-purple-950/60 text-white font-bold font-mono text-xs";
+
+      if (currentPipelineStep === 1) {
+        log.innerHTML = `> Step 1: Request received by public/index.php.\nAutoloading initialized via spl_autoload_register().`;
+      } else if (currentPipelineStep === 2) {
+        log.innerHTML = `> Step 2: Router inspecting $_SERVER['REQUEST_URI'].\nMatched GET '/users' to UserController->index()`;
+      } else if (currentPipelineStep === 3) {
+        log.innerHTML = `> Step 3: Controller invoked.\nRequesting user dataset from Model repository...`;
+      } else if (currentPipelineStep === 4) {
+        log.innerHTML = `> Step 4: Model executes PDO prepared query.\nSELECT id, name, email FROM users returned 3 records.`;
+      } else if (currentPipelineStep === 5) {
+        log.innerHTML = `> Step 5: View rendered using ob_start() & ob_get_clean().\nHTML payload sent back to Front Controller for client output!`;
+      }
+    }
+
+    // Buffer Inspector Logic
+    function updateBufferInspector() {
+      const input = document.getElementById('inspect-user-input').value;
+      const preview = document.getElementById('inspect-rendered-preview');
+
+      // Escaping function mimicking htmlspecialchars
+      const escaped = input
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+      preview.textContent = `<h1>${escaped}</h1>`;
+    }
+
+    // Playground Simulator
+    function loadSimulatorPreset(key) {
+      document.getElementById('sim-editor').value = simulatorPresets[key] || '';
+      runSimulatedCode();
+    }
+
+    function resetSimulatorCode() {
+      const key = document.getElementById('sim-preset-select').value;
+      loadSimulatorPreset(key);
+    }
+
+    function runSimulatedCode() {
+      const code = document.getElementById('sim-editor').value;
+      const consoleOut = document.getElementById('sim-console-output');
+
+      if (code.includes('Front Controller Bootstrapped')) {
+        consoleOut.textContent = `Front Controller Bootstrapped!\nParsed Method: GET\nParsed Route URI: /users`;
+      } else if (code.includes('UserRepository')) {
+        consoleOut.textContent = `Array\n(\n    [id] => 101\n    [name] => Alice Developer\n    [role] => Software Architect\n)`;
+      } else if (code.includes('ob_start')) {
+        consoleOut.textContent = `<h1>Dashboard</h1>\n<p>Status: Active</p>`;
+      } else if (code.includes('LoggerInterface')) {
+        consoleOut.textContent = `[FILE LOG]: Order processed`;
+      } else {
+        consoleOut.textContent = `[Zend Engine Simulation]: Code executed successfully. Verified compliance with php.net MVC specifications.`;
+      }
+    }
+
+    // Quiz Functions
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      document.getElementById('quiz-question-title').textContent = q.question;
+      const optsList = document.getElementById('quiz-options-list');
+      optsList.innerHTML = '';
+
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 text-slate-200 light:text-slate-800 text-xs font-mono transition flex items-center justify-between";
+        btn.innerHTML = `<span>${optText}</span> <i class="fa-regular fa-circle text-slate-500"></i>`;
+        btn.onclick = () => handleQuizAnswer(optIdx, btn);
+        optsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function handleQuizAnswer(selectedIndex, clickedBtn) {
+      const q = quizData[currentQuizIndex];
+      const allBtns = document.querySelectorAll('#quiz-options-list button');
+      allBtns.forEach(btn => btn.disabled = true);
+
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-check mr-1"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        clickedBtn.className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs font-mono flex items-center justify-between";
+        clickedBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        allBtns[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-xs font-mono flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-mono mb-4 leading-relaxed";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-xmark mr-1"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}/${quizData.length}`;
+
+      if (currentQuizIndex < quizData.length - 1) {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      }
+    }
+
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexModal();
+      }
+    }
+
+    function populateIndexModal() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+        const cat = s.getAttribute('data-category') || 'General';
+
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${idx === currentSlide ? 'bg-purple-950/60 border-purple-500/50 text-white' : 'bg-slate-950 light:bg-slate-100 border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-800 hover:border-slate-700'}`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-800 light:bg-slate-300 flex items-center justify-center text-xs text-purple-400 font-mono font-bold">${idx + 1}</span>
+            <span class="font-medium truncate max-w-xs">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 light:bg-slate-200 text-sky-400">${cat}</span>
+        `;
+        btn.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>`;
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((s, idx) => {
+        const textContent = s.innerText.toLowerCase();
+        if (textContent.includes(query)) {
+          matches++;
+          const title = s.querySelector('h2, h1')?.innerText || `Slide ${idx + 1}`;
+          const cat = s.getAttribute('data-category') || 'General';
+
+          const item = document.createElement('div');
+          item.className = "p-3 rounded-xl bg-slate-950 light:bg-slate-100 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 cursor-pointer flex items-center justify-between transition";
+          item.innerHTML = `
+            <div>
+              <span class="font-bold text-white light:text-slate-900 block mb-0.5">${title}</span>
+              <span class="text-[10px] text-slate-400">Slide ${idx + 1} • Category: ${cat}</span>
+            </div>
+            <i class="fa-solid fa-arrow-right text-purple-400 text-xs"></i>
+          `;
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No matching slides found for "${query}".</p>`;
+      }
+    }
+
+    function copyCode(btn) {
+      const container = btn.closest('.glass-card');
+      const codeBlock = container.querySelector('code');
+      if (codeBlock) {
+        const text = codeBlock.innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => { btn.innerHTML = origText; }, 1500);
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        localStorage.setItem('php_presentation_theme', 'light');
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        localStorage.setItem('php_presentation_theme', 'dark');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-icon').className = "fa-solid fa-compress";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = "fa-solid fa-expand";
+        }
+      }
+    }
+
+    // Keyboard & Touch Event Listeners
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      } else if (e.key === 'Escape') {
+        document.getElementById('search-modal').classList.add('hidden');
+        document.getElementById('index-modal').classList.add('hidden');
+      }
+    });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    document.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) nextSlide();
+        else prevSlide();
+      }
+    }, false);
+
+    // Initialization
+    window.onload = function() {
+      const savedTheme = localStorage.getItem('php_presentation_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+
+      updateSlideView();
+      updateBufferInspector();
+      loadSimulatorPreset('front_controller');
+      renderQuizQuestion();
+    };
+  </script>
+</body>
+</html>

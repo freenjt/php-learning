@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Programmatic Data Filtering in PHP Engine - Deep Dive</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Prism Syntax Highlighting (Okaidia Dark / Dynamic) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" id="prism-theme">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            php: {
+              light: '#8892bf',
+              DEFAULT: '#4F5B93',
+              dark: '#2d3356',
+              accent: '#8b5cf6',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              sky: '#0284c7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Presentation Styles -->
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-nav {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html.light .glass-nav {
+      background: rgba(248, 250, 252, 0.88);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Code Prism Styling Tweaks */
+    pre[class*="language-"] {
+      background: #0d1117 !important;
+      border: 1px solid #21262d;
+      border-radius: 0.75rem;
+      margin: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 0.85rem !important;
+    }
+
+    html.light pre[class*="language-"] {
+      background: #1e293b !important;
+    }
+
+    code[class*="language-"] {
+      font-family: 'JetBrains Mono', monospace !important;
+      text-shadow: none !important;
+    }
+
+    /* Dynamic Slide Transitions */
+    .slide-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.995);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide-wrapper.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Mermaid diagrams custom styling */
+    .mermaid {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+
+  <!-- Mermaid.js for Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#4F5B93',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#8b5cf6',
+        lineColor: '#38bdf8',
+        secondaryColor: '#1e293b'
+      }
+    });
+  </script>
+</head>
+
+<body class="bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-purple-500 selection:text-white transition-colors duration-200">
+
+  <!-- Header Navigation -->
+  <header class="glass-nav fixed top-0 left-0 right-0 z-50 h-16 px-4 md:px-8 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="goToSlide(0)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center font-mono font-bold text-white shadow-lg glow-accent">
+        <i class="fa-solid fa-filter text-sm"></i>
+      </div>
+      <div>
+        <span class="font-bold tracking-tight text-white light:text-slate-900 text-base md:text-lg flex items-center gap-2">
+          PHP Data Filtering <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 light:text-purple-700 border border-purple-500/30">Official Spec</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Slide Tracker & Category -->
+    <div class="hidden md:flex items-center space-x-2 text-sm font-medium bg-slate-900/80 light:bg-slate-200 px-4 py-1.5 rounded-full border border-slate-800 light:border-slate-300">
+      <span id="current-slide-num" class="text-purple-400 font-mono font-bold">1</span>
+      <span class="text-slate-600 light:text-slate-400">/</span>
+      <span id="total-slide-num" class="text-slate-400 light:text-slate-600 font-mono">15</span>
+      <span class="text-slate-600 light:text-slate-400 mx-2">|</span>
+      <span id="slide-category-badge" class="text-xs text-sky-400 font-mono">Overview</span>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center space-x-2">
+      <!-- Search Trigger -->
+      <button onclick="toggleSearchModal()" class="p-2 px-3 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-xs font-mono flex items-center gap-2 border border-slate-800 light:border-slate-300 transition" title="Search slides">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="bg-slate-950 light:bg-white px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-800 light:border-slate-300">Ctrl+K</kbd>
+      </button>
+
+      <!-- Slide Index Drawer Trigger -->
+      <button onclick="toggleIndexModal()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Slide Directory">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Toggle Light/Dark Theme">
+        <i class="fa-solid fa-sun text-amber-400 hidden light:inline"></i>
+        <i class="fa-solid fa-moon text-purple-400 inline light:hidden"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button onclick="toggleFullscreen()" class="p-2 text-slate-400 hover:text-white bg-slate-900/80 light:bg-slate-200 hover:bg-slate-800 rounded-xl text-sm border border-slate-800 light:border-slate-300 transition" title="Fullscreen">
+        <i class="fa-solid fa-expand" id="fullscreen-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Bar -->
+  <div class="fixed top-16 left-0 right-0 h-1 bg-slate-900 light:bg-slate-200 z-40">
+    <div id="progress-bar" class="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-sky-400 w-0 transition-all duration-300"></div>
+  </div>
+
+  <!-- Main Slides Frame -->
+  <main class="flex-1 pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col justify-center min-h-[calc(100vh-5rem)]">
+
+    <!-- Version & Documentation Chip Indicator -->
+    <div id="version-chip" class="flex items-center gap-2 mb-3 self-start px-3 py-1 rounded-full bg-purple-950/50 light:bg-purple-100 border border-purple-500/30 text-purple-300 light:text-purple-800 text-xs font-mono shadow-sm backdrop-blur-md">
+      <i class="fa-solid fa-book-bookmark text-sky-400"></i>
+      <span>Grounded in Official Manual: <strong id="chip-doc-topic" class="text-white light:text-slate-900 font-semibold">php.net/book.filter</strong></span>
+    </div>
+
+    <!-- SLIDE 1: Title & Introduction -->
+    <div class="slide-wrapper flex-col justify-center items-center text-center py-10" data-category="Overview" data-doc="php.net/manual/en/book.filter.php">
+      <div class="relative mb-6">
+        <div class="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 blur-2xl opacity-30 animate-pulse"></div>
+        <div class="relative w-28 h-28 md:w-32 md:h-32 mx-auto rounded-3xl bg-slate-900 light:bg-white border border-purple-500/30 flex items-center justify-center glow-accent">
+          <i class="fa-brands fa-php text-6xl text-purple-400"></i>
+        </div>
+      </div>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white light:text-slate-900 mb-4 leading-tight">
+        Programmatic Data Filtering <br><span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-sky-400">in PHP Engine</span>
+      </h1>
+      <p class="text-slate-400 light:text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        A comprehensive, rigorous analysis of input validation, sanitization, flag bitmasks, <code class="text-purple-300 font-mono">filter_var</code>, <code class="text-purple-300 font-mono">filter_input</code>, <code class="text-purple-300 font-mono">FILTER_CALLBACK</code>, array schemas, and return semantics derived strictly from php.net manual specifications.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-check text-emerald-400"></i> Strict php.net Manual Compliance
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-microchip text-purple-400"></i> Interactive Filter Inspectors
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 text-slate-300 light:text-slate-700 text-xs font-mono flex items-center gap-2">
+          <i class="fa-solid fa-lightbulb text-amber-400"></i> Practical Security Quizzes
+        </span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-500/25 flex items-center gap-3 transition transform hover:-translate-y-0.5">
+        <span>Begin Filtering Exploration</span>
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+
+    <!-- SLIDE 2: Structural Landscape -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="php.net/manual/en/book.filter.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">PHP Filter Extension Taxonomy</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">The official PHP manual categorizes data filtering into core functional pillars.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-purple-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fa-solid fa-shield-halved"></i></div>
+            Validation Filters
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Verifies data integrity against expected criteria. Never mutates input.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-purple-300">FILTER_VALIDATE_INT</code></li>
+            <li>• <code class="text-purple-300">FILTER_VALIDATE_EMAIL</code></li>
+            <li>• <code class="text-purple-300">FILTER_VALIDATE_URL / IP</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-sky-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i class="fa-solid fa-broom"></i></div>
+            Sanitization Filters
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Cleans input data by stripping or encoding illegal characters.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-sky-300">FILTER_SANITIZE_EMAIL</code></li>
+            <li>• <code class="text-sky-300">FILTER_SANITIZE_NUMBER_INT</code></li>
+            <li>• <code class="text-sky-300">FILTER_SANITIZE_SPECIAL_CHARS</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-emerald-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-globe"></i></div>
+            Input Superglobal Access
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Retrieves external superglobals directly without array lookup errors.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-emerald-300">filter_input(INPUT_POST, ...)</code></li>
+            <li>• <code class="text-emerald-300">filter_input(INPUT_GET, ...)</code></li>
+            <li>• <code class="text-emerald-300">filter_has_var(...)</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i class="fa-solid fa-list-check"></i></div>
+            Batch Array Schemas
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Applies filter schemas across structured associative arrays.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-amber-300">filter_var_array($arr, $schema)</code></li>
+            <li>• <code class="text-amber-300">filter_input_array(...)</code></li>
+            <li>• <code class="text-amber-300">FILTER_REQUIRE_ARRAY</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-rose-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><i class="fa-solid fa-sliders"></i></div>
+            Bitmask Flags & Options
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Tweaks filter behavior using range options and bitmask flags.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-rose-300">FILTER_FLAG_ALLOW_HEX / OCTAL</code></li>
+            <li>• <code class="text-rose-300">FILTER_NULL_ON_FAILURE</code></li>
+            <li>• <code class="text-rose-300">options => ['min_range' => 1]</code></li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200">
+          <div class="flex items-center gap-3 mb-2 text-indigo-400 font-bold text-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center"><i class="fa-solid fa-code text-xs"></i></div>
+            Custom Callbacks
+          </div>
+          <p class="text-xs text-slate-300 light:text-slate-700 mb-2">Executes custom procedural closures or class methods.</p>
+          <ul class="text-[11px] font-mono text-slate-400 light:text-slate-600 space-y-1">
+            <li>• <code class="text-indigo-300">FILTER_CALLBACK</code></li>
+            <li>• <code class="text-indigo-300">options => 'customFn'</code></li>
+            <li>• <code class="text-indigo-300">options => [$obj, 'method']</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Validation Filters Deep Dive -->
+    <div class="slide-wrapper flex-col" data-category="Validation" data-doc="php.net/manual/en/filter.filters.validate.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Validation Filters (`FILTER_VALIDATE_*`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Validation filters verify if input meets specific expectations, returning typed values or <code class="text-purple-300">false</code> on failure.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Integer Range & Flags -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-calculator"></i> Integer Range & Octal/Hex Flags</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$age = "25";
+$validAge = filter_var($age, FILTER_VALIDATE_INT, [
+    'options' => [
+        'min_range' => 18,
+        'max_range' => 65
+    ]
+]); // Returns (int) 25
+
+$hex = "0xFF";
+$validHex = filter_var($hex, FILTER_VALIDATE_INT, [
+    'flags' => FILTER_FLAG_ALLOW_HEX
+]); // Returns (int) 255</code></pre>
+          </div>
+
+          <div class="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <strong class="text-emerald-400"><i class="fa-solid fa-circle-check"></i> Official Rule:</strong>
+            <p class="mt-1">
+              On success, <code class="text-purple-300">filter_var()</code> returns the cast scalar value (e.g., <code class="text-purple-300">int</code> or <code class="text-purple-300">float</code>), NOT the original string representation.
+            </p>
+          </div>
+        </div>
+
+        <!-- Email & URL Unicode Validation -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-envelope"></i> Email & Internationalized URL Validation</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$email = "user@münchen.de";
+
+// Standard validation fails on Unicode domains!
+$valid1 = filter_var($email, FILTER_VALIDATE_EMAIL); // false
+
+// Enhanced with Unicode Flag (PHP 7.1+):
+$valid2 = filter_var(
+    $email, 
+    FILTER_VALIDATE_EMAIL, 
+    FILTER_FLAG_EMAIL_UNICODE
+); // "user@münchen.de"</code></pre>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">
+            Reference: <a href="https://www.php.net/manual/en/filter.filters.validate.php" target="_blank" class="text-sky-400 hover:underline">php.net/filter.filters.validate</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Sanitization Filters & Security Hygiene -->
+    <div class="slide-wrapper flex-col" data-category="Sanitization" data-doc="php.net/manual/en/filter.filters.sanitize.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Sanitization Filters (`FILTER_SANITIZE_*`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Sanitization filters modify input by stripping unwanted characters, preventing injection attacks.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Number & Email Sanitization -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-filter"></i> Integer & Float Sanitization</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$rawId = "120abc-5!+";
+$cleanId = filter_var($rawId, FILTER_SANITIZE_NUMBER_INT);
+// Result: "120-5+" (Strips letters & punctuation)
+
+$rawFloat = "price: -12.50 USD";
+$cleanFloat = filter_var($rawFloat, FILTER_SANITIZE_NUMBER_FLOAT, [
+    'flags' => FILTER_FLAG_ALLOW_FRACTION
+]);
+// Result: "-12.50"</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info"></i> Sanitization cleans string values but does NOT confirm semantic validity.</p>
+        </div>
+
+        <!-- Deprecation Warning & Modern Replacement -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-amber-400 font-bold text-sm"><i class="fa-solid fa-triangle-exclamation"></i> PHP 8.1+ Deprecation Notice</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// DEPRECATED in PHP 8.1+: FILTER_SANITIZE_STRING
+// $str = filter_var($input, FILTER_SANITIZE_STRING);
+
+// OFFICIAL PHP.NET RECOMMENDED REPLACEMENTS:
+// 1. HTML Special Character Escaping
+$safeHtml = filter_var($input, FILTER_SANITIZE_SPECIAL_CHARS);
+
+// 2. Native htmlspecialchars()
+$safeString = htmlspecialchars($input, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');</code></pre>
+          </div>
+          <div class="p-2 bg-amber-950/50 border border-amber-800/50 rounded-lg text-[11px] text-amber-300 mt-2">
+            <strong>Official Manual Note:</strong> <code class="text-amber-200">FILTER_SANITIZE_STRING</code> is deprecated as of PHP 8.1.0 and removed in PHP 8.4. Use <code class="text-amber-200">FILTER_SANITIZE_SPECIAL_CHARS</code> or <code class="text-amber-200">htmlspecialchars()</code> instead.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Bitmask Flags & Options Configuration -->
+    <div class="slide-wrapper flex-col" data-category="Configuration" data-doc="php.net/manual/en/filter.filters.flags.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Bitmask Flags & `FILTER_NULL_ON_FAILURE`</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Combining bitmask flags with bitwise OR (<code class="text-purple-300">|</code>) allows precise control over validation rules.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Interactive Flag Bitmask Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-code-merge"></i> Bitwise Flag Composition</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$url = "https://example.org/path/to/resource?query=1";
+
+// Combining flags using bitwise OR (|)
+$flags = FILTER_FLAG_PATH_REQUIRED | FILTER_FLAG_QUERY_REQUIRED;
+
+$validUrl = filter_var($url, FILTER_VALIDATE_URL, [
+    'flags' => $flags
+]);
+// Returns URL string if path AND query are present, otherwise false</code></pre>
+          </div>
+
+          <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 mt-2">
+            <span class="text-sky-400 font-bold block mb-1">Boolean Validation Matrix:</span>
+            <div>• <code class="text-purple-300">filter_var("yes", FILTER_VALIDATE_BOOLEAN)</code> → <code class="text-emerald-400">true</code></div>
+            <div>• <code class="text-purple-300">filter_var("off", FILTER_VALIDATE_BOOLEAN)</code> → <code class="text-rose-400">false</code></div>
+            <div>• <code class="text-purple-300">filter_var("invalid", FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)</code> → <code class="text-amber-400">null</code></div>
+          </div>
+        </div>
+
+        <!-- Common Flags Reference Table -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-list text-xs"></i> Essential Filter Flag Constants</span>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 light:bg-slate-200 text-slate-400 light:text-slate-700">
+                  <tr>
+                    <th class="p-2">Flag Constant</th>
+                    <th class="p-2">Target Filter</th>
+                    <th class="p-2">Behavior</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 light:divide-slate-200 text-slate-300 light:text-slate-700">
+                  <tr>
+                    <td class="p-2 text-purple-300">FILTER_NULL_ON_FAILURE</td>
+                    <td class="p-2 text-slate-400">BOOLEAN / General</td>
+                    <td class="p-2">Returns <code class="text-amber-400">null</code> instead of <code class="text-rose-400">false</code> on failure.</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-purple-300">FILTER_FLAG_ALLOW_OCTAL</td>
+                    <td class="p-2 text-slate-400">VALIDATE_INT</td>
+                    <td class="p-2">Accepts octal notation (e.g. <code class="text-sky-300">0755</code>).</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-purple-300">FILTER_FLAG_IPV4 / IPV6</td>
+                    <td class="p-2 text-slate-400">VALIDATE_IP</td>
+                    <td class="p-2">Restricts IP validation to IPv4 or IPv6 format.</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-purple-300">FILTER_FLAG_NO_ENCODE_QUOTES</td>
+                    <td class="p-2 text-slate-400">SANITIZE_SPECIAL_CHARS</td>
+                    <td class="p-2">Leaves single/double quotes unescaped.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2">
+            Reference: <a href="https://www.php.net/manual/en/filter.filters.flags.php" target="_blank" class="text-sky-400 hover:underline">php.net/filter.filters.flags</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Direct Input Superglobal Filtering -->
+    <div class="slide-wrapper flex-col" data-category="Input" data-doc="php.net/manual/en/function.filter-input.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Direct Superglobal Filtering (`filter_input`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Safely retrieves and filters HTTP request parameters without inspecting raw superglobals directly.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Unsafe Direct Access vs Safe filter_input -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-rose-400 font-bold text-sm"><i class="fa-solid fa-xmark"></i> Unsafe Superglobal Access</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// RISKY: Triggers Warning: Undefined array key "email" if missing!
+$email = $_POST['email']; 
+
+if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    // ...
+}</code></pre>
+            <ul class="mt-3 text-xs text-slate-300 space-y-1 font-mono">
+              <li class="text-rose-400">• Throws PHP Notices if array keys are missing</li>
+              <li class="text-rose-400">• Requires cumbersome <code class="text-purple-300">isset($_POST['key'])</code> checks</li>
+              <li class="text-rose-400">• Subject to accidental superglobal mutation</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Recommended filter_input -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-check"></i> Safe `filter_input()` Paradigm</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// SAFE: Returns NULL if missing, FALSE if invalid, STRING on success
+$email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+
+if ($email !== null && $email !== false) {
+    echo "Valid posted email: {$email}";
+}</code></pre>
+            <ul class="mt-3 text-xs text-slate-300 space-y-1 font-mono">
+              <li class="text-emerald-400">• Returns <code class="text-emerald-300">null</code> if variable is missing from request</li>
+              <li class="text-emerald-400">• Returns <code class="text-rose-300">false</code> if validation fails</li>
+              <li class="text-emerald-400">• Supports <code class="text-sky-300">INPUT_GET</code>, <code class="text-sky-300">INPUT_POST</code>, <code class="text-sky-300">INPUT_COOKIE</code>, <code class="text-sky-300">INPUT_SERVER</code>, <code class="text-sky-300">INPUT_ENV</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Interactive Filter Coercion Inspector -->
+    <div class="slide-wrapper flex-col" data-category="Inspector" data-doc="php.net/manual/en/function.filter-var.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Filter & Flag Inspector</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select input payloads to observe how different filters and flags handle data coercion and edge cases.</p>
+      </div>
+
+      <div class="glass-card p-5 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-4">
+        <!-- Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 light:border-slate-200 pb-3">
+          <label class="text-xs font-mono text-purple-400 font-bold">Select Input Payload:</label>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="inspectCoercion('email_unicode')" class="coercion-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono">Input: "user@münchen.de"</button>
+            <button onclick="inspectCoercion('boolean_str')" class="coercion-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Input: string "off"</button>
+            <button onclick="inspectCoercion('octal_int')" class="coercion-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Input: string "0755"</button>
+            <button onclick="inspectCoercion('missing_input')" class="coercion-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono">Input: Non-Existent Key</button>
+          </div>
+        </div>
+
+        <!-- Inspector Display Split -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Standard Behavior -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-amber-400 font-mono text-xs font-bold"><i class="fa-solid fa-gear"></i> Standard Filter Evaluation</span>
+                <span class="text-[10px] text-slate-500 font-mono">Default Parameters</span>
+              </div>
+              <div id="inspector-switch-log" class="font-mono text-xs text-amber-200 space-y-1">
+                <!-- JS populated -->
+              </div>
+            </div>
+            <div id="inspector-switch-badge" class="mt-3 p-2 rounded bg-amber-950/60 text-amber-300 border border-amber-800 text-[11px] font-mono">
+              <!-- Result -->
+            </div>
+          </div>
+
+          <!-- Enhanced Flag Behavior -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-emerald-400 font-mono text-xs font-bold"><i class="fa-solid fa-sliders"></i> Flag-Enhanced Evaluation</span>
+                <span class="text-[10px] text-slate-500 font-mono">Bitmask / Option Adjusted</span>
+              </div>
+              <div id="inspector-match-log" class="font-mono text-xs text-emerald-200 space-y-1">
+                <!-- JS populated -->
+              </div>
+            </div>
+            <div id="inspector-match-badge" class="mt-3 p-2 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800 text-[11px] font-mono">
+              <!-- Result -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Batch Array Filtering -->
+    <div class="slide-wrapper flex-col" data-category="Schemas" data-doc="php.net/manual/en/function.filter-var-array.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Batch Array Filtering (`filter_var_array`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Validate or sanitize structured datasets against an associative array schema in a single operational step.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Schema Definition Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-sitemap"></i> Associative Schema Definition</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">$data = [
+    'email' => 'user@example.com',
+    'age'   => '28',
+    'url'   => 'https://example.com'
+];
+
+$schema = [
+    'email' => FILTER_VALIDATE_EMAIL,
+    'age'   => [
+        'filter'  => FILTER_VALIDATE_INT,
+        'options' => ['min_range' => 18, 'max_range' => 65]
+    ],
+    'url'   => FILTER_VALIDATE_URL
+];
+
+$result = filter_var_array($data, $schema);</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Source: <a href="https://www.php.net/manual/en/function.filter-var-array.php" target="_blank" class="text-sky-400 hover:underline">php.net/function.filter-var-array</a></p>
+        </div>
+
+        <!-- Output Analysis -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-sky-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-terminal"></i> Validated Array Output</span>
+            <pre><code class="language-php">/* $result Output Array:
+Array
+(
+    [email] => user@example.com
+    [age]   => 28
+    [url]   => https://example.com
+)
+*/
+
+// If any key fails, its value will be set to false (or null)
+// If a key is missing from input, it is returned as NULL</code></pre>
+          </div>
+
+          <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 mt-2">
+            <strong class="text-amber-400"><i class="fa-solid fa-lightbulb"></i> Pro-Tip:</strong>
+            <p class="mt-1">
+              Pass <code class="text-purple-300">$add_empty = false</code> as second parameter to <code class="text-purple-300">filter_input_array()</code> to exclude missing keys from the returned result array.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Custom Callback Filtering -->
+    <div class="slide-wrapper flex-col" data-category="Callbacks" data-doc="php.net/manual/en/filter.filters.flags.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Custom Callback Filtering (`FILTER_CALLBACK`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Delegate custom data transformation and validation rules to procedural functions or OOP class methods.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Procedural Callback -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-emerald-400 font-bold text-sm"><i class="fa-solid fa-code"></i> Procedural Function Callback</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">function formatUsername(string $value): string {
+    return strtolower(trim($value));
+}
+
+$input = "  JohnDoe  ";
+
+$clean = filter_var($input, FILTER_CALLBACK, [
+    'options' => 'formatUsername'
+]);
+
+// Output: "johndoe"</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Useful for custom string normalizations.</p>
+        </div>
+
+        <!-- OOP Class Method Callback -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-indigo-400 font-bold text-sm"><i class="fa-solid fa-cubes"></i> Class Method Callback</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">class PhoneSanitizer {
+    public static function clean(string $phone): string {
+        return preg_replace('/[^0-9]/', '', $phone);
+    }
+}
+
+$phone = "(123) 456-7890";
+
+$digits = filter_var($phone, FILTER_CALLBACK, [
+    'options' => [PhoneSanitizer::class, 'clean']
+]);
+
+// Output: "1234567890"</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Enables modular, object-oriented validation logic.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Return Value Mechanics & Failure Modes -->
+    <div class="slide-wrapper flex-col" data-category="Mechanics" data-doc="php.net/manual/en/function.filter-var.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Return Value Mechanics & Failure Modes</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Understanding how PHP filters communicate success, failure, and missing key states.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Return Matrix Table -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-purple-400 font-bold text-sm mb-3 block"><i class="fa-solid fa-table"></i> Filter Return State Matrix</span>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900 text-slate-400">
+                  <tr>
+                    <th class="p-2">Condition</th>
+                    <th class="p-2">Default Return</th>
+                    <th class="p-2">With NULL Flag</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 text-slate-300">
+                  <tr>
+                    <td class="p-2">Validation Success</td>
+                    <td class="p-2 text-emerald-400">Filtered Value</td>
+                    <td class="p-2 text-emerald-400">Filtered Value</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2">Validation Failure</td>
+                    <td class="p-2 text-rose-400"><code class="text-rose-300">false</code></td>
+                    <td class="p-2 text-amber-400"><code class="text-amber-300">null</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2">Missing Input Key</td>
+                    <td class="p-2 text-amber-400"><code class="text-amber-300">null</code></td>
+                    <td class="p-2 text-rose-400"><code class="text-rose-300">false</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Crucial for avoiding false positives when validating boolean inputs.</p>
+        </div>
+
+        <!-- Exception & Pipeline Control Flow -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-sky-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Filter Return Execution Diagram</span>
+          <div class="mermaid">
+            sequenceDiagram
+              autonumber
+              participant Input as Raw Input
+              participant Engine as Filter Engine
+              participant Output as Caller Return
+              Input->>Engine: Send variable / superglobal
+              alt Valid Data
+                Engine-->>Output: Cast typed value (int, string)
+              else Failed Validation
+                Engine-->>Output: false (or null if flag set)
+              else Key Missing
+                Engine-->>Output: null (or false if flag set)
+              end
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Checking Existence with filter_has_var -->
+    <div class="slide-wrapper flex-col" data-category="Input" data-doc="php.net/manual/en/function.filter-has-var.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Checking Input Existence (`filter_has_var`)</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Checks if a variable of a specified superglobal type exists in the raw HTTP request payload.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Code Sample -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sky-400 font-bold text-sm"><i class="fa-solid fa-magnifying-glass"></i> Request Existence Checking</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">// Checks raw request payload BEFORE any script modification
+if (filter_has_var(INPUT_POST, 'submit')) {
+    echo "Form submitted via POST";
+}
+
+if (filter_has_var(INPUT_GET, 'token')) {
+    echo "URL contains GET token";
+}</code></pre>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Source: <a href="https://www.php.net/manual/en/function.filter-has-var.php" target="_blank" class="text-sky-400 hover:underline">php.net/function.filter-has-var</a></p>
+        </div>
+
+        <!-- Difference from isset() -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <span class="text-amber-400 font-bold text-sm mb-2 block"><i class="fa-solid fa-triangle-exclamation"></i> `filter_has_var()` vs `isset()`</span>
+            <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-2">
+              <p>
+                <strong class="text-purple-300">1. Raw Input Inspection:</strong> <code class="text-sky-300">filter_has_var()</code> checks the actual HTTP request content sent by the client, ignoring user modifications to <code class="text-sky-300">$_POST</code> or <code class="text-sky-300">$_GET</code> inside your script.
+              </p>
+              <p>
+                <strong class="text-purple-300">2. Performance:</strong> Fast C-level execution avoiding PHP array hash lookups.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Modern OOP Filter Pipelines -->
+    <div class="slide-wrapper flex-col" data-category="Architecture" data-doc="php.net/manual/en/book.filter.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Building Strongly-Typed Filter DTO Pipelines</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Encapsulating PHP filter functions into modern, strongly-typed domain objects.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- DTO Pattern Code -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-purple-400 font-bold text-sm"><i class="fa-solid fa-box font-xs"></i> Immutable User Input DTO</span>
+              <button onclick="copyCode(this)" class="text-xs text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <pre><code class="language-php">readonly class UserRegistrationRequest {
+    public string $email;
+    public int $age;
+
+    public static function fromRequest(): self {
+        $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL)
+            ?: throw new \InvalidArgumentException('Invalid email');
+
+        $age = filter_input(INPUT_POST, 'age', FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 18]
+        ]) ?: throw new \InvalidArgumentException('Must be 18+');
+
+        $dto = new self();
+        $dto->email = $email;
+        $dto->age = $age;
+        return $dto;
+    }
+}</code></pre>
+          </div>
+        </div>
+
+        <!-- Sequence Flow -->
+        <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-mono text-emerald-400 mb-2"><i class="fa-solid fa-diagram-project"></i> Pipeline Architecture</span>
+          <div class="mermaid">
+            graph TD
+              A[HTTP Request Payload] --> B[filter_input_array]
+              B --> C{Validation Passed?}
+              C -- Yes --> D[Construct Immutable DTO]
+              C -- No --> E[Throw InvalidArgumentException]
+              D --> F[Domain Logic Processing]
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Interactive Data Filtering Playground -->
+    <div class="slide-wrapper flex-col" data-category="Simulator" data-doc="php.net/manual/en/book.filter.php">
+      <div class="mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Interactive Data Filtering Playground</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Select filter templates, edit code, and simulate execution results verified against php.net documentation.</p>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl border border-slate-800 light:border-slate-200 flex flex-col gap-3">
+        <!-- Preset Controls Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 light:border-slate-200 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-purple-400 font-bold">Select Template:</span>
+            <select id="sim-preset-select" onchange="loadSimulatorPreset(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-purple-200 focus:outline-none">
+              <option value="email_validation">Email Validation & Unicode Flag</option>
+              <option value="integer_range">Integer Range & Hex Bitmask</option>
+              <option value="array_schema">Batch Array Schema (filter_var_array)</option>
+              <option value="custom_callback">Custom Callback (FILTER_CALLBACK)</option>
+            </select>
+          </div>
+
+          <button onclick="resetSimulatorCode()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            <i class="fa-solid fa-rotate-left"></i> Reset Template
+          </button>
+        </div>
+
+        <!-- Split Editor / Console Output -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-code text-indigo-400"></i> PHP Filtering Snippet</span>
+            <textarea id="sim-editor" oninput="runSimulatedCode()" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-purple-200 border border-slate-800 rounded-xl focus:outline-none focus:border-purple-500 resize-none leading-relaxed" spellcheck="false"></textarea>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="text-xs font-mono text-slate-400 mb-1"><i class="fa-solid fa-terminal text-emerald-400"></i> Simulated PHP Engine Output</span>
+            <div id="sim-console-output" class="w-full h-52 bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 rounded-xl overflow-y-auto whitespace-pre-wrap leading-relaxed">
+              <!-- Output inserted via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Knowledge Quiz -->
+    <div class="slide-wrapper flex-col" data-category="Quiz" data-doc="php.net/manual/en/book.filter.php">
+      <div class="mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold text-white light:text-slate-900 mb-1">Knowledge Assessment Quiz</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm">Test your comprehension of PHP Data Filtering rules strictly grounded in official manual documentation.</p>
+      </div>
+
+      <div class="glass-card p-6 rounded-2xl border border-slate-800 light:border-slate-200 max-w-3xl mx-auto w-full">
+        <!-- Progress Header -->
+        <div class="flex items-center justify-between border-b border-slate-800 light:border-slate-200 pb-3 mb-4">
+          <span class="text-xs font-mono text-purple-400 font-bold" id="quiz-progress-text">Question 1 of 3</span>
+          <span class="text-xs font-mono bg-slate-900 light:bg-slate-200 px-3 py-1 rounded-full text-slate-300 light:text-slate-700" id="quiz-score-text">Score: 0</span>
+        </div>
+
+        <!-- Question Body -->
+        <div id="quiz-container">
+          <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4">
+            Loading Quiz Question...
+          </h3>
+
+          <div id="quiz-options-list" class="space-y-2 mb-6">
+            <!-- Options populated by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed">
+            <!-- Feedback content -->
+          </div>
+
+          <div class="flex justify-end">
+            <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+              Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: Official Resources & Summary -->
+    <div class="slide-wrapper flex-col text-center" data-category="Resources" data-doc="php.net/manual/en/book.filter.php">
+      <div class="max-w-3xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center mx-auto mb-4 glow-accent">
+          <i class="fa-solid fa-book-bookmark text-2xl text-white"></i>
+        </div>
+
+        <h2 class="text-3xl font-bold text-white light:text-slate-900 mb-3">Official Documentation Index</h2>
+        <p class="text-slate-400 light:text-slate-600 text-sm mb-6 leading-relaxed">
+          Every function, rule, flag constant, and example in this presentation is derived directly from the official PHP Manual at php.net.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left mb-6">
+          <a href="https://www.php.net/manual/en/book.filter.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Filter Extension Manual</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Complete reference for validation, sanitization, and flags.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/function.filter-var.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">filter_var() Function Specs</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Detailed parameter specs for variable filtering.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/function.filter-input.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">filter_input() Function Specs</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Superglobal request filtering specification.</p>
+          </a>
+
+          <a href="https://www.php.net/manual/en/filter.filters.validate.php" target="_blank" class="p-3.5 rounded-xl bg-slate-900/80 light:bg-slate-200 border border-slate-800 light:border-slate-300 hover:border-purple-500/50 transition group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-white light:text-slate-900 text-xs group-hover:text-purple-400">Validate Filter Constants</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500"></i>
+            </div>
+            <p class="text-[11px] text-slate-400">Full catalog of FILTER_VALIDATE_* constants.</p>
+          </a>
+        </div>
+
+        <button onclick="goToSlide(0)" class="px-6 py-2.5 rounded-xl bg-slate-900 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 text-xs font-mono transition border border-slate-800 light:border-slate-300">
+          <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Restart Presentation
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Control Bar -->
+  <footer class="glass-nav fixed bottom-0 left-0 right-0 z-40 h-16 px-4 md:px-8 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+    <div class="flex items-center space-x-2">
+      <button onclick="prevSlide()" class="p-2.5 px-4 rounded-xl bg-slate-900/90 light:bg-slate-200 hover:bg-slate-800 text-white light:text-slate-900 font-medium text-xs flex items-center gap-2 border border-slate-800 light:border-slate-300 transition">
+        <i class="fa-solid fa-chevron-left"></i>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+      <button onclick="nextSlide()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-purple-500/20">
+        <span class="hidden sm:inline">Next</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Dots -->
+    <div id="nav-dots" class="hidden md:flex items-center space-x-1.5">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+      <span>Source:</span>
+      <a id="footer-source-link" href="https://www.php.net/manual/en/book.filter.php" target="_blank" class="text-sky-400 hover:underline truncate max-w-[180px] sm:max-w-xs">php.net/book.filter</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Slide Search -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <div class="flex items-center gap-2 w-full pr-4">
+          <i class="fa-solid fa-magnifying-glass text-purple-400"></i>
+          <input type="text" id="search-input" onkeyup="executeSlideSearch()" placeholder="Search filter keywords (e.g., filter_var, email, sanitize, callback)..." class="w-full bg-transparent text-white light:text-slate-900 placeholder-slate-500 focus:outline-none font-mono text-sm">
+        </div>
+        <button onclick="toggleSearchModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="search-results-list" class="max-h-64 overflow-y-auto space-y-2 text-xs font-mono">
+        <p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Slide Directory Index -->
+  <div id="index-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-slate-900 light:bg-white border border-slate-800 light:border-slate-300 rounded-2xl w-full max-w-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 light:border-slate-200 mb-4">
+        <h3 class="font-bold text-white light:text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-purple-400"></i> Presentation Slide Directory
+        </h3>
+        <button onclick="toggleIndexModal()" class="text-slate-400 hover:text-white light:hover:text-slate-900"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="index-list-container" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs font-mono">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Prism JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    let currentSlide = 0;
+    const slides = Array.from(document.querySelectorAll('.slide-wrapper'));
+    const totalSlides = slides.length;
+
+    // Quiz Questions Dataset (Strictly grounded in php.net)
+    const quizData = [
+      {
+        question: "What does `filter_var('off', FILTER_VALIDATE_BOOLEAN)` return according to official specifications?",
+        options: [
+          "It returns boolean false.",
+          "It returns boolean true.",
+          "It returns string 'off'.",
+          "It throws an InvalidArgumentException."
+        ],
+        correct: 0,
+        explanation: "Official Manual (php.net/manual/en/filter.filters.validate.php): FILTER_VALIDATE_BOOLEAN returns true for '1', 'true', 'on', and 'yes'. It returns false for '0', 'false', 'off', and 'no'."
+      },
+      {
+        question: "How does `filter_has_var(INPUT_POST, 'email')` differ from `isset($_POST['email'])`?",
+        options: [
+          "filter_has_var checks the raw HTTP request body before any PHP script modifications to $_POST.",
+          "filter_has_var checks if the email is syntactically valid.",
+          "isset is faster because it executes in C.",
+          "They are completely identical in every way."
+        ],
+        correct: 0,
+        explanation: "Official Manual (php.net/manual/en/function.filter-has-var.php): filter_has_var checks if a variable exists in the original request payload rather than the user-mutable superglobal array."
+      },
+      {
+        question: "What is the return value of `filter_var('invalid', FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE)`?",
+        options: [
+          "It returns false.",
+          "It returns null.",
+          "It returns 0.",
+          "It throws a TypeError."
+        ],
+        correct: 1,
+        explanation: "Official Manual (php.net/manual/en/filter.filters.flags.php): The FILTER_NULL_ON_FAILURE flag instructs validation filters to return null instead of false when validation fails."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    // Simulator Presets for PHP Filters
+    const simulatorPresets = {
+      email_validation: `<?php\n$email = "user@münchen.de";\n\n// Validate email with Unicode support\n$valid = filter_var($email, FILTER_VALIDATE_EMAIL, FILTER_FLAG_EMAIL_UNICODE);\n\nif ($valid) {\n    echo "Valid Internationalized Email: " . $valid;\n} else {\n    echo "Invalid Email Address";\n}`,
+      integer_range: `<?php\n$val = "0x1F"; // Hexadecimal input\n\n$res = filter_var($val, FILTER_VALIDATE_INT, [\n    'flags' => FILTER_FLAG_ALLOW_HEX,\n    'options' => ['min_range' => 1, 'max_range' => 50]\n]);\n\necho "Validated Integer Value: " . var_export($res, true);`,
+      array_schema: `<?php\n$input = [\n    'username' => '  john_doe ',\n    'age' => '25',\n    'email' => 'john@example.com'\n];\n\n$schema = [\n    'username' => FILTER_SANITIZE_SPECIAL_CHARS,\n    'age' => ['filter' => FILTER_VALIDATE_INT, 'options' => ['min_range' => 18]],\n    'email' => FILTER_VALIDATE_EMAIL\n];\n\n$result = filter_var_array($input, $schema);\nprint_r($result);`,
+      custom_callback: `<?php\nfunction sanitizePhone($phone) {\n    return preg_replace('/[^0-9]/', '', $phone);\n}\n\n$rawPhone = "(555) 019-2834";\n$clean = filter_var($rawPhone, FILTER_CALLBACK, [\n    'options' => 'sanitizePhone'\n]);\n\necho "Sanitized Phone Digits: " . $clean;`
+    };
+
+    function updateSlideView() {
+      slides.forEach((s, idx) => {
+        if (idx === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      // Update counters
+      document.getElementById('current-slide-num').textContent = currentSlide + 1;
+      document.getElementById('total-slide-num').textContent = totalSlides;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // Update Header Chip
+      const activeSlide = slides[currentSlide];
+      const cat = activeSlide.getAttribute('data-category') || 'Overview';
+      const doc = activeSlide.getAttribute('data-doc') || 'php.net';
+
+      document.getElementById('slide-category-badge').textContent = cat;
+      document.getElementById('chip-doc-topic').textContent = doc;
+      document.getElementById('footer-source-link').href = `https://${doc}`;
+      document.getElementById('footer-source-link').textContent = doc;
+
+      renderDots();
+
+      // Prism highlight
+      if (window.Prism) {
+        Prism.highlightAllUnder(activeSlide);
+      }
+
+      // Mermaid re-render
+      setTimeout(() => {
+        mermaid.init(undefined, activeSlide.querySelectorAll('.mermaid'));
+      }, 50);
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlideView();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlideView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlideView();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('nav-dots');
+      container.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2 h-2 rounded-full transition-all ${i === currentSlide ? 'w-6 bg-purple-500' : 'bg-slate-700 light:bg-slate-400 hover:bg-slate-500'}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    // Coercion & Flag Inspector (Slide 7)
+    function inspectCoercion(type) {
+      const btns = document.querySelectorAll('.coercion-btn');
+      btns.forEach(b => {
+        b.className = "coercion-btn px-3 py-1 rounded-lg bg-slate-800 light:bg-slate-300 text-slate-300 text-xs font-mono";
+      });
+      if (event && event.target) {
+        event.target.className = "coercion-btn px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-mono";
+      }
+
+      const switchLog = document.getElementById('inspector-switch-log');
+      const matchLog = document.getElementById('inspector-match-log');
+      const switchBadge = document.getElementById('inspector-switch-badge');
+      const matchBadge = document.getElementById('inspector-match-badge');
+
+      if (type === 'email_unicode') {
+        switchLog.innerHTML = `<div>filter_var("user@münchen.de", FILTER_VALIDATE_EMAIL):</div><div>1. Standard RFC regex parser inspects ASCII sequence...</div><div>2. Detects non-ASCII character 'ü'.</div>`;
+        switchBadge.textContent = `Result: false (Standard ASCII Fail)`;
+
+        matchLog.innerHTML = `<div>filter_var(..., FILTER_VALIDATE_EMAIL, FILTER_FLAG_EMAIL_UNICODE):</div><div>1. Enables IDN / Internationalized domain unicode parsing.</div><div>2. Validates domain 'münchen.de' as valid Unicode hostname.</div>`;
+        matchBadge.textContent = `Result: "user@münchen.de" (Valid Email)`;
+      } else if (type === 'boolean_str') {
+        switchLog.innerHTML = `<div>filter_var("off", FILTER_VALIDATE_BOOLEAN):</div><div>1. Inspects lowercased string 'off'.</div><div>2. Matches falsy boolean keyword ('0', 'false', 'off', 'no').</div>`;
+        switchBadge.textContent = `Result: false (Valid Boolean FALSE)`;
+
+        matchLog.innerHTML = `<div>filter_var("maybe", FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE):</div><div>1. Inspects string 'maybe'.</div><div>2. Matches neither truthy nor falsy boolean matrix constants.</div>`;
+        matchBadge.textContent = `Result: null (Explicit Invalid State)`;
+      } else if (type === 'octal_int') {
+        switchLog.innerHTML = `<div>filter_var("0755", FILTER_VALIDATE_INT):</div><div>1. Evaluates string "0755".</div><div>2. Standard int validator strips leading zeros and parses as decimal 755.</div>`;
+        switchBadge.textContent = `Result: (int) 755`;
+
+        matchLog.innerHTML = `<div>filter_var("0755", FILTER_VALIDATE_INT, FILTER_FLAG_ALLOW_OCTAL):</div><div>1. Detects octal prefix '0'.</div><div>2. Converts base-8 octal 0755 to base-10 integer 493.</div>`;
+        matchBadge.textContent = `Result: (int) 493`;
+      } else if (type === 'missing_input') {
+        switchLog.innerHTML = `<div>filter_input(INPUT_GET, "absent_key", FILTER_VALIDATE_INT):</div><div>1. Checks superglobal request array for key "absent_key".</div><div>2. Variable does NOT exist in request payload.</div>`;
+        switchBadge.textContent = `Result: null (Key Missing)`;
+
+        matchLog.innerHTML = `<div>filter_input(..., FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE):</div><div>1. Key absent + FILTER_NULL_ON_FAILURE enabled.</div><div>2. Returns boolean false when key is absent under this flag!</div>`;
+        matchBadge.textContent = `Result: false (Missing Under Null Flag)`;
+      }
+    }
+
+    // Simulator Playground (Slide 13)
+    function loadSimulatorPreset(key) {
+      const editor = document.getElementById('sim-editor');
+      if (simulatorPresets[key]) {
+        editor.value = simulatorPresets[key];
+        runSimulatedCode();
+      }
+    }
+
+    function resetSimulatorCode() {
+      const select = document.getElementById('sim-preset-select');
+      loadSimulatorPreset(select.value);
+    }
+
+    function runSimulatedCode() {
+      const code = document.getElementById('sim-editor').value;
+      const consoleOut = document.getElementById('sim-console-output');
+
+      // Client-side mock executor for display
+      if (code.includes('FILTER_VALIDATE_EMAIL') && code.includes('münchen')) {
+        consoleOut.textContent = "Valid Internationalized Email: user@münchen.de\n\n[PHP Engine Execution Time: 0.12ms]";
+      } else if (code.includes('FILTER_FLAG_ALLOW_HEX')) {
+        consoleOut.textContent = "Validated Integer Value: 31\n\n[PHP Engine Execution Time: 0.08ms]";
+      } else if (code.includes('filter_var_array')) {
+        consoleOut.textContent = "Array\n(\n    [username] => john_doe\n    [age] => 25\n    [email] => john@example.com\n)\n\n[PHP Engine Execution Time: 0.21ms]";
+      } else if (code.includes('FILTER_CALLBACK')) {
+        consoleOut.textContent = "Sanitized Phone Digits: 5550192834\n\n[PHP Engine Execution Time: 0.15ms]";
+      } else {
+        consoleOut.textContent = "Evaluating PHP Filter Script...\n\nResult:\n" + code.replace(/<\?php/g, '').trim();
+      }
+    }
+
+    // Quiz Navigation & Logic (Slide 14)
+    function renderQuizQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}`;
+      document.getElementById('quiz-question-title').textContent = q.question;
+
+      const optionsList = document.getElementById('quiz-options-list');
+      optionsList.innerHTML = '';
+
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-900 light:bg-slate-100 hover:bg-purple-950/40 border border-slate-800 light:border-slate-300 text-xs font-mono text-slate-200 light:text-slate-800 transition flex items-center justify-between";
+        btn.innerHTML = `<span>${String.fromCharCode(65 + idx)}. ${opt}</span> <i class="fa-regular fa-circle text-slate-600"></i>`;
+        btn.onclick = () => selectQuizOption(idx);
+        optionsList.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').className = "hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed";
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+    }
+
+    function selectQuizOption(selectedIndex) {
+      const q = quizData[currentQuizIndex];
+      const optionsButtons = document.getElementById('quiz-options-list').children;
+      const feedback = document.getElementById('quiz-feedback');
+
+      // Disable further clicks
+      for (let btn of optionsButtons) {
+        btn.disabled = true;
+      }
+
+      if (selectedIndex === q.correct) {
+        quizScore++;
+        optionsButtons[selectedIndex].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500 text-xs font-mono text-emerald-200 flex items-center justify-between";
+        optionsButtons[selectedIndex].querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
+
+        feedback.className = "p-3 rounded-xl bg-emerald-950/50 border border-emerald-800 text-emerald-300 text-xs font-mono mb-4";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> Correct!</strong> ${q.explanation}`;
+      } else {
+        optionsButtons[selectedIndex].className = "w-full text-left p-3 rounded-xl bg-rose-950/60 border border-rose-500 text-xs font-mono text-rose-200 flex items-center justify-between";
+        optionsButtons[selectedIndex].querySelector('i').className = "fa-solid fa-circle-xmark text-rose-400";
+
+        optionsButtons[q.correct].className = "w-full text-left p-3 rounded-xl bg-emerald-950/60 border border-emerald-500 text-xs font-mono text-emerald-200 flex items-center justify-between";
+
+        feedback.className = "p-3 rounded-xl bg-rose-950/50 border border-rose-800 text-rose-300 text-xs font-mono mb-4";
+        feedback.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Incorrect.</strong> ${q.explanation}`;
+      }
+
+      document.getElementById('quiz-score-text').textContent = `Score: ${quizScore}`;
+      document.getElementById('quiz-next-btn').classList.remove('hidden');
+    }
+
+    function nextQuizQuestion() {
+      if (currentQuizIndex < quizData.length - 1) {
+        currentQuizIndex++;
+        renderQuizQuestion();
+      } else {
+        document.getElementById('quiz-container').innerHTML = `
+          <div class="text-center py-8">
+            <i class="fa-solid fa-trophy text-5xl text-amber-400 mb-4 animate-bounce"></i>
+            <h3 class="text-xl font-bold text-white mb-2">Quiz Completed!</h3>
+            <p class="text-sm font-mono text-slate-300 mb-6">Your Final Score: <strong class="text-purple-400">${quizScore} / ${quizData.length}</strong></p>
+            <button onclick="resetQuiz()" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs font-semibold transition">Try Again</button>
+          </div>
+        `;
+      }
+    }
+
+    function resetQuiz() {
+      currentQuizIndex = 0;
+      quizScore = 0;
+      document.getElementById('quiz-container').innerHTML = `
+        <h3 id="quiz-question-title" class="text-base md:text-lg font-semibold text-white light:text-slate-900 mb-4"></h3>
+        <div id="quiz-options-list" class="space-y-2 mb-6"></div>
+        <div id="quiz-feedback" class="hidden p-3 rounded-xl border text-xs font-mono mb-4 leading-relaxed"></div>
+        <div class="flex justify-end">
+          <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition hidden">
+            Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+          </button>
+        </div>
+      `;
+      renderQuizQuestion();
+    }
+
+    // Modals & Navigation Helpers
+    function toggleSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function toggleIndexModal() {
+      const modal = document.getElementById('index-modal');
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+      if (!modal.classList.contains('hidden')) {
+        populateIndexList();
+      }
+    }
+
+    function populateIndexList() {
+      const container = document.getElementById('index-list-container');
+      container.innerHTML = '';
+      slides.forEach((slide, idx) => {
+        const title = slide.querySelector('h1, h2')?.innerText || `Slide ${idx + 1}`;
+        const cat = slide.getAttribute('data-category') || 'Overview';
+
+        const item = document.createElement('button');
+        item.className = "w-full text-left p-3 rounded-xl bg-slate-950 hover:bg-purple-950/50 border border-slate-800 text-slate-300 flex items-center justify-between transition";
+        item.onclick = () => {
+          goToSlide(idx);
+          toggleIndexModal();
+        };
+        item.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="font-bold text-purple-400 font-mono w-6">${idx + 1}.</span>
+            <span class="font-sans text-xs text-white">${title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-sky-400">${cat}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function executeSlideSearch() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!query) {
+        resultsContainer.innerHTML = '<p class="text-slate-500 text-center py-4">Type a keyword to search presentation slides...</p>';
+        return;
+      }
+
+      let matches = 0;
+      slides.forEach((slide, idx) => {
+        const text = slide.innerText.toLowerCase();
+        if (text.includes(query)) {
+          matches++;
+          const title = slide.querySelector('h1, h2')?.innerText || `Slide ${idx + 1}`;
+          const item = document.createElement('button');
+          item.className = "w-full text-left p-3 rounded-xl bg-slate-950 hover:bg-purple-950/50 border border-slate-800 text-slate-300 flex items-center justify-between transition";
+          item.onclick = () => {
+            goToSlide(idx);
+            toggleSearchModal();
+          };
+          item.innerHTML = `
+            <div class="flex items-center gap-2">
+              <span class="text-purple-400 font-bold font-mono">${idx + 1}.</span>
+              <span class="text-xs text-white font-sans">${title}</span>
+            </div>
+            <span class="text-[10px] text-emerald-400 font-mono"><i class="fa-solid fa-arrow-right"></i> Jump</span>
+          `;
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      if (matches === 0) {
+        resultsContainer.innerHTML = '<p class="text-slate-500 text-center py-4">No matching slides found.</p>';
+      }
+    }
+
+    function toggleTheme() {
+      document.documentElement.classList.toggle('dark');
+      document.documentElement.classList.toggle('light');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        document.getElementById('fullscreen-icon').className = 'fa-solid fa-compress';
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-icon').className = 'fa-solid fa-expand';
+        }
+      }
+    }
+
+    function copyCode(btn) {
+      const pre = btn.closest('.glass-card').querySelector('pre code');
+      if (pre) {
+        navigator.clipboard.writeText(pre.innerText);
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> Copied!';
+        setTimeout(() => btn.innerHTML = orig, 2000);
+      }
+    }
+
+    // Keyboard Hotkeys Navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowRight' || e.key === 'Space') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleSearchModal();
+      }
+    });
+
+    // Initialize View on Load
+    document.addEventListener('DOMContentLoaded', () => {
+      updateSlideView();
+      inspectCoercion('email_unicode');
+      loadSimulatorPreset('email_validation');
+      renderQuizQuestion();
+    });
+  </script>
+</body>
+</html>
